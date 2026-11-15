@@ -14,6 +14,7 @@ from pixelwright.workspace.config import (
     save_config,
 )
 from pixelwright.workspace.gitignore import write_gitignore
+from pixelwright.workspace.style import StyleGuide, load_style, save_style
 
 STYLE_SUBDIRS = ("palettes", "references", "tests")
 
@@ -32,6 +33,8 @@ class Workspace:
         save_config(root, ws.config)
         for sub in STYLE_SUBDIRS:
             (ws.path("style") / sub).mkdir(parents=True, exist_ok=True)
+        if not (ws.path("style") / "style.yaml").exists():
+            save_style(ws.path("style"), StyleGuide())
         for role in ("experiments", "assets", "cache"):
             ws.path(role).mkdir(parents=True, exist_ok=True)
         ws.refresh_gitignore()
@@ -63,7 +66,21 @@ class Workspace:
         **fields: Any,
     ) -> Asset:
         path = self.path("assets") / check_asset_id(asset_id)
+        fields.setdefault("style_version", self.style().version)
         return Asset.create(path, kind, canvas or self.config.canvas, **fields)
+
+    def style(self) -> StyleGuide:
+        return load_style(self.path("style"))
+
+    def stale_assets(self) -> list[tuple[str, int]]:
+        """Assets made with an older style version than the current one (to re-check)."""
+        current = self.style().version
+        stale = []
+        for asset_id in self.assets():
+            used = int(self.asset(asset_id).spec().get("style_version", 0))
+            if used < current:
+                stale.append((asset_id, used))
+        return stale
 
     def approved_versions(self) -> list[str]:
         found = []
