@@ -5,6 +5,7 @@ label: "T51: Ranking"
 priority: 1
 deps: [t-dc179e50]
 tags: [m3]
+status: merged
 ---
 
 Claude pairwise through MCP (`bench_pairs_next`, `bench_pair_record`), blind pairwise page in the viewer, Bradley-Terry, `report.html`, `pw bench apply` writes `[defaults]`.
