@@ -9,9 +9,9 @@ SKILLS = sorted((Path(__file__).parents[2] / "plugin" / "skills").glob("*/SKILL.
 PW_COMMAND = re.compile(r"\bpw ([a-z][a-z-]*)")
 
 
-def test_the_plugin_ships_the_four_skills() -> None:
+def test_the_plugin_ships_the_five_skills() -> None:
     names = {s.parent.name for s in SKILLS}
-    assert names == {"review-loop", "critique", "zone-fix", "style-definition"}
+    assert names == {"review-loop", "critique", "zone-fix", "style-definition", "first-run"}
 
 
 @pytest.mark.parametrize("skill", SKILLS, ids=lambda p: p.parent.name)
