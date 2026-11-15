@@ -1,3 +1,4 @@
+from itertools import pairwise
 from typing import Any
 
 import numpy as np
@@ -33,7 +34,7 @@ def test_play_uses_file_durations(page: Any, viewer: Viewer) -> None:
     log = page.evaluate("window.pwPlayLog")
     frames = [e["frame"] for e in log]
     assert frames[:7] == [0, 1, 2, 0, 1, 2, 0]
-    for prev, cur in zip(log, log[1:], strict=False):
+    for prev, cur in pairwise(log):
         expected = DURATIONS[prev["frame"]]
         assert abs((cur["at"] - prev["at"]) - expected) < 60, (prev, cur)
 
