@@ -9,6 +9,7 @@ import pytest
 from pixelwright.cli import main
 from pixelwright.core.image import RGBImage
 from pixelwright.io import aseprite_cli
+from pixelwright.io.aseprite import AseDocument, Cel, Frame, Layer, read_aseprite, write_aseprite
 from pixelwright.io.png import write_png
 from pixelwright.workspace import Workspace
 
@@ -89,3 +90,54 @@ def test_a_failing_script_exits_non_zero(workspace: Path) -> None:
     with pytest.raises(subprocess.CalledProcessError) as exc:
         aseprite_cli.run_script("load_version.lua", params)
     assert "not_found" in exc.value.stdout
+
+
+def _layered(path: Path) -> Path:
+
+    px = np.zeros((8, 8, 4), np.uint8)
+    px[2:6, 2:6] = (200, 40, 40, 255)
+    frame = Frame(duration=100, chunks=[Layer("body"), Layer("shade"), Cel(0, pixels=px)])
+    write_aseprite(path, AseDocument(8, 8, frames=[frame]))
+    return path
+
+
+def test_load_version_prefers_aseprite_file(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    w = ["--workspace", str(workspace)]
+    ase = _layered(workspace.parent / "hero.aseprite")
+    src = str(workspace.parent / "hero.png")
+    assert main(["attach", "hero", src, "--aseprite", str(ase), *w]) == 0
+    assert main(["attach", "hero", src, *w]) == 0
+    capsys.readouterr()
+    assert main(["render", "hero", "--version", "v0001", "--scale", "1", *w, "--json"]) == 0
+    layered = json.loads(capsys.readouterr().out)["data"]
+    assert layered["open"] == "assets/hero/versions/v0001/image.aseprite"
+    doc = read_aseprite(workspace / layered["open"])
+    assert [c.name for f in doc.frames for c in f.chunks if isinstance(c, Layer)] == [
+        "body",
+        "shade",
+    ]
+    assert main(["render", "hero", "--scale", "1", *w, "--json"]) == 0
+    plain = json.loads(capsys.readouterr().out)["data"]
+    assert plain["open"] == plain["source"]
+    lua = (aseprite_cli.SCRIPTS / "load_version.lua").read_text()
+    assert "env.data.open" in lua
+    if aseprite_cli.find_aseprite() is not None:
+        params = {
+            "asset": "hero",
+            "version": "v0001",
+            "workspace": str(workspace),
+            "pw": _pw_path(),
+        }
+        assert "(2 layers)" in aseprite_cli.run_script("load_version.lua", params).stdout
+
+
+def test_attach_rejects_an_unreadable_aseprite(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bad = workspace.parent / "bad.aseprite"
+    bad.write_bytes(b"nope")
+    src = str(workspace.parent / "hero.png")
+    code = main(["attach", "hero", src, "--aseprite", str(bad), "--workspace", str(workspace)])
+    assert code != 0

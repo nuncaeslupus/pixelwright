@@ -1,4 +1,5 @@
--- Open a pixelwright version (default: latest) in Aseprite.
+-- Open a pixelwright version (default: latest) in Aseprite: its image.aseprite (layers,
+-- frames) when the version has one, else its PNG.
 -- Headless: aseprite -b --script-param asset=<id> [--script-param version=v0004]
 --   [--script-param workspace=<dir>] --script load_version.lua
 local here = app.fs.filePath(debug.getinfo(1, "S").source:sub(2))
@@ -14,6 +15,7 @@ end
 local ok, env = pcall(pw.pw, args, p)
 if not ok then return pw.fail(env) end
 local root = (p.workspace and p.workspace ~= "") and p.workspace or app.fs.currentPath
-local sprite = app.open(app.fs.joinPath(root, env.data.source))
-if not sprite then return pw.fail("pixelwright: could not open " .. env.data.source) end
-print("pixelwright: opened " .. env.asset .. " " .. env.version)
+local file = env.data.open or env.data.source
+local sprite = app.open(app.fs.joinPath(root, file))
+if not sprite then return pw.fail("pixelwright: could not open " .. file) end
+print("pixelwright: opened " .. env.asset .. " " .. env.version .. " (" .. #sprite.layers .. " layers)")

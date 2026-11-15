@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -31,6 +31,7 @@ from pixelwright.workspace.style import bump_style, load_ramps
 
 Mask = npt.NDArray[np.bool_]
 IMAGE = "image.png"
+ASEPRITE = "image.aseprite"
 VIEWS = ("upscale", "gray", "values", "silhouette", "overlay", "gif", "apng")
 
 ASSET = Param("asset", help="asset id", required=True, positional=True)
@@ -64,10 +65,16 @@ def _indexed(image: Image, step: str) -> IndexedImage:
 
 
 def _publish(
-    ws: Workspace, asset: Asset, step: str, image: Image, parent: str | None, **params: Any
+    ws: Workspace,
+    asset: Asset,
+    step: str,
+    image: Image,
+    parent: str | None,
+    extra: Mapping[str, bytes] | None = None,
+    **params: Any,
 ) -> Outcome:
-    data = encode_png(image)
-    version = asset.new_version(step, {IMAGE: data}, params=params, parent=parent)
+    files = {IMAGE: encode_png(image), **(extra or {})}
+    version = asset.new_version(step, files, params=params, parent=parent)
     path = asset.versions_dir / version / IMAGE
     return Outcome(asset.id, version, asset.stage(version), [_rel(ws, path)])
 
@@ -198,6 +205,7 @@ def cmd_new(root: Path, a: dict[str, Any]) -> Outcome:
     Param("parent", help="version the file was edited from (source only)"),
     Param("note", help="history note, e.g. what was retouched", default=""),
     Param("author", help="who made it", default="human", choices=("human", "claude")),
+    Param("aseprite", help="the .aseprite the image was saved from; kept as image.aseprite"),
 )
 def cmd_attach(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
@@ -208,7 +216,14 @@ def cmd_attach(root: Path, a: dict[str, Any]) -> Outcome:
     if a["as"] == "source":
         image = read_png(src)
         parent = _version(asset, a["parent"]) if a["parent"] else None
-        outcome = _publish(ws, asset, "attach", image, parent, file=src.name)
+        extra: dict[str, bytes] = {}
+        if a["aseprite"]:
+            ase = Path(a["aseprite"])
+            if not ase.is_file():
+                raise PwError("not_found", f"no such file: {ase}")
+            read_aseprite(ase)  # refuse a file the codec cannot read
+            extra[ASEPRITE] = ase.read_bytes()
+        outcome = _publish(ws, asset, "attach", image, parent, extra, file=src.name)
         outcome.data = {"width": image.width, "height": image.height}
     else:
         raw = src.read_bytes()
@@ -475,7 +490,8 @@ def cmd_render(root: Path, a: dict[str, Any]) -> Outcome:
     out = ws.path("cache") / "renders" / asset.id / f"{version}-{view}.png"
     write_png(out, RGBImage(upscale(rgba, a["scale"])))
     source = _rel(ws, asset.versions_dir / version / IMAGE)
-    data = {"view": view, "source": source}
+    ase = asset.versions_dir / version / ASEPRITE
+    data = {"view": view, "source": source, "open": _rel(ws, ase) if ase.is_file() else source}
     return Outcome(asset.id, version, asset.stage(version), [_rel(ws, out)], data)
 
 
@@ -483,7 +499,7 @@ def _render_animation(ws: Workspace, asset: Asset, version: str, view: str, scal
     """GIF or APNG of the version's frames (from image.aseprite, else the single PNG)."""
     from PIL import Image as PILImage
 
-    ase = asset.versions_dir / version / "image.aseprite"
+    ase = asset.versions_dir / version / ASEPRITE
     if ase.exists():
         frames = flatten_frames(read_aseprite(ase))
     else:
