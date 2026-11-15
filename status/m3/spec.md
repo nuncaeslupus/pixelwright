@@ -4,7 +4,7 @@
 **Ticket / PR**: M3 scope (main spec: `status/specification.md`, M3 in §4)
 **Author**: Claude (for the repository owner)
 **Revision**: 1
-**Status**: draft (revision 1)
+**Status**: approved (2026-11-15, revision 1) — without annotations
 **Revision log**:
 - r1 — first draft: generation providers, `generate` and `regen-region`, cost control, benchmark, and a guided first run
 
