@@ -2,36 +2,39 @@
 
 ## Last task
 
-- **ID**: t-e81a8197
-- **Title**: T17: ASE helpers
-- **Status at handover**: done (PR #38, last of the M0-M1 plan)
+- **ID**: t-7fcd9d98
+- **Title**: T32: Viewer polish
+- **Status at handover**: PR #73 (last of the M2 plan)
 
 ## What was done this session
 
-The whole M0-M1 plan (T1-T18) was implemented and merged through PRs #21-#38:
-scaffold and CI, OKLab, palettes, images, workspace, style guide, `.aseprite` codec,
-synthetic fixtures, `snap`, `quantize`, checks batches A-C, `clean`, the `pw` CLI with a
-JSON envelope, the MCP server (`pw mcp`, built from the CLI registry), the perf and
-determinism harness, and the Aseprite bridge (headless wrapper, Lua helpers, plugin
-manifest). Snap accuracy: synthetic set ~98% scale-exact; photo-derived set 99.3%
-scale-exact, 93.6% pixel accuracy (x2 weakest).
+The whole M2 plan (T19-T33) was implemented through PRs #59-#73:
+- issues model (`masks@2`) and the `issue`, `history`, `status` and `inbox` commands;
+- `critique.md` and `pw critique`;
+- masked `quantize`/`clean` with `--resolve`;
+- diff deltas;
+- GIF/APNG renders and the `grid` check from the CLI;
+- `init <path>`, plus `palette discover --asset` setting the asset palette;
+- the Aseprite bridge on the codec (`attach --aseprite`, `load_version.lua` opens `image.aseprite`);
+- `style propose|test` and `palette edit`;
+- `pw view`, a local viewer server with 13 endpoints, a host check and a write token;
+- the viewer UI (asset list, Look, Compare, Mark, Play, polish) with Playwright e2e tests (CI installs Chromium);
+- the plugin v0 skills (review-loop, critique, zone-fix, style-definition).
+
+Decisions now log their check measurements, and `decision_revert` undoes a decision.
 
 ## What remains
 
-- No tasks left in the queue. Next milestone (M2: viewer and critique loop) needs a
-  plan: run `design` for M2 (viewer screens spec first, per the spec).
-- The Aseprite Lua helpers were verified only against a fake Aseprite API; the real
-  headless test (`tests/plugin/test_lua_helpers.py`) skips without a binary.
-- Deferred CLI parts: `style propose|test`, `palette edit`, `render --view gif`, `grid`
-  check from the CLI, `generate` (providers, later milestone).
-- Snap on real CC0 sprites runs in a separate session (network-enabled environment).
+- No tasks left in the queue. Next milestone is M3 (generation providers): run `design`.
+- The real-Aseprite tests skip without a binary. The bridge changes (`--aseprite`, `data.open`)
+  have not yet been run against a real Aseprite.
+- `pw view` was never opened in a real browser by the artist. Ask for feedback on the UI first.
 
 ## How to continue
 
 1. Read `claude-arsenal/references/worker-loop.md` for the worker loop algorithm.
-2. Run `python3 claude-arsenal/scripts/task_select.py --issues <issues.json>` for
-   the next unblocked task; with an empty queue, plan M2.
+2. With an empty queue, plan M3 (`design`), after the artist has tried `pw view`.
 
 ## Queue snapshot at handover
 
-18/18 tasks merged (tag m0-m1).
+33/33 tasks done or in their final PR (M0-M1: 18, M2: 15).
