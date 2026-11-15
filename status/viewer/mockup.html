@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pw view mockup</title>
+<style>
+:root { --bg:#1e1f22; --panel:#26282c; --line:#3a3d43; --text:#d8dade; --dim:#8c9099;
+  --pass:#5fb878; --warn:#e0b341; --fail:#e0605a; --acc:#6ea8fe; --claude:#c58af9; --human:#4fd1c5; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 system-ui, sans-serif; }
+header { height:40px; display:flex; align-items:center; gap:16px; padding:0 14px; border-bottom:1px solid var(--line); background:var(--panel); }
+header b { font-size:14px; } header .dim { color:var(--dim); }
+header .sp { flex:1; }
+.tabs { display:flex; gap:2px; }
+.tab { padding:5px 10px; border-radius:4px; color:var(--dim); }
+.tab.on { background:#33363c; color:var(--text); }
+main { display:flex; height:760px; }
+aside { width:250px; border-right:1px solid var(--line); background:var(--panel); padding:10px; overflow:hidden; }
+.right { width:300px; border-left:1px solid var(--line); border-right:0; }
+.center { flex:1; display:flex; flex-direction:column; min-width:0; }
+h3 { margin:4px 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); }
+.chip { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; border:1px solid var(--line); margin:0 3px 3px 0; color:var(--dim); }
+.chip.on { border-color:var(--acc); color:var(--acc); }
+.badge { font-size:10px; padding:1px 6px; border-radius:3px; text-transform:uppercase; font-weight:600; }
+.b-draft { background:#3b4250; color:#aac4ff; } .b-approved { background:#2c4a36; color:var(--pass); }
+.b-final { background:#4a3f22; color:var(--warn); } .b-experiment { background:#3a3a3a; color:#aaa; }
+.st { font-weight:600; } .pass { color:var(--pass); } .warn { color:var(--warn); } .fail { color:var(--fail); }
+.btn { display:inline-block; padding:5px 12px; border-radius:4px; border:1px solid var(--line); background:#30333a; }
+.btn.ok { background:#2f6b45; border-color:#3d8a59; } .btn.no { background:#7a3532; border-color:#94443f; }
+.btn.pri { background:#2d5aa0; border-color:#3b6fc0; }
+.toolbar { height:38px; display:flex; align-items:center; gap:8px; padding:0 10px; border-bottom:1px solid var(--line); }
+.toolbar .sep { width:1px; height:20px; background:var(--line); }
+.stage { flex:1; display:flex; align-items:center; justify-content:center; gap:14px; overflow:hidden; position:relative;
+  background-color:#2b2d31; }
+.stage canvas { image-rendering:pixelated; outline:1px solid #000; }
+.status { height:26px; display:flex; gap:18px; align-items:center; padding:0 10px; border-top:1px solid var(--line); color:var(--dim); font-size:12px; }
+.timeline { height:106px; display:flex; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); overflow:hidden; }
+.ver { width:116px; border:1px solid var(--line); border-radius:4px; padding:4px; font-size:11px; }
+.ver.sel { border-color:var(--acc); } .ver.cmp { border-color:var(--claude); }
+.ver canvas { width:106px; height:50px; image-rendering:pixelated; display:block; margin-bottom:2px; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #31343a; }
+.row .m { color:var(--dim); font-size:11px; }
+.chk input { margin-right:6px; }
+.grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; padding:14px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px; }
+.card canvas { width:100%; image-rendering:pixelated; display:block; margin-bottom:6px; background:#2b2d31; }
+.card .t { display:flex; justify-content:space-between; align-items:center; }
+.card .m { color:var(--dim); font-size:11px; margin-top:3px; }
+textarea, select, input[type=text] { background:#1b1c1f; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:5px; width:100%; font:inherit; }
+.mask { padding:6px; border:1px solid var(--line); border-radius:4px; margin-bottom:6px; }
+.mask .w { display:flex; justify-content:space-between; }
+.who-claude { color:var(--claude); } .who-human { color:var(--human); } .who-check { color:var(--warn); }
+.md { background:#1b1c1f; border:1px solid var(--line); border-radius:4px; padding:10px; font-size:12px; }
+.md h4 { margin:8px 0 4px; } .md a { color:var(--acc); }
+.hist { font-size:12px; }
+.hist .e { padding:5px 0; border-bottom:1px solid #31343a; }
+.hist .e .d { color:var(--dim); font-size:11px; }
+.frames { display:flex; gap:6px; padding:8px 10px; border-top:1px solid var(--line); }
+.fr { border:1px solid var(--line); border-radius:3px; padding:3px; font-size:10px; text-align:center; color:var(--dim); }
+.fr.sel { border-color:var(--acc); color:var(--text); }
+.fr canvas { width:48px; height:48px; image-rendering:pixelated; display:block; }
+.kbd { font-family:monospace; font-size:11px; padding:0 4px; border:1px solid var(--line); border-radius:3px; color:var(--dim); }
+.screen { display:none; } .screen.on { display:block; }
+.legend { position:absolute; left:12px; bottom:10px; font-size:11px; color:var(--dim); background:#1e1f22cc; padding:4px 8px; border-radius:4px; }
+</style>
+</head>
+<body>
+<!-- Static mockup of the M2 viewer. Pick a screen with #s01 .. #s06. Not production code. -->
+<header>
+  <b>pw view</b><span class="dim">~/game/art-workspace</span><span class="dim">style v3</span>
+  <div class="tabs" id="tabs"></div><div class="sp"></div>
+  <span class="dim">live · updated 4 s ago</span>
+</header>
+
+<!-- S01 asset list -->
+<section class="screen" id="s01"><main>
+  <aside>
+    <h3>Stage</h3>
+    <span class="chip on">draft</span><span class="chip on">approved</span><span class="chip on">final</span><span class="chip">experiment</span>
+    <h3 style="margin-top:14px">Kind</h3>
+    <span class="chip on">background</span><span class="chip on">sprite</span><span class="chip on">prop</span><span class="chip">animation</span><span class="chip">effect</span>
+    <h3 style="margin-top:14px">Checks</h3>
+    <span class="chip">has fail</span><span class="chip">has warn</span><span class="chip">needs review</span>
+    <h3 style="margin-top:14px">Search</h3><input type="text" value="harbour">
+    <h3 style="margin-top:14px">Sort</h3><select><option>last change</option></select>
+  </aside>
+  <div class="center"><div class="grid" id="cards"></div></div>
+</main></section>
+
+<!-- S02 version review -->
+<section class="screen" id="s02"><main>
+  <div class="center">
+    <div class="timeline" id="tl2"></div>
+    <div class="toolbar">
+      <span class="btn">Fit</span><span class="btn">1×</span><span class="btn pri">4×</span><span class="btn">8×</span>
+      <span class="sep"></span><label class="chk"><input type="checkbox" checked>grid</label>
+      <span class="sep"></span><span class="btn pri">color</span><span class="btn">gray</span><span class="btn">values</span><span class="btn">silhouette</span>
+      <span class="sep"></span><span class="btn">25% thumb</span>
+    </div>
+    <div class="stage"><canvas id="c2"></canvas><div class="legend">overlay: <span class="warn">orphans</span> (3 regions)</div></div>
+    <div class="status"><span>x 112 · y 41</span><span>index 9 · #3e5f8a · ramp water-2</span><span>320×180 native · 4×</span><span>v0004 · draft · parent v0003 · snap+quantize+clean</span></div>
+  </div>
+  <aside class="right">
+    <h3>Checks · report.json</h3>
+    <div id="checks"></div>
+    <h3 style="margin-top:14px">Decision</h3>
+    <textarea rows="3" placeholder="note (required to reject)">Water reads well; fix the orphans by the dock.</textarea>
+    <div style="display:flex; gap:8px; margin-top:8px"><span class="btn ok">Approve <span class="kbd">A</span></span><span class="btn no">Reject <span class="kbd">R</span></span></div>
+    <div class="m" style="color:var(--dim); font-size:11px; margin-top:6px">Logged to history.jsonl with the check measurements.</div>
+  </aside>
+</main></section>
+
+<!-- S03 compare -->
+<section class="screen" id="s03"><main>
+  <div class="center">
+    <div class="timeline" id="tl3"></div>
+    <div class="toolbar">
+      <span class="btn pri">side by side</span><span class="btn">onion</span><span class="btn">swipe</span><span class="btn">diff</span>
+      <span class="sep"></span><span class="dim">A</span><select style="width:90px"><option>v0003</option></select>
+      <span class="dim">B</span><select style="width:90px"><option>v0004</option></select>
+      <span class="sep"></span><label class="chk"><input type="checkbox" checked>sync zoom/pan</label><span class="btn">3×</span>
+    </div>
+    <div class="stage"><canvas id="c3a"></canvas><canvas id="c3b"></canvas><div class="legend">A v0003 (approved) · B v0004 (draft) · 214 px changed</div></div>
+    <div class="status"><span>x 70 · y 60</span><span>A index 4 · B index 9</span></div>
+  </div>
+  <aside class="right">
+    <h3>Check deltas · A → B</h3><div id="delta"></div>
+    <h3 style="margin-top:14px">Diff</h3>
+    <div class="row"><span>changed pixels</span><span>214 (0.37%)</span></div>
+    <div class="row"><span>colors used</span><span>23 → 24</span></div>
+    <div class="row"><span>bounding box</span><span>58,40 – 141,79</span></div>
+  </aside>
+</main></section>
+
+<!-- S04 annotate -->
+<section class="screen" id="s04"><main>
+  <div class="center">
+    <div class="toolbar">
+      <span class="btn pri">brush</span><span class="btn">rect</span><span class="btn">fill</span><span class="btn">erase</span>
+      <span class="dim">size</span><select style="width:56px"><option>2 px</option></select>
+      <span class="sep"></span><label class="chk"><input type="checkbox" checked>show Claude masks</label><label class="chk"><input type="checkbox" checked>show check regions</label>
+      <span class="sep"></span><span class="btn">4×</span>
+    </div>
+    <div class="stage"><canvas id="c4"></canvas><div class="legend"><span class="who-human">■ human</span> · <span class="who-claude">■ Claude</span> · <span class="who-check">□ check region</span></div></div>
+    <div class="status"><span>drawing in native pixels · 37 px selected</span><span>v0004</span></div>
+  </div>
+  <aside class="right">
+    <h3>New mask</h3>
+    <select><option>R-PIX-3 orphans</option><option>R-PIX-4 line-runs</option><option>R-VAL-1 value-groups</option><option>other</option></select>
+    <textarea rows="3" style="margin-top:6px">Lamp glow banding; merge into two steps.</textarea>
+    <div style="margin-top:6px"><span class="btn pri">Save mask</span> <span class="btn">Clear</span></div>
+    <h3 style="margin-top:14px">Masks · masks.yaml</h3>
+    <div class="mask"><div class="w"><b>lamp-banding</b><span class="who-human">human · open</span></div><div class="m">R-PIX-5 · v0004 · "Lamp glow banding…"</div></div>
+    <div class="mask"><div class="w"><b>dock-orphans</b><span class="who-claude">claude · open</span></div><div class="m">R-PIX-3 · v0004 · 3 regions from check</div></div>
+    <div class="mask"><div class="w"><b>sky-steps</b><span class="who-claude">claude · fixed v0004</span></div><div class="m">R-VAL-1 · v0003</div></div>
+  </aside>
+</main></section>
+
+<!-- S05 critique and history -->
+<section class="screen" id="s05"><main>
+  <div class="center">
+    <div class="stage"><canvas id="c5"></canvas><div class="legend">highlighted: region 2 of critique.md</div></div>
+  </div>
+  <aside class="right" style="width:420px">
+    <h3>critique.md · v0004 vs v0003</h3>
+    <div class="md">
+      <b>Verdict:</b> B better than A on value structure; worse on noise.
+      <h4>1. <a>Dock edge orphans</a> · R-PIX-3</h4>Three 1-px clusters on the pier edge. Fix: <code>clean --mask dock-orphans</code>.
+      <h4>2. <a>Lamp glow banding</a> · R-PIX-5</h4>Four concentric steps parallel to the lamp. Fix: merge to two, dither zone off.
+      <h4>3. <a>Moon focal contrast</a> · R-VAL-1</h4>Holds; focal contrast 2.1× elsewhere.
+    </div>
+    <h3 style="margin-top:14px">History · history.jsonl</h3>
+    <div class="hist">
+      <div class="e"><span class="who-check">check</span> v0004 report: 1 warn, 0 fail<div class="d">13:02 · orphans 0.8/tile</div></div>
+      <div class="e"><span class="who-claude">claude</span> v0004 created from v0003: clean --mask sky-steps<div class="d">13:01</div></div>
+      <div class="e"><span class="who-human">human</span> <span class="pass">approved</span> v0003 "good base, keep palette"<div class="d">12:40 · palette 1.00 · value-groups k=4</div></div>
+      <div class="e"><span class="who-human">human</span> <span class="fail">rejected</span> v0002 "sky too busy"<div class="d">12:31 · value-groups k=7</div></div>
+    </div>
+  </aside>
+</main></section>
+
+<!-- S06 animation preview -->
+<section class="screen" id="s06"><main>
+  <aside>
+    <h3>Tags</h3><span class="chip on">walk-side</span><span class="chip">idle</span><span class="chip">talk</span>
+    <h3 style="margin-top:14px">Playback</h3>
+    <span class="btn pri">▶ play</span> <span class="btn">⏸</span> <span class="btn">◀ step</span> <span class="btn">step ▶</span>
+    <div style="margin-top:8px"><label class="chk"><input type="checkbox" checked>loop</label></div>
+    <div><label class="chk"><input type="checkbox" checked>onion previous frame</label></div>
+    <div><label class="chk"><input type="checkbox">foot-lock guide</label></div>
+    <h3 style="margin-top:14px">Speed</h3><select><option>1× (file timing)</option></select>
+  </aside>
+  <div class="center">
+    <div class="stage"><canvas id="c6"></canvas><div class="legend">frame 3/6 · 100 ms · anim-consistency: <span class="pass">pass</span></div></div>
+    <div class="frames" id="frames"></div>
+  </div>
+</main></section>
+
+<script>
+// A small procedural night-harbour scene (native 160x90) used only to make the mockup look real.
+const PAL = ['#0b0e1f','#141a33','#1f2a4d','#2c3d6b','#3e5f8a','#5b86a8','#8fb5c9','#f2e6b5','#c9a24a','#5a3a2a','#3a2519','#22160f','#e86a3a','#ffd27a','#101418','#6b7f8c'];
+const W = 160, H = 90;
+function scene(variant) {
+  const px = new Uint8Array(W * H);
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let c = y < 14 ? 0 : y < 28 ? 1 : y < 40 ? 2 : 3;
+    if (y >= 52) c = (y + ((x >> 3) & 1)) % 9 === 0 ? 5 : y < 66 ? 3 : 2;
+    px[y * W + x] = c;
+  }
+  for (let i = 0; i < 40; i++) { const x = (rnd() * W) | 0, y = (rnd() * 38) | 0; px[y * W + x] = 6; }
+  const mx = 120, my = 16;
+  for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) if (x * x + y * y <= 36) px[(my + y) * W + mx + x] = x + y > 4 ? 8 : 7;
+  for (let y = 54; y < 66; y += 2) for (let x = 114; x < 127; x++) if (rnd() > 0.45) px[y * W + x] = 6;
+  const hills = [[0, 42], [30, 38], [60, 44], [95, 40], [160, 45]];
+  for (let x = 0; x < W; x++) {
+    let k = 0; while (hills[k + 1][0] < x) k++;
+    const [x0, y0] = hills[k], [x1, y1] = hills[k + 1];
+    const top = Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+    for (let y = top; y < 52; y++) px[y * W + x] = 14;
+  }
+  const houses = [[8, 30, 18], [28, 26, 14], [44, 33, 20], [66, 28, 12]];
+  for (const [hx, hy, hw] of houses) {
+    for (let y = hy; y < 52; y++) for (let x = hx; x < hx + hw; x++) px[y * W + x] = y < hy + 2 ? 11 : 10;
+    for (let wy = hy + 5; wy < 48; wy += 6) for (let wx = hx + 3; wx < hx + hw - 3; wx += 5) {
+      px[wy * W + wx] = 13; px[wy * W + wx + 1] = 13; px[(wy + 1) * W + wx] = 12; px[(wy + 1) * W + wx + 1] = 13;
+    }
+  }
+  for (let y = 50; y < 54; y++) for (let x = 0; x < 92; x++) px[y * W + x] = y === 50 ? 8 : 9;
+  for (let x = 4; x < 92; x += 11) for (let y = 54; y < 62; y++) { px[y * W + x] = 11; px[y * W + x + 1] = 10; }
+  for (let y = 36; y < 50; y++) px[y * W + 84] = 14;
+  for (let y = 33; y < 37; y++) for (let x = 82; x < 87; x++) px[y * W + x] = 13;
+  const rings = variant >= 4 ? 4 : 2;
+  for (let r = rings; r >= 1; r--) for (let y = -r * 3; y <= r * 3; y++) for (let x = -r * 3; x <= r * 3; x++) {
+    const d = x * x + y * y, xx = 84 + x, yy = 35 + y;
+    if (d <= 9 * r * r && d > 9 * (r - 1) * (r - 1) && xx >= 0 && yy >= 0 && yy < 50 && px[yy * W + xx] <= 3) px[yy * W + xx] = r === 1 ? 4 : 3;
+  }
+  if (variant >= 4) for (const [x, y] of [[61, 53], [67, 52], [74, 53], [79, 55]]) px[y * W + x] = 12;
+  if (variant <= 2) for (let i = 0; i < 120; i++) { const x = (rnd() * W) | 0, y = (rnd() * 36) | 0; px[y * W + x] = 3; }
+  return px;
+}
+function hex(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+const RGB = PAL.map(hex);
+function draw(canvas, px, scale, opts = {}) {
+  canvas.width = W * scale; canvas.height = H * scale;
+  const g = canvas.getContext('2d'); g.imageSmoothingEnabled = false;
+  const img = g.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) {
+    let [r, gg, b] = RGB[px[i]];
+    if (opts.mode === 'gray') { const l = 0.3 * r + 0.59 * gg + 0.11 * b; r = gg = b = l; }
+    if (opts.dim) { r *= 0.55; gg *= 0.55; b *= 0.55; }
+    img.data.set([r, gg, b, 255], i * 4);
+  }
+  const off = document.createElement('canvas'); off.width = W; off.height = H; off.getContext('2d').putImageData(img, 0, 0);
+  g.drawImage(off, 0, 0, W * scale, H * scale);
+  if (opts.grid && scale >= 4) {
+    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; g.beginPath();
+    for (let x = 0; x <= W; x++) { g.moveTo(x * scale + .5, 0); g.lineTo(x * scale + .5, H * scale); }
+    for (let y = 0; y <= H; y++) { g.moveTo(0, y * scale + .5); g.lineTo(W * scale, y * scale + .5); }
+    g.stroke();
+  }
+  return g;
+}
+function box(g, s, x, y, w, h, color, fill) {
+  g.lineWidth = 2; g.strokeStyle = color; g.strokeRect(x * s, y * s, w * s, h * s);
+  if (fill) { g.fillStyle = fill; g.fillRect(x * s, y * s, w * s, h * s); }
+}
+function paint(g, s, cells, color) { g.fillStyle = color; for (const [x, y] of cells) g.fillRect(x * s, y * s, s, s); }
+const ORPH = [[59, 51, 5, 4], [65, 50, 5, 4], [72, 51, 9, 6]];
+const VERS = [
+  ['v0001', 'experiment', 'fail'], ['v0002', 'draft', 'warn'], ['v0003', 'approved', 'pass'], ['v0004', 'draft', 'warn'], ['v0005', 'draft', '…']];
+function timeline(el, sel, cmp) {
+  el.innerHTML = VERS.map(([v, st, ck], i) =>
+    `<div class="ver ${i === sel ? 'sel' : ''} ${i === cmp ? 'cmp' : ''}"><canvas data-v="${i + 1}"></canvas>
+     <div style="display:flex;justify-content:space-between"><b>${v}</b><span class="badge b-${st}">${st}</span></div>
+     <span class="${ck}">${ck === '…' ? 'running checks' : 'checks ' + ck}</span></div>`).join('');
+  el.querySelectorAll('canvas').forEach(c => draw(c, scene(+c.dataset.v), 1));
+}
+const CHECKS = [['palette', 'pass', '1.00 in palette · 24/32 colors'], ['grid', 'pass', 'no mixed blocks'],
+  ['value-groups', 'pass', 'k=4 · 41/28/19/12%'], ['orphans', 'warn', '0.8 per tile (max 0.5) · 3 regions'],
+  ['line-runs', 'pass', '0 jaggy segments'], ['banding', 'warn', '1 boundary 18 px'], ['pillow', 'pass', 'light corr 0.71'],
+  ['ramps', 'pass', '4 ramps monotonic'], ['focal-contrast', 'pass', 'focal 2.1× elsewhere']];
+function checks() {
+  document.getElementById('checks').innerHTML = CHECKS.map(([n, s, m]) =>
+    `<div class="row"><label class="chk"><input type="checkbox" ${n === 'orphans' ? 'checked' : ''}>${n}<div class="m">${m}</div></label><span class="st ${s}">${s}</span></div>`).join('');
+  document.getElementById('delta').innerHTML = [['value-groups', 'k 4 → 4', 'pass', 'pass'], ['orphans', '0.2 → 0.8', 'pass', 'warn'],
+    ['banding', '0 → 18 px', 'pass', 'warn'], ['focal-contrast', '1.7× → 2.1×', 'pass', 'pass'], ['palette', '1.00 → 1.00', 'pass', 'pass']]
+    .map(([n, m, a, b]) => `<div class="row"><span>${n}<div class="m">${m}</div></span><span><span class="st ${a}">${a}</span> → <span class="st ${b}">${b}</span></span></div>`).join('');
+}
+function cards() {
+  const A = [['bg-harbour-night', 'background', 'draft', 'v0004', '1 warn', 'warn', 'needs review'], ['bg-tavern-inside', 'background', 'approved', 'v0007', 'pass', 'pass', 'approved 12:10'],
+    ['bg-lighthouse', 'background', 'draft', 'v0002', '2 fail', 'fail', 'rejected v0001'], ['bg-market-day', 'background', 'final', 'v0011', 'pass', 'pass', 'exported'],
+    ['chr-hero', 'sprite', 'draft', 'v0003', '1 warn', 'warn', 'needs review'], ['prop-lantern', 'prop', 'approved', 'v0002', 'pass', 'pass', 'approved'],
+    ['prop-crate', 'prop', 'draft', 'v0001', 'pass', 'pass', 'new'], ['bg-cliff-road', 'background', 'draft', 'v0005', '1 warn', 'warn', 'Claude critique ready']];
+  document.getElementById('cards').innerHTML = A.map(([id, k, st, v, ck, cs, last], i) =>
+    `<div class="card"><canvas data-v="${(i % 4) + 1}"></canvas><div class="t"><b>${id}</b><span class="badge b-${st}">${st}</span></div>
+     <div class="m">${k} · ${v} · <span class="${cs}">${ck}</span></div><div class="m">${last}</div></div>`).join('');
+  document.querySelectorAll('#cards canvas').forEach(c => draw(c, scene(+c.dataset.v), 1));
+}
+function frames() {
+  const el = document.getElementById('frames');
+  el.innerHTML = [100, 100, 100, 120, 100, 100].map((ms, i) => `<div class="fr ${i === 2 ? 'sel' : ''}"><canvas data-f="${i}"></canvas>${i + 1} · ${ms} ms</div>`).join('');
+  el.querySelectorAll('canvas').forEach(c => hero(c, +c.dataset.f, 2));
+}
+function hero(c, f, s, onion) {
+  const w = 24, h = 24; c.width = w * s; c.height = h * s;
+  const g = c.getContext('2d'); g.fillStyle = '#2c3d6b'; g.fillRect(0, 0, w * s, h * s);
+  const leg = [0, 2, 3, 2, 0, -2][f], body = (f % 3 === 1) ? -1 : 0;
+  const parts = [[9, 3 + body, 6, 6, '#e8b48a'], [8, 2 + body, 8, 2, '#5a3a2a'], [8, 9 + body, 8, 7, '#c9a24a'],
+    [10 + leg, 16, 2, 6, '#3a2519'], [12 - leg, 16, 2, 6, '#22160f'], [7, 10 + body, 2, 5, '#e8b48a']];
+  if (onion) { g.globalAlpha = 0.3; for (const [x, y, ww, hh, col] of onion) { g.fillStyle = col; g.fillRect(x * s, y * s, ww * s, hh * s); } g.globalAlpha = 1; }
+  for (const [x, y, ww, hh, col] of parts) { g.fillStyle = col; g.fillRect(x * s, y * s, ww * s, hh * s); }
+  g.fillStyle = '#0b0e1f'; g.fillRect(13 * s, (5 + body) * s, s, s);
+  return parts;
+}
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  const names = { s01: 'Assets', s02: 'Review', s03: 'Compare', s04: 'Annotate', s05: 'Critique', s06: 'Animation' };
+  document.getElementById('tabs').innerHTML = Object.entries(names).map(([k, n]) => `<span class="tab ${k === id ? 'on' : ''}">${n}</span>`).join('');
+  if (id === 's01') cards();
+  if (id === 's02') { timeline(document.getElementById('tl2'), 3); checks(); const g = draw(document.getElementById('c2'), scene(4), 4, { grid: true }); for (const r of ORPH) box(g, 4, ...r, '#e0b341', 'rgba(224,179,65,0.15)'); }
+  if (id === 's03') { timeline(document.getElementById('tl3'), 3, 2); checks(); draw(document.getElementById('c3a'), scene(3), 3); draw(document.getElementById('c3b'), scene(4), 3); }
+  if (id === 's04') {
+    const g = draw(document.getElementById('c4'), scene(4), 4, { grid: true });
+    const lamp = []; for (let y = 26; y < 45; y++) for (let x = 75; x < 94; x++) if ((x - 84) ** 2 + (y - 35) ** 2 < 70 && (x - 84) ** 2 + (y - 35) ** 2 > 20) lamp.push([x, y]);
+    paint(g, 4, lamp, 'rgba(79,209,197,0.45)');
+    const dock = []; for (const [x, y, w, h] of ORPH) for (let yy = y + 1; yy < y + h - 1; yy++) for (let xx = x + 1; xx < x + w - 1; xx++) dock.push([xx, yy]);
+    paint(g, 4, dock, 'rgba(197,138,249,0.5)');
+    for (const r of ORPH) box(g, 4, ...r, '#e0b341');
+  }
+  if (id === 's05') { const g = draw(document.getElementById('c5'), scene(4), 4, { dim: true }); box(g, 4, 72, 24, 25, 23, '#6ea8fe', 'rgba(110,168,254,0.12)'); }
+  if (id === 's06') { frames(); const prev = hero(document.createElement('canvas'), 1, 1); hero(document.getElementById('c6'), 2, 16, prev); }
+}
+show((location.hash || '#s01').slice(1));
+</script>
+</body>
+</html>
