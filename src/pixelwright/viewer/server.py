@@ -132,7 +132,13 @@ def asset_detail(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
         meta = asset.meta(name)
         stage = asset.stage(name)
         versions.append(
-            {"version": name, "stage": stage, "parent": meta["parent"], "step": meta["step"]}
+            {
+                "version": name,
+                "stage": stage,
+                "parent": meta["parent"],
+                "step": meta["step"],
+                "request_hash": meta.get("request_hash"),
+            }
         )
     events = cli(v, "inbox", reader="human").data["items"]
     inbox = sum(e.get("asset") == asset.id for e in events)
