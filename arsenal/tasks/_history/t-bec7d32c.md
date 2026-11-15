@@ -5,6 +5,7 @@ label: "T2: OKLab"
 priority: 10
 deps: [t-2a519d6c]
 tags: [m0-m1]
+status: merged
 ---
 
 OKLab/OKLCH conversions and color distance.
