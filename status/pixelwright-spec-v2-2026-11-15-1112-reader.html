@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="7334a3b38360d7bc7218c6b8aa155b4657da96d72eb231134571912171de1ce1">
+<meta name="arsenal-source-sha256" content="65e02cfa3d1c4563769a7cbe3166fb44e5799c43030fac7efc973f004a8bbd27">
 <title>Pixelwright — Specification (annotatable)</title>
 <style>
 :root{
@@ -248,10 +248,11 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <div class="sec-body"><p><strong>Date</strong>: 2026-11-15<br />
 <strong>Ticket / PR</strong>: initial specification<br />
 <strong>Author</strong>: Claude (for the repository owner)<br />
-<strong>Revision</strong>: 1<br />
+<strong>Revision</strong>: 2<br />
 <strong>Status</strong>: draft<br />
 <strong>Revision log</strong>:
-- r1 — first draft, built from the project brief and the research in <code>docs/research/</code> (v1.10)</p>
+- r1 — first draft, built from the project brief and the research in <code>docs/research/</code> (v1.10)
+- r2 — applied <code>pixelwright-spec-v1-2026-11-15-1209-notes.md</code> (13 notes): sizes are per asset, character-in-scene and lighting, effects, game-repo integration with experiments vs finals, style definition as the first workflow, privacy check without a deny-list, open questions resolved</p>
 <blockquote>
 <p>Review record. Each round of reviewer notes makes a new revision: bump
 <strong>Revision</strong>, add a log line naming the export it applied, and commit that
@@ -273,12 +274,14 @@ export beside this file in the same commit. On approval set <strong>Status</stro
 <li>[ ] Aseprite round-trip: <code>.aseprite -&gt; pixelwright -&gt; .aseprite</code> preserves layers, cels, frames, per-frame durations, tags, palette and cel offsets; semantic-equality test passes on all fixtures.</li>
 <li>[ ] Determinism: the same inputs, parameters and provider responses (cached) give byte-identical outputs (<code>R-POST-4</code>); checked by re-running the fixture pipelines twice.</li>
 <li>[ ] Parity: every CLI command that changes or inspects an asset has an MCP tool with the same parameters and result schema; a parity test enumerates both.</li>
-<li>[ ] Local operations (snap, quantize, all checks, render previews) on a 384x216 image finish in <code>p95 &lt;= 2 s</code> on the developer machine; provider calls are excluded.</li>
+<li>[ ] Asset sizes are free per asset (a 16x16 icon, a 48x80 character, a 640x180 scrolling background); nothing in the core assumes a canvas size. Local operations (snap, quantize, all checks, render previews) finish in <code>p95 &lt;= 2 s</code> per 100k native pixels on the developer machine (a 320x180 frame is about 58k); provider calls are excluded.</li>
 <li>[ ] Offline: every non-provider feature works with no network and no API keys; CI runs with network disabled.</li>
 <li>[ ] Core test line coverage <code>&gt;= 0.90</code>.</li>
 <li>[ ] Benchmark (M3): at least 3 generators x 2 post-processing chains x 3 briefs x 3 samples run for <code>&lt;= 20 USD</code> total, producing a report with detector scores, Claude pairwise verdicts and blind human pairwise ranking (Bradley-Terry) (<code>R-BENCH-1..3</code>).</li>
-<li>[ ] Quality bar (judged by the owner): from a Wacom sketch, one 320x180 background is approved as "target quality" after <code>&lt;= 30 min</code> of human retouch, and one character gets an approved 8-frame walk cycle; both decisions are logged in the asset history.</li>
-<li>[ ] Privacy: a repository check (gitleaks plus a deny-list of personal names and other project names) runs in the host gate and passes.</li>
+<li>[ ] Quality bar (judged by the owner; sizes are indicative): (a) from a Wacom sketch, one background at the workspace default canvas is approved as "target quality" after <code>&lt;= 30 min</code> of human retouch; (b) one character gets an approved walk cycle; (c) that character walking across that background, passing from a lit to a dark zone, is approved as a scene preview with correct palette-mapped lighting; (d) one effect (water, fire or light flicker) is approved. All decisions are logged in the asset history.</li>
+<li>[ ] Effects and lighting keep pixel art intact: every frame produced by <code>fx</code>, <code>light</code> or <code>scene</code> passes <code>palette</code> and <code>grid</code> checks with the scene palette.</li>
+<li>[ ] Outputs can be still images, animations (sprite sheet + JSON, GIF/APNG, <code>.aseprite</code>) or both, and scene previews (character moving through a background) as GIF/APNG/MP4.</li>
+<li>[ ] Privacy: gitleaks runs in the host gate and passes, and the pre-PR review checklist includes "no personal data, no references to unrelated projects". No deny-list of names is committed (a list of words to avoid would itself leak them); an optional personal list may live only outside the repository (for example in the user's home config) and is read by the check if present.</li>
 </ul></div>
 <div class="note" data-for="s-spec-1"><label class="note-head" for="n-s-spec-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §1</span></label><textarea class="note-ta" data-key="s-spec-1" id="n-s-spec-1" data-label="§1 Problem statement" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
@@ -356,9 +359,17 @@ export beside this file in the same commit. On approval set <strong>Status</stro
 <tr>
 <td>Workspace (asset folders)</td>
 <td>Shared resource</td>
-<td>Plain files per asset in the game repository: inputs, spec, versions, masks, reports, log</td>
+<td>Plain files per asset inside the game repository, mapped onto that repository's own directory structure: inputs, spec, experiments, drafts, versions, masks, reports, log, exports</td>
 <td>Yes (format)</td>
 <td>Single source of truth; must stay stable</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Style guide</td>
+<td>Shared resource</td>
+<td>Per-project style: palettes, ramps, light and outline conventions, reference set, generation presets</td>
+<td>Yes (format)</td>
+<td>Drives both generation and checks; versioned</td>
 <td>High</td>
 </tr>
 <tr>
@@ -386,7 +397,7 @@ export beside this file in the same commit. On approval set <strong>Status</stro
 <div class="sec-body"><ul>
 <li><strong>Artist (human)</strong>: sketches (Wacom, any raster), picks references, approves or rejects versions, draws annotations, retouches in Aseprite. Owns final taste.</li>
 <li><strong>Claude (driver)</strong>: art direction (asset spec, prompts, reference choice), runs the pipeline through MCP/CLI, reads check reports, writes pairwise critiques with regions, applies zone fixes, writes animation key specs, keeps assets coherent with the style guide. Never the source of truth for pixel facts (<code>R-CRIT-1</code>).</li>
-<li><strong>Image models (painters)</strong>: produce detail and atmosphere from sketch, references and prompt. Swappable (<code>R-GEN-1</code>).</li>
+<li><strong>Image models (painters)</strong>: produce detail and atmosphere from sketch, references and prompt. Swappable (<code>R-GEN-1</code>). How their input is prepared decides how well the output converts to pixel art, so every generation is conditioned on the style guide: style reference images, a prompt preamble, the scene palette (as palette input where the provider supports it, otherwise as a color swatch reference), lighting notes and provider presets. The goal is raw output already close to the target style and palette, so snap and quantize change little; the <code>style-match</code> check measures that distance before post-processing.</li>
 <li><strong>pixelwright (craftsman)</strong>: deterministic transforms, measurements, renders and bookkeeping. Never calls Claude.</li>
 </ul></div>
 <div class="note" data-for="s-spec-2-1"><label class="note-head" for="n-s-spec-2-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.1</span></label><textarea class="note-ta" data-key="s-spec-2-1" id="n-s-spec-2-1" data-label="§2.1 Actors and roles" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
@@ -394,7 +405,8 @@ export beside this file in the same commit. On approval set <strong>Status</stro
 <article class="sec l3" id="s-spec-2-2" data-ref="SPEC §2.2" data-label="§2.2 Workflows" data-part="Specification">
 <h4 class="sec-h"><span class="chip">§2.2</span><span class="sec-title">Workflows</span></h4>
 <div class="sec-body"><p>All workflows run inside one asset folder and append to its history.</p>
-<ol>
+<ol start="0">
+<li><strong>Style definition</strong> (first, per project; revisited when needed): Claude and the artist build the style guide together: mood references (own sketches and approved assets; commercial games only as analysed style notes, <code>DA-Q003-1</code>), palette families and ramps proposed by Claude and edited by the artist, light and outline conventions, density and dithering policy, generation presets per provider. Claude produces 3-5 small test assets with it; the artist approves; the style guide gets a version. Every later asset records which style version it used, and a style change can re-check or re-run older assets.</li>
 <li><strong>Background from a sketch</strong> (main case): <code>new</code> (canvas, palette, light, depth layers) -&gt; attach sketch and style references -&gt; Claude writes the prompt and generation plan -&gt; <code>generate</code> (img2img, 1-4 candidates, possibly several providers) -&gt; <code>snap</code> (grid detection, mode downsample) -&gt; <code>quantize</code> (OKLab, scene palette, dithering off) -&gt; <code>clean</code> (orphans, AA noise) -&gt; <code>check</code> -&gt; Claude critique (pairwise vs previous best and references, region-tagged) -&gt; human review in the viewer -&gt; zone fixes (<code>regen-region</code> with a mask, or Claude's code edit, or human retouch in Aseprite) -&gt; <code>check</code> -&gt; <code>approve</code> -&gt; <code>export</code>.</li>
 <li><strong>Background from scratch</strong>: as 1, with Claude composing a value thumbnail (3-5 value groups, focal point, depth layers, <code>R-VAL-1</code>, <code>R-DEPTH-1</code>) as the img2img input instead of a sketch.</li>
 <li><strong>Image to background</strong>: a photo or painting as input; same as 1, with stronger snap/quantize and a style-transfer prompt.</li>
@@ -402,22 +414,35 @@ export beside this file in the same commit. On approval set <strong>Status</stro
 <li><strong>Character animation</strong>: Claude writes the key-pose spec and timing chart (<code>R-ANIM-1</code>, <code>R-ANIM-2</code>); frames come from a part-based rig (layers with pivots, RotSprite rotation, mandatory cleanup: <code>R-ANIM-3</code>), from an AI animator driven by a skeleton/pose (<code>R-ANIM-7</code>), or from the artist's drawn bases; inbetweens follow; cross-frame checks gate the result (<code>R-ANIM-4</code>). Talking and blinking are overlay libraries on the head (<code>R-ANIM-5</code>). Templates: walk (side, front, back), talk, pick up / use, turn, idle.</li>
 <li><strong>Ambient effects</strong>: palette cycling ranges declared in the palette (<code>R-STYLE-3</code>); procedural effects (water ripples, fire, flicker, particles, sway) rendered and quantized to the palette; previewed as animated GIF/APNG.</li>
 <li><strong>Zone fix loop</strong>: any complaint (detector, Claude or human annotation) becomes a mask in native pixels with a rule id and a note; fixes run only inside the mask and the checks re-run (<code>R-CRIT-3</code>).</li>
-<li><strong>Style coherence</strong>: a project style guide (palette families, ramp rules, outline policy, light conventions, approved reference assets) is checked against each new asset; approved assets become references and, later, LoRA training data.</li>
+<li><strong>Style coherence</strong>: every new asset is checked against the style guide (palette families, ramp rules, outline policy, light conventions, approved reference assets); approved assets become references and, later, LoRA training data.</li>
+<li><strong>Character in scene</strong>: place a sprite or animation on a background at a position or along a path; checks for figure-ground contrast, silhouette readability, scale against the scene and style coherence (<code>R-COLOR-1</code>, <code>R-READ-1</code>); render a scene preview (character walking through the background, with parallax layers if declared).</li>
+<li><strong>Scene lighting</strong>: declare light zones on a background (mask + light color/intensity, or palette remap tables); a character crossing them is recolored through palette-mapped lighting (each sprite color maps to a darker/tinted color of its own ramp or the scene palette, never to off-palette colors), so it darkens in shadow and warms near a lamp while staying pixel art. Lit and unlit variants can be exported as palette swaps.</li>
+<li><strong>Effects</strong> (<code>R-STYLE-3</code>): palette cycling, procedural effects (water, fire, flicker, rain, fog, particles) and lighting changes rendered frame by frame and quantized to the scene palette; any output passes the <code>palette</code> and <code>grid</code> checks.</li>
 </ol></div>
 <div class="note" data-for="s-spec-2-2"><label class="note-head" for="n-s-spec-2-2"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.2</span></label><textarea class="note-ta" data-key="s-spec-2-2" id="n-s-spec-2-2" data-label="§2.2 Workflows" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-spec-2-3" data-ref="SPEC §2.3" data-label="§2.3 Workspace layout" data-part="Specification">
 <h4 class="sec-h"><span class="chip">§2.3</span><span class="sec-title">Workspace layout</span></h4>
-<div class="sec-body"><p>pixelwright works on a <strong>workspace</strong> directory that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (<code>R-FORM-2</code>).</p>
+<div class="sec-body"><p>pixelwright works on a <strong>workspace</strong> that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (<code>R-FORM-2</code>).</p>
+<ul>
+<li><strong>Adapts to the game's structure</strong>: <code>pixelwright.toml</code> maps workspace roles to paths in the game repository (where the style guide lives, where asset folders live, and, per asset kind, where final exports go, for example <code>game/art/backgrounds/</code>, <code>game/art/characters/&lt;id&gt;/</code>). Defaults below apply when nothing is mapped.</li>
+<li><strong>Experiments vs finals</strong>: every image belongs to one stage: <code>experiment</code> (throwaway tries, provider tests), <code>draft</code> (candidate versions in the review loop), <code>approved</code> (accepted by the artist) and <code>final</code> (exported to the game path). The game repository chooses what to commit per stage (<code>commit = ["approved", "final", "draft"]</code>); pixelwright writes the matching <code>.gitignore</code> entries, so experiments can be kept locally, committed, or pruned with <code>pw prune</code>.</li>
+</ul>
 <pre><code class="language-text">workspace/
   pixelwright.toml          # workspace config: canvas defaults, providers, budgets
-  style/                    # style guide: palettes/*.gpl|.hex, style.yaml, references/
+  style/                    # style guide (versioned)
+    style.yaml              # conventions: light, outline, density, dithering, presets
+    palettes/               # *.gpl, *.hex, ramps.yaml
+    references/             # approved and mood references
+    tests/                  # test assets made while defining the style
+  experiments/              # free tries not tied to an asset (provider tests, studies)
   assets/
     bg-harbour-night/       # one folder per asset id, chr-hero, fx-torch
       asset.yaml            # asset spec (2.4)
       inputs/               # sketch.png, refs/*.png, notes.md
+      drafts/               # quick iterations before a version is worth keeping
       versions/
-        v0001/              # one folder per version
+        v0001/              # one folder per version (stage: draft | approved)
           image.png         # native resolution, indexed to palette
           image.aseprite    # when layers/frames exist
           meta.yaml         # step, parameters, provider, cost, parent version, seed, hashes
@@ -425,7 +450,7 @@ export beside this file in the same commit. On approval set <strong>Status</stro
           critique.md       # Claude's pairwise critique with regions
       masks/                # annotation and fix masks (PNG, native res) + masks.yaml
       history.jsonl         # append-only log: steps, decisions (approve/reject), human notes
-      export/               # final files for the game engine
+      export/               # final files (or a link to the mapped game path)
   cache/                    # provider responses keyed by request hash (not committed)
 </code></pre></div>
 <div class="note" data-for="s-spec-2-3"><label class="note-head" for="n-s-spec-2-3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.3</span></label><textarea class="note-ta" data-key="s-spec-2-3" id="n-s-spec-2-3" data-label="§2.3 Workspace layout" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
@@ -637,6 +662,18 @@ checks: {profile: background-default, overrides: {}}
 <td>fail on palette, warn otherwise</td>
 </tr>
 <tr>
+<td><code>style-match</code></td>
+<td>R-GEN-1, workflow 0</td>
+<td>OKLab distance of raw generator output to the style palette; share of pixels needing remap</td>
+<td>report, calibrated warn</td>
+</tr>
+<tr>
+<td><code>in-scene</code></td>
+<td>R-COLOR-1, R-READ-1</td>
+<td>figure-ground ΔL and silhouette for a sprite at each placement or path point; scale vs scene</td>
+<td>warn</td>
+</tr>
+<tr>
 <td><code>diagnostics</code></td>
 <td>DA-Q001-2</td>
 <td>saliency peak vs focal mask, spectrum slope</td>
@@ -660,9 +697,9 @@ checks: {profile: background-default, overrides: {}}
 <article class="sec l3" id="s-spec-2-8" data-ref="SPEC §2.8" data-label="§2.8 Interfaces" data-part="Specification">
 <h4 class="sec-h"><span class="chip">§2.8</span><span class="sec-title">Interfaces</span></h4>
 <div class="sec-body"><p><strong>CLI</strong> (<code>pw</code>, Typer-style, JSON output with <code>--json</code>):</p>
-<p><code>pw init</code>, <code>pw new &lt;id&gt; --kind --canvas --palette</code>, <code>pw attach &lt;id&gt; &lt;file&gt; [--as sketch|ref]</code>, <code>pw generate &lt;id&gt; --provider --mode --prompt-file [--mask] [--n]</code>, <code>pw snap</code>, <code>pw quantize</code>, <code>pw clean</code>, <code>pw ramp</code>, <code>pw rotate</code>, <code>pw compose</code>, <code>pw fx</code>, <code>pw check &lt;id&gt; [--version]</code>, <code>pw render &lt;id&gt; --view upscale|gray|values|silhouette|overlay|gif</code>, <code>pw diff &lt;id&gt; &lt;vA&gt; &lt;vB&gt;</code>, <code>pw mask &lt;id&gt; add|list|clear</code>, <code>pw approve|reject &lt;id&gt; &lt;version&gt; [--note]</code>, <code>pw export &lt;id&gt;</code>, <code>pw palette new|import|discover|edit</code>, <code>pw ase open|import|export</code>, <code>pw bench run|report</code>, <code>pw cost</code>, <code>pw view</code>, <code>pw mcp</code>.</p>
-<p><strong>MCP tools</strong> (same core functions; names mirror the CLI): <code>asset_new</code>, <code>asset_status</code>, <code>asset_attach</code>, <code>generate</code>, <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>ramp</code>, <code>rotate</code>, <code>compose</code>, <code>fx</code>, <code>check</code>, <code>render</code> (returns image content plus a file path), <code>diff</code>, <code>mask_add</code>, <code>mask_list</code>, <code>decision_log</code>, <code>export</code>, <code>palette_*</code>, <code>aseprite_*</code>, <code>bench_*</code>, <code>cost_report</code>. Tools act on assets, regions and palettes, never on single pixels (<code>R-TOOL-3</code>, <code>DA-Q007-2</code>), except a bounded <code>pixels_set</code> for small fixes inside a mask.</p>
-<p><strong>Viewer</strong> (<code>pw view</code>, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from <code>report.json</code>; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to <code>history.jsonl</code>; animation preview with per-frame timing. The viewer only writes masks and decisions; it never edits pixels (Aseprite does).</p></div>
+<p><code>pw init</code>, <code>pw new &lt;id&gt; --kind --canvas --palette</code>, <code>pw attach &lt;id&gt; &lt;file&gt; [--as sketch|ref]</code>, <code>pw generate &lt;id&gt; --provider --mode --prompt-file [--mask] [--n]</code>, <code>pw snap</code>, <code>pw quantize</code>, <code>pw clean</code>, <code>pw ramp</code>, <code>pw rotate</code>, <code>pw compose</code>, <code>pw fx</code>, <code>pw check &lt;id&gt; [--version]</code>, <code>pw render &lt;id&gt; --view upscale|gray|values|silhouette|overlay|gif</code>, <code>pw diff &lt;id&gt; &lt;vA&gt; &lt;vB&gt;</code>, <code>pw style init|propose|test|bump</code>, <code>pw scene &lt;bg&gt; &lt;sprite&gt; --at|--path</code>, <code>pw light &lt;bg&gt; zones|apply</code>, <code>pw prune --stage experiment</code>, <code>pw mask &lt;id&gt; add|list|clear</code>, <code>pw approve|reject &lt;id&gt; &lt;version&gt; [--note]</code>, <code>pw export &lt;id&gt;</code>, <code>pw palette new|import|discover|edit</code>, <code>pw ase open|import|export</code>, <code>pw bench run|report</code>, <code>pw cost</code>, <code>pw view</code>, <code>pw mcp</code>.</p>
+<p><strong>MCP tools</strong> (same core functions; names mirror the CLI): <code>asset_new</code>, <code>asset_status</code>, <code>asset_attach</code>, <code>generate</code>, <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>ramp</code>, <code>rotate</code>, <code>compose</code>, <code>fx</code>, <code>check</code>, <code>render</code> (returns image content plus a file path), <code>diff</code>, <code>style_*</code>, <code>scene_render</code>, <code>light_apply</code>, <code>mask_add</code>, <code>mask_list</code>, <code>decision_log</code>, <code>export</code>, <code>palette_*</code>, <code>aseprite_*</code>, <code>bench_*</code>, <code>cost_report</code>. Tools act on assets, regions and palettes, never on single pixels (<code>R-TOOL-3</code>, <code>DA-Q007-2</code>), except a bounded <code>pixels_set</code> for small fixes inside a mask.</p>
+<p><strong>Viewer</strong> (<code>pw view</code>, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from <code>report.json</code>; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to <code>history.jsonl</code>; animation preview with per-frame timing; scene preview (character moving through a background); stage filter (experiments, drafts, approved, final). The viewer only writes masks and decisions; it never edits pixels (Aseprite does). A screens spec for the viewer is written during M2, before it is built.</p></div>
 <div class="note" data-for="s-spec-2-8"><label class="note-head" for="n-s-spec-2-8"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.8</span></label><textarea class="note-ta" data-key="s-spec-2-8" id="n-s-spec-2-8" data-label="§2.8 Interfaces" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-spec-2-9" data-ref="SPEC §2.9" data-label="§2.9 Providers" data-part="Specification">
@@ -784,20 +821,16 @@ checks: {profile: background-default, overrides: {}}
 <p><strong>Milestones</strong>:</p>
 <ul>
 <li><strong>M0 Foundations</strong>: package skeleton, workspace format, asset spec schema, palette I/O (GPL, HEX, ASE palette), OKLab utilities, renders, <code>.aseprite</code> read/write, test fixtures (synthetic pseudo-pixel set, labelled detector cases), privacy check in the host gate.</li>
-<li><strong>M1 MVP pipeline</strong>: <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>check</code> (palette, grid, value-groups, orphans, line-runs, banding, pillow, ramps), CLI + MCP parity, Aseprite round-trip, Lua helper scripts.</li>
-<li><strong>M2 Viewer and critique loop</strong>: <code>pw view</code> with compare, overlays, masks, decisions; region-limited fixes; critique files; plugin v0 with art-direction skills.</li>
+<li><strong>M1 MVP pipeline</strong>: style guide format and <code>pw style</code> (workflow 0), <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>check</code> (palette, grid, value-groups, orphans, line-runs, banding, pillow, ramps), CLI + MCP parity, Aseprite round-trip, Lua helper scripts.</li>
+<li><strong>M2 Viewer and critique loop</strong>: viewer screens spec first, then <code>pw view</code> with compare, overlays, masks, decisions; region-limited fixes; critique files; plugin v0 with art-direction skills.</li>
 <li><strong>M3 Providers and benchmark</strong>: Gemini, Retro Diffusion, PixelLab, GPT Image, local ComfyUI adapters with cost control; run the benchmark; choose default provider per asset kind.</li>
-<li><strong>M4 Animation</strong>: rig format, RotSprite + cleanup, templates (walk, talk, pick up, turn, idle), overlays for mouths/eyes, cross-frame checks, palette cycling and effects.</li>
+<li><strong>M4 Animation, scenes and effects</strong>: rig format, RotSprite + cleanup, templates (walk, talk, pick up, turn, idle), overlays for mouths/eyes, cross-frame checks, palette cycling and effects, character-in-scene previews and palette-mapped scene lighting.</li>
 <li><strong>M5 Style LoRA</strong>: dataset export from 30-100 approved assets; local LoRA training recipe; style-coherence checks against it.</li>
 </ul>
 <p><strong>Immediate next action</strong>: after this spec is approved, run <code>design</code> to write sections 5-6 (contracts: workspace and <code>asset.yaml</code> schemas, <code>report.json</code>, provider interface, MCP tool schemas; risks) and the plan, then queue M0 tasks with gates.</p>
 <p><strong>Open questions</strong>:</p>
 <ul>
-<li>[ ] Native canvas: 320x180 (x6 to 1080p) or 384x216 (x5)? Research leaves it to the spec (<code>R-STYLE-2</code>); proposal: 320x180 default, configurable per workspace.</li>
-<li>[ ] Licence for this repository (MIT, like the owner's other tools, is the proposal).</li>
-<li>[ ] Aseprite: compile from source or buy? Either works; the bridge does not depend on it for data exchange.</li>
-<li>[ ] Monthly API budget cap for M3 (proposal: 20 USD for the first benchmark).</li>
-<li>[ ] Should the plugin live in this repository (<code>plugin/</code>) or in a separate one? Proposal: same repository.</li>
+<li>[ ] None blocking. The viewer's screens spec is due in M2.</li>
 </ul>
 <p><strong>Decisions log</strong>:</p>
 <table>
@@ -882,6 +915,60 @@ checks: {profile: background-default, overrides: {}}
 <td>agreed</td>
 <td>2026-11-15</td>
 </tr>
+<tr>
+<td>D-13</td>
+<td>Default canvas 320x180, configurable per workspace and free per asset</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-14</td>
+<td>Licence: MIT</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-15</td>
+<td>Aseprite compiled from source for personal use</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-16</td>
+<td>First benchmark budget cap: 20 USD</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-17</td>
+<td>Claude Code plugin lives in this repository (<code>plugin/</code>)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-18</td>
+<td>Style definition is the first workflow of every project, done with AI help, and can change later (versioned)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-19</td>
+<td>Workspace adapts to the game repository's layout and separates experiments, drafts, approved and final assets</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-20</td>
+<td>No committed deny-list for the privacy check</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-21</td>
+<td>Viewer screens spec deferred to M2 (D-11 holds for this spec)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
 </tbody>
 </table>
 <blockquote>
@@ -910,7 +997,7 @@ checks: {profile: background-default, overrides: {}}
 <script>var SPEC_SEED_NOTES={};</script>
 <script>
 (function(){
-  var NS = 'pixelwright-spec-v1:';
+  var NS = 'pixelwright-spec-v2:';
   // A reviewed copy (--bake) shows only the notes it was built with: nothing from
   // this browser's storage, nothing editable.
   var BAKED = false;
@@ -1092,7 +1179,7 @@ checks: {profile: background-default, overrides: {}}
   function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
   function stamp(){var d=new Date();return today()+'-'+pad(d.getHours())+pad(d.getMinutes());}
   // Named like the reader, <repo>-<doc>-v<N>-<YYYY-MM-DD-HHMM>-notes.md, stamped at export.
-  function exportName(){return 'pixelwright-spec-v1-'+stamp()+'-notes.md';}
+  function exportName(){return 'pixelwright-spec-v2-'+stamp()+'-notes.md';}
 
   function buildExport(){
     var byPart={},order=[],data={},n=0;
@@ -1118,7 +1205,7 @@ checks: {profile: background-default, overrides: {}}
       });
     });
     // Which page wrote this, so an import into a different page can say so.
-    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v1 -->');
+    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v2 -->');
     lines.push('<!-- SPEC-NOTES-DATA');
     lines.push(JSON.stringify(data));
     lines.push('-->');
@@ -1218,8 +1305,8 @@ checks: {profile: background-default, overrides: {}}
       }catch(err){obj=null;}
       if(!obj){toast('Could not read notes from that file');return;}
       var dm=/^<!-- SPEC-NOTES-DOC (\S+) -->/m.exec(txt);
-      if(dm&&dm[1]!=='pixelwright-spec-v1'&&
-         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v1). Import anyway?'))return;
+      if(dm&&dm[1]!=='pixelwright-spec-v2'&&
+         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v2). Import anyway?'))return;
       var r=applyData(obj);
       toast('Imported '+r.applied+' note'+(r.applied===1?'':'s')+
             (r.skipped?' ('+r.skipped+' skipped — not text)':''));

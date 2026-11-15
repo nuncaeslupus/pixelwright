@@ -3,10 +3,11 @@
 **Date**: 2026-11-15
 **Ticket / PR**: initial specification
 **Author**: Claude (for the repository owner)
-**Revision**: 1
+**Revision**: 2
 **Status**: draft
 **Revision log**:
 - r1 — first draft, built from the project brief and the research in `docs/research/` (v1.10)
+- r2 — applied `pixelwright-spec-v1-2026-11-15-1209-notes.md` (13 notes): sizes are per asset, character-in-scene and lighting, effects, game-repo integration with experiments vs finals, style definition as the first workflow, privacy check without a deny-list, open questions resolved
 
 > Review record. Each round of reviewer notes makes a new revision: bump
 > **Revision**, add a log line naming the export it applied, and commit that
@@ -30,12 +31,14 @@ Hand-made pixel art at the level of the VGA-era point-and-click adventures (320x
 - [ ] Aseprite round-trip: `.aseprite -> pixelwright -> .aseprite` preserves layers, cels, frames, per-frame durations, tags, palette and cel offsets; semantic-equality test passes on all fixtures.
 - [ ] Determinism: the same inputs, parameters and provider responses (cached) give byte-identical outputs (`R-POST-4`); checked by re-running the fixture pipelines twice.
 - [ ] Parity: every CLI command that changes or inspects an asset has an MCP tool with the same parameters and result schema; a parity test enumerates both.
-- [ ] Local operations (snap, quantize, all checks, render previews) on a 384x216 image finish in `p95 <= 2 s` on the developer machine; provider calls are excluded.
+- [ ] Asset sizes are free per asset (a 16x16 icon, a 48x80 character, a 640x180 scrolling background); nothing in the core assumes a canvas size. Local operations (snap, quantize, all checks, render previews) finish in `p95 <= 2 s` per 100k native pixels on the developer machine (a 320x180 frame is about 58k); provider calls are excluded.
 - [ ] Offline: every non-provider feature works with no network and no API keys; CI runs with network disabled.
 - [ ] Core test line coverage `>= 0.90`.
 - [ ] Benchmark (M3): at least 3 generators x 2 post-processing chains x 3 briefs x 3 samples run for `<= 20 USD` total, producing a report with detector scores, Claude pairwise verdicts and blind human pairwise ranking (Bradley-Terry) (`R-BENCH-1..3`).
-- [ ] Quality bar (judged by the owner): from a Wacom sketch, one 320x180 background is approved as "target quality" after `<= 30 min` of human retouch, and one character gets an approved 8-frame walk cycle; both decisions are logged in the asset history.
-- [ ] Privacy: a repository check (gitleaks plus a deny-list of personal names and other project names) runs in the host gate and passes.
+- [ ] Quality bar (judged by the owner; sizes are indicative): (a) from a Wacom sketch, one background at the workspace default canvas is approved as "target quality" after `<= 30 min` of human retouch; (b) one character gets an approved walk cycle; (c) that character walking across that background, passing from a lit to a dark zone, is approved as a scene preview with correct palette-mapped lighting; (d) one effect (water, fire or light flicker) is approved. All decisions are logged in the asset history.
+- [ ] Effects and lighting keep pixel art intact: every frame produced by `fx`, `light` or `scene` passes `palette` and `grid` checks with the scene palette.
+- [ ] Outputs can be still images, animations (sprite sheet + JSON, GIF/APNG, `.aseprite`) or both, and scene previews (character moving through a background) as GIF/APNG/MP4.
+- [ ] Privacy: gitleaks runs in the host gate and passes, and the pre-PR review checklist includes "no personal data, no references to unrelated projects". No deny-list of names is committed (a list of words to avoid would itself leak them); an optional personal list may live only outside the repository (for example in the user's home config) and is read by the check if present.
 
 ## 2. Systems & Impact
 
@@ -50,7 +53,8 @@ Greenfield project: every component is new. "Needs changes" means "to be built".
 | Aseprite bridge | Dependent | Read/write `.aseprite` directly; optional headless Aseprite CLI + Lua for previews and exports | Yes | Human retouch round-trip | High |
 | Provider adapters | Dependent | Gemini, Retro Diffusion, PixelLab, GPT Image, local ComfyUI (Flux/SDXL + LoRA) | Yes | Generation; costs money | Med |
 | Claude Code plugin | Dependent | Thin plugin: art-direction skills (rubric, prompts, workflows) and MCP registration | Yes | Encodes the technique manual for Claude | Med |
-| Workspace (asset folders) | Shared resource | Plain files per asset in the game repository: inputs, spec, versions, masks, reports, log | Yes (format) | Single source of truth; must stay stable | High |
+| Workspace (asset folders) | Shared resource | Plain files per asset inside the game repository, mapped onto that repository's own directory structure: inputs, spec, experiments, drafts, versions, masks, reports, log, exports | Yes (format) | Single source of truth; must stay stable | High |
+| Style guide | Shared resource | Per-project style: palettes, ramps, light and outline conventions, reference set, generation presets | Yes (format) | Drives both generation and checks; versioned | High |
 | Aseprite / LibreSprite | Infrastructure | Human editor; Aseprite compiled for personal use or bought | No | External dependency | Low |
 | NVIDIA GPU + ComfyUI | Infrastructure | Local generation and, later, style LoRA training | No (setup only) | Free, licence-clear route | Low |
 
@@ -58,13 +62,14 @@ Greenfield project: every component is new. "Needs changes" means "to be built".
 
 - **Artist (human)**: sketches (Wacom, any raster), picks references, approves or rejects versions, draws annotations, retouches in Aseprite. Owns final taste.
 - **Claude (driver)**: art direction (asset spec, prompts, reference choice), runs the pipeline through MCP/CLI, reads check reports, writes pairwise critiques with regions, applies zone fixes, writes animation key specs, keeps assets coherent with the style guide. Never the source of truth for pixel facts (`R-CRIT-1`).
-- **Image models (painters)**: produce detail and atmosphere from sketch, references and prompt. Swappable (`R-GEN-1`).
+- **Image models (painters)**: produce detail and atmosphere from sketch, references and prompt. Swappable (`R-GEN-1`). How their input is prepared decides how well the output converts to pixel art, so every generation is conditioned on the style guide: style reference images, a prompt preamble, the scene palette (as palette input where the provider supports it, otherwise as a color swatch reference), lighting notes and provider presets. The goal is raw output already close to the target style and palette, so snap and quantize change little; the `style-match` check measures that distance before post-processing.
 - **pixelwright (craftsman)**: deterministic transforms, measurements, renders and bookkeeping. Never calls Claude.
 
 ### 2.2 Workflows
 
 All workflows run inside one asset folder and append to its history.
 
+0. **Style definition** (first, per project; revisited when needed): Claude and the artist build the style guide together: mood references (own sketches and approved assets; commercial games only as analysed style notes, `DA-Q003-1`), palette families and ramps proposed by Claude and edited by the artist, light and outline conventions, density and dithering policy, generation presets per provider. Claude produces 3-5 small test assets with it; the artist approves; the style guide gets a version. Every later asset records which style version it used, and a style change can re-check or re-run older assets.
 1. **Background from a sketch** (main case): `new` (canvas, palette, light, depth layers) -> attach sketch and style references -> Claude writes the prompt and generation plan -> `generate` (img2img, 1-4 candidates, possibly several providers) -> `snap` (grid detection, mode downsample) -> `quantize` (OKLab, scene palette, dithering off) -> `clean` (orphans, AA noise) -> `check` -> Claude critique (pairwise vs previous best and references, region-tagged) -> human review in the viewer -> zone fixes (`regen-region` with a mask, or Claude's code edit, or human retouch in Aseprite) -> `check` -> `approve` -> `export`.
 2. **Background from scratch**: as 1, with Claude composing a value thumbnail (3-5 value groups, focal point, depth layers, `R-VAL-1`, `R-DEPTH-1`) as the img2img input instead of a sketch.
 3. **Image to background**: a photo or painting as input; same as 1, with stronger snap/quantize and a style-transfer prompt.
@@ -72,22 +77,34 @@ All workflows run inside one asset folder and append to its history.
 5. **Character animation**: Claude writes the key-pose spec and timing chart (`R-ANIM-1`, `R-ANIM-2`); frames come from a part-based rig (layers with pivots, RotSprite rotation, mandatory cleanup: `R-ANIM-3`), from an AI animator driven by a skeleton/pose (`R-ANIM-7`), or from the artist's drawn bases; inbetweens follow; cross-frame checks gate the result (`R-ANIM-4`). Talking and blinking are overlay libraries on the head (`R-ANIM-5`). Templates: walk (side, front, back), talk, pick up / use, turn, idle.
 6. **Ambient effects**: palette cycling ranges declared in the palette (`R-STYLE-3`); procedural effects (water ripples, fire, flicker, particles, sway) rendered and quantized to the palette; previewed as animated GIF/APNG.
 7. **Zone fix loop**: any complaint (detector, Claude or human annotation) becomes a mask in native pixels with a rule id and a note; fixes run only inside the mask and the checks re-run (`R-CRIT-3`).
-8. **Style coherence**: a project style guide (palette families, ramp rules, outline policy, light conventions, approved reference assets) is checked against each new asset; approved assets become references and, later, LoRA training data.
+8. **Style coherence**: every new asset is checked against the style guide (palette families, ramp rules, outline policy, light conventions, approved reference assets); approved assets become references and, later, LoRA training data.
+9. **Character in scene**: place a sprite or animation on a background at a position or along a path; checks for figure-ground contrast, silhouette readability, scale against the scene and style coherence (`R-COLOR-1`, `R-READ-1`); render a scene preview (character walking through the background, with parallax layers if declared).
+10. **Scene lighting**: declare light zones on a background (mask + light color/intensity, or palette remap tables); a character crossing them is recolored through palette-mapped lighting (each sprite color maps to a darker/tinted color of its own ramp or the scene palette, never to off-palette colors), so it darkens in shadow and warms near a lamp while staying pixel art. Lit and unlit variants can be exported as palette swaps.
+11. **Effects** (`R-STYLE-3`): palette cycling, procedural effects (water, fire, flicker, rain, fog, particles) and lighting changes rendered frame by frame and quantized to the scene palette; any output passes the `palette` and `grid` checks.
 
 ### 2.3 Workspace layout
 
-pixelwright works on a **workspace** directory that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (`R-FORM-2`).
+pixelwright works on a **workspace** that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (`R-FORM-2`).
+
+- **Adapts to the game's structure**: `pixelwright.toml` maps workspace roles to paths in the game repository (where the style guide lives, where asset folders live, and, per asset kind, where final exports go, for example `game/art/backgrounds/`, `game/art/characters/<id>/`). Defaults below apply when nothing is mapped.
+- **Experiments vs finals**: every image belongs to one stage: `experiment` (throwaway tries, provider tests), `draft` (candidate versions in the review loop), `approved` (accepted by the artist) and `final` (exported to the game path). The game repository chooses what to commit per stage (`commit = ["approved", "final", "draft"]`); pixelwright writes the matching `.gitignore` entries, so experiments can be kept locally, committed, or pruned with `pw prune`.
 
 ```text
 workspace/
   pixelwright.toml          # workspace config: canvas defaults, providers, budgets
-  style/                    # style guide: palettes/*.gpl|.hex, style.yaml, references/
+  style/                    # style guide (versioned)
+    style.yaml              # conventions: light, outline, density, dithering, presets
+    palettes/               # *.gpl, *.hex, ramps.yaml
+    references/             # approved and mood references
+    tests/                  # test assets made while defining the style
+  experiments/              # free tries not tied to an asset (provider tests, studies)
   assets/
     bg-harbour-night/       # one folder per asset id, chr-hero, fx-torch
       asset.yaml            # asset spec (2.4)
       inputs/               # sketch.png, refs/*.png, notes.md
+      drafts/               # quick iterations before a version is worth keeping
       versions/
-        v0001/              # one folder per version
+        v0001/              # one folder per version (stage: draft | approved)
           image.png         # native resolution, indexed to palette
           image.aseprite    # when layers/frames exist
           meta.yaml         # step, parameters, provider, cost, parent version, seed, hashes
@@ -95,7 +112,7 @@ workspace/
           critique.md       # Claude's pairwise critique with regions
       masks/                # annotation and fix masks (PNG, native res) + masks.yaml
       history.jsonl         # append-only log: steps, decisions (approve/reject), human notes
-      export/               # final files for the game engine
+      export/               # final files (or a link to the mapped game path)
   cache/                    # provider responses keyed by request hash (not committed)
 ```
 
@@ -160,6 +177,8 @@ Every check returns `pass | warn | fail`, its measurement, and offending regions
 | `selout` | R-PIX-9 | outline L/hue vs inner neighbour; pure-black share | report |
 | `outline-share` | R-STYLE-4 | outline pixels on backgrounds | report |
 | `anim-consistency` | R-ANIM-4 | palette identity, mask volume tolerance, foot lock, per-frame silhouette | fail on palette, warn otherwise |
+| `style-match` | R-GEN-1, workflow 0 | OKLab distance of raw generator output to the style palette; share of pixels needing remap | report, calibrated warn |
+| `in-scene` | R-COLOR-1, R-READ-1 | figure-ground ΔL and silhouette for a sprite at each placement or path point; scale vs scene | warn |
 | `diagnostics` | DA-Q001-2 | saliency peak vs focal mask, spectrum slope | report only |
 
 ### 2.7 Critique protocol
@@ -174,11 +193,11 @@ Every check returns `pass | warn | fail`, its measurement, and offending regions
 
 **CLI** (`pw`, Typer-style, JSON output with `--json`):
 
-`pw init`, `pw new <id> --kind --canvas --palette`, `pw attach <id> <file> [--as sketch|ref]`, `pw generate <id> --provider --mode --prompt-file [--mask] [--n]`, `pw snap`, `pw quantize`, `pw clean`, `pw ramp`, `pw rotate`, `pw compose`, `pw fx`, `pw check <id> [--version]`, `pw render <id> --view upscale|gray|values|silhouette|overlay|gif`, `pw diff <id> <vA> <vB>`, `pw mask <id> add|list|clear`, `pw approve|reject <id> <version> [--note]`, `pw export <id>`, `pw palette new|import|discover|edit`, `pw ase open|import|export`, `pw bench run|report`, `pw cost`, `pw view`, `pw mcp`.
+`pw init`, `pw new <id> --kind --canvas --palette`, `pw attach <id> <file> [--as sketch|ref]`, `pw generate <id> --provider --mode --prompt-file [--mask] [--n]`, `pw snap`, `pw quantize`, `pw clean`, `pw ramp`, `pw rotate`, `pw compose`, `pw fx`, `pw check <id> [--version]`, `pw render <id> --view upscale|gray|values|silhouette|overlay|gif`, `pw diff <id> <vA> <vB>`, `pw style init|propose|test|bump`, `pw scene <bg> <sprite> --at|--path`, `pw light <bg> zones|apply`, `pw prune --stage experiment`, `pw mask <id> add|list|clear`, `pw approve|reject <id> <version> [--note]`, `pw export <id>`, `pw palette new|import|discover|edit`, `pw ase open|import|export`, `pw bench run|report`, `pw cost`, `pw view`, `pw mcp`.
 
-**MCP tools** (same core functions; names mirror the CLI): `asset_new`, `asset_status`, `asset_attach`, `generate`, `snap`, `quantize`, `clean`, `ramp`, `rotate`, `compose`, `fx`, `check`, `render` (returns image content plus a file path), `diff`, `mask_add`, `mask_list`, `decision_log`, `export`, `palette_*`, `aseprite_*`, `bench_*`, `cost_report`. Tools act on assets, regions and palettes, never on single pixels (`R-TOOL-3`, `DA-Q007-2`), except a bounded `pixels_set` for small fixes inside a mask.
+**MCP tools** (same core functions; names mirror the CLI): `asset_new`, `asset_status`, `asset_attach`, `generate`, `snap`, `quantize`, `clean`, `ramp`, `rotate`, `compose`, `fx`, `check`, `render` (returns image content plus a file path), `diff`, `style_*`, `scene_render`, `light_apply`, `mask_add`, `mask_list`, `decision_log`, `export`, `palette_*`, `aseprite_*`, `bench_*`, `cost_report`. Tools act on assets, regions and palettes, never on single pixels (`R-TOOL-3`, `DA-Q007-2`), except a bounded `pixels_set` for small fixes inside a mask.
 
-**Viewer** (`pw view`, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from `report.json`; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to `history.jsonl`; animation preview with per-frame timing. The viewer only writes masks and decisions; it never edits pixels (Aseprite does).
+**Viewer** (`pw view`, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from `report.json`; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to `history.jsonl`; animation preview with per-frame timing; scene preview (character moving through a background); stage filter (experiments, drafts, approved, final). The viewer only writes masks and decisions; it never edits pixels (Aseprite does). A screens spec for the viewer is written during M2, before it is built.
 
 ### 2.9 Providers
 
@@ -246,21 +265,17 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 **Milestones**:
 
 - **M0 Foundations**: package skeleton, workspace format, asset spec schema, palette I/O (GPL, HEX, ASE palette), OKLab utilities, renders, `.aseprite` read/write, test fixtures (synthetic pseudo-pixel set, labelled detector cases), privacy check in the host gate.
-- **M1 MVP pipeline**: `snap`, `quantize`, `clean`, `check` (palette, grid, value-groups, orphans, line-runs, banding, pillow, ramps), CLI + MCP parity, Aseprite round-trip, Lua helper scripts.
-- **M2 Viewer and critique loop**: `pw view` with compare, overlays, masks, decisions; region-limited fixes; critique files; plugin v0 with art-direction skills.
+- **M1 MVP pipeline**: style guide format and `pw style` (workflow 0), `snap`, `quantize`, `clean`, `check` (palette, grid, value-groups, orphans, line-runs, banding, pillow, ramps), CLI + MCP parity, Aseprite round-trip, Lua helper scripts.
+- **M2 Viewer and critique loop**: viewer screens spec first, then `pw view` with compare, overlays, masks, decisions; region-limited fixes; critique files; plugin v0 with art-direction skills.
 - **M3 Providers and benchmark**: Gemini, Retro Diffusion, PixelLab, GPT Image, local ComfyUI adapters with cost control; run the benchmark; choose default provider per asset kind.
-- **M4 Animation**: rig format, RotSprite + cleanup, templates (walk, talk, pick up, turn, idle), overlays for mouths/eyes, cross-frame checks, palette cycling and effects.
+- **M4 Animation, scenes and effects**: rig format, RotSprite + cleanup, templates (walk, talk, pick up, turn, idle), overlays for mouths/eyes, cross-frame checks, palette cycling and effects, character-in-scene previews and palette-mapped scene lighting.
 - **M5 Style LoRA**: dataset export from 30-100 approved assets; local LoRA training recipe; style-coherence checks against it.
 
 **Immediate next action**: after this spec is approved, run `design` to write sections 5-6 (contracts: workspace and `asset.yaml` schemas, `report.json`, provider interface, MCP tool schemas; risks) and the plan, then queue M0 tasks with gates.
 
 **Open questions**:
 
-- [ ] Native canvas: 320x180 (x6 to 1080p) or 384x216 (x5)? Research leaves it to the spec (`R-STYLE-2`); proposal: 320x180 default, configurable per workspace.
-- [ ] Licence for this repository (MIT, like the owner's other tools, is the proposal).
-- [ ] Aseprite: compile from source or buy? Either works; the bridge does not depend on it for data exchange.
-- [ ] Monthly API budget cap for M3 (proposal: 20 USD for the first benchmark).
-- [ ] Should the plugin live in this repository (`plugin/`) or in a separate one? Proposal: same repository.
+- [ ] None blocking. The viewer's screens spec is due in M2.
 
 **Decisions log**:
 
@@ -278,6 +293,15 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 | D-10 | Name: pixelwright; repository content in English; no personal data or references to other projects in the repository | agreed | 2026-11-15 |
 | D-11 | No screenshots review round for this spec (no own UI beyond the viewer) | agreed | 2026-11-15 |
 | D-12 | Owner has an NVIDIA GPU: the local ComfyUI provider is in scope | agreed | 2026-11-15 |
+| D-13 | Default canvas 320x180, configurable per workspace and free per asset | agreed | 2026-11-15 |
+| D-14 | Licence: MIT | agreed | 2026-11-15 |
+| D-15 | Aseprite compiled from source for personal use | agreed | 2026-11-15 |
+| D-16 | First benchmark budget cap: 20 USD | agreed | 2026-11-15 |
+| D-17 | Claude Code plugin lives in this repository (`plugin/`) | agreed | 2026-11-15 |
+| D-18 | Style definition is the first workflow of every project, done with AI help, and can change later (versioned) | agreed | 2026-11-15 |
+| D-19 | Workspace adapts to the game repository's layout and separates experiments, drafts, approved and final assets | agreed | 2026-11-15 |
+| D-20 | No committed deny-list for the privacy check | agreed | 2026-11-15 |
+| D-21 | Viewer screens spec deferred to M2 (D-11 holds for this spec) | agreed | 2026-11-15 |
 
 ---
 
