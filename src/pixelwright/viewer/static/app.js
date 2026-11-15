@@ -140,7 +140,7 @@ const inboxUrl = () => {
 
 /** Every 2 s: re-read what the screen shows and redraw only when something changed. */
 async function poll() {
-  if (document.hidden || state.pop) return;
+  if (document.hidden || state.pop || modes[state.route.mode].busy?.()) return;
   const { asset, version } = state.route;
   try {
     const inbox = (await api(inboxUrl())).items;
@@ -251,7 +251,8 @@ function issuesPane() {
       <span><strong>${esc(i.rule || i.id)}</strong> <span class="rule">${esc(i.id)}</span><br>${esc(i.note)}</span>
       <span class="${i.status === "fixed" ? "fixed" : "rule"}">${i.status === "fixed" ? "fixed in " + esc(i.fixed_in) : "open"}</span>`,
     "issue" + (state.selected === i.id ? " sel" : ""), `data-issue="${esc(i.id)}"`)).join("") : '<p class="muted">No issues on this version.</p>';
-  return verdict + `<div class="cap">Issues</div>` + rows;
+  const top = modes[state.route.mode].issuesTop ? modes[state.route.mode].issuesTop() : "";
+  return top + verdict + `<div class="cap">Issues</div>` + rows;
 }
 
 function checksPane() {
@@ -393,7 +394,7 @@ export function drawGrid(cv, w, h, z) {
   ctx.stroke();
 }
 
-async function drawImage() {
+export async function drawImage() {
   const { asset, version } = state.route;
   const base = `/api/assets/${asset}/${version}/image.png`;
   const [shown, color] = await Promise.all([loadImage(`${base}?view=${state.view}`), loadImage(base)]);
@@ -470,6 +471,7 @@ async function decide(choice) {
 
 async function undo() {
   if (!state.route.asset) return;
+  if (modes[state.route.mode].undo?.()) return; // e.g. the last mask stroke
   try {
     const r = await api(`/api/assets/${state.route.asset}/revert`, {});
     state.notice = `Undid the ${r.reverted} of ${r.version}`;
@@ -607,5 +609,5 @@ export function render() {
 }
 
 state.route = parseRoute();
-const MODE_MODULES = ["compare"];
+const MODE_MODULES = ["compare", "mark"];
 Promise.all(MODE_MODULES.map((m) => import(`/static/${m}.js`))).finally(load);
