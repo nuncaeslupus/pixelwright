@@ -24,6 +24,7 @@ JITTER_TOLERANCE = 0.15  # a peak may sit this fraction of a cell off its grid l
 FIT_MARGIN = 0.08
 INNER_REL = 1.3
 INNER_ABS = 2.0  # RMS, 0-255 units
+MULTIPLE_KEEP = 0.8  # a multiple of the pick keeping this share of its raw on-grid weight wins
 
 
 @dataclass(frozen=True)
@@ -68,10 +69,10 @@ def _tolerance(scale: int) -> float:
 
 def _fit(
     pos: npt.NDArray[np.intp], weight: F64, scale: int, tol: float | None = None
-) -> tuple[float, int]:
-    """(chance-normalized share of peak weight on a grid of this scale, best phase)."""
+) -> tuple[float, int, float]:
+    """(chance-normalized share of peak weight on a grid of this scale, best phase, raw share)."""
     if weight.sum() <= 0:
-        return 0.0, 0
+        return 0.0, 0, 0.0
     tol = _tolerance(scale) if tol is None else tol
     best, phase = -1.0, 0
     for p in range(scale):
@@ -83,7 +84,7 @@ def _fit(
     # Normalize against chance: a wide tolerance on a coarse grid catches random peaks too.
     r = np.arange(scale)
     chance = float((np.abs((r + scale / 2) % scale - scale / 2) <= tol).mean())
-    return (share - chance) / (1.0 - chance) if chance < 1 else 0.0, phase
+    return (share - chance) / (1.0 - chance) if chance < 1 else 0.0, phase, share
 
 
 def _phase(profile: F64, scale: int) -> int:
@@ -159,6 +160,7 @@ def detect_grid(
         pos_y, w_y = _peaks(_edge_profile(src, 0))
         views.append((pos_x, w_x, pos_y, w_y))
     fits: dict[int, float] = {}
+    raw: dict[int, float] = {}
     phases: dict[int, tuple[int, int]] = {}
     for s in range(MIN_SCALE, top + 1):
         fits[s] = -1.0
@@ -166,11 +168,12 @@ def detect_grid(
             total = float(w_x.sum() + w_y.sum())
             if total <= 0:
                 continue
-            fx, ox = _fit(pos_x, w_x, s)
-            fy, oy = _fit(pos_y, w_y, s)
+            fx, ox, rx = _fit(pos_x, w_x, s)
+            fy, oy, ry = _fit(pos_y, w_y, s)
             f = (fx * float(w_x.sum()) + fy * float(w_y.sum())) / total
             if f > fits[s]:
                 fits[s], phases[s] = f, (ox, oy)
+                raw[s] = (rx * float(w_x.sum()) + ry * float(w_y.sum())) / total
     if max(fits.values()) <= 0:
         return 1, 0, 0, 0.0, {}
     best = max(fits.values())
@@ -179,7 +182,18 @@ def detect_grid(
     # real borders, which shows as variation inside the cells' inner regions.
     inner = {s: _inner_error(rgb, s, *phases[s]) for s in candidates}
     floor = min(inner.values())
-    scale = max(s for s in candidates if inner[s] <= floor * INNER_REL + INNER_ABS)
+    limit = floor * INNER_REL + INNER_ABS
+    scale = max(s for s in candidates if inner[s] <= limit)
+    # With many off-grid peaks (noise, gradients) chance normalization favors divisors of
+    # the true scale. A multiple of a wrong divisor keeps about half of its on-grid peaks;
+    # the true scale keeps nearly all of them.
+    multiples = [m for m in fits if m > scale > MIN_SCALE and m % scale == 0]
+    for m in sorted(multiples, reverse=True):
+        if raw.get(m, 0.0) >= MULTIPLE_KEEP * raw[scale] and (
+            _inner_error(rgb, m, *phases[m]) <= limit
+        ):
+            scale = m
+            break
     coarser = [f for s, f in fits.items() if s > scale and s % scale == 0]
     gap = fits[scale] - (max(coarser) if coarser else 0.5)
     confidence = float(np.clip(fits[scale] * min(1.0, gap / 0.4), 0.0, 1.0))
