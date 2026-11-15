@@ -110,3 +110,7 @@ canvas.marking { cursor:crosshair; touch-action:none; }
 .newissue { background:var(--soft); border-radius:10px; padding:10px 12px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; }
 .newissue select, .newissue textarea { background:var(--panel); }
 .newissue .row { display:flex; gap:8px; justify-content:flex-end; }
+/* Play */
+.frames .th img { height:50px; }
+.prow { display:flex; align-items:center; gap:8px; justify-content:space-between; font-size:13px; }
+.prow select { background:var(--panel); }
