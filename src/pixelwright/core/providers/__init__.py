@@ -2,6 +2,7 @@
 
 from pixelwright.core.providers import comfyui as _comfyui  # noqa: F401  (registers it)
 from pixelwright.core.providers import replay as _replay  # noqa: F401  (registers it)
+from pixelwright.core.providers import retro_diffusion as _retro_diffusion  # noqa: F401
 from pixelwright.core.providers.base import (
     MODES,
     Capabilities,
