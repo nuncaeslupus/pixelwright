@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NoReturn
 
+from pixelwright.bench import commands as _bench  # noqa: F401  (registers `bench`)
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
 from pixelwright.cli import gen_commands as _gen_commands  # noqa: F401  (generation commands)
 from pixelwright.cli import tour as _tour  # noqa: F401  (registers `tour`)

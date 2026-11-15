@@ -1,0 +1,18 @@
+# The first provider benchmark (main spec R-BENCH-1..3, cap 20 USD).
+# `pw bench run --matrix benchmarks/matrix.yaml` shows the estimate; add --yes to spend.
+schema: pixelwright/bench-matrix@1
+name: first
+providers: [comfyui, retro-diffusion, pixellab, gemini, gpt-image]
+chains:
+  full: [snap, quantize, clean]
+  light: [snap, quantize]
+samples: 3
+colors: 16
+max_usd: 20
+briefs:
+  - id: dusk-hill
+    prompt: a small house on a grassy hillside at dusk, warm lit window, side view
+  - id: forest-path
+    prompt: a forest path between tall pines, morning fog, light through the trees
+  - id: harbour
+    prompt: a small stone harbour with two fishing boats, overcast noon

@@ -128,6 +128,12 @@ def test_cli_json_envelope_on_every_command(
     assert gen["data"]["estimate_usd"] == 0.0
     assert "rows" in run("doctor", "--offline")["data"]
     assert run("next", "hero")["data"]["step"]
+    matrix = files / "matrix.yaml"
+    matrix.write_text(
+        "schema: pixelwright/bench-matrix@1\nproviders: [replay]\n"
+        "briefs:\n  - id: b\n    prompt: x\n"
+    )
+    assert run("bench", "run", "--matrix", str(matrix))["data"]["sent"] == 0
     assert run("tour", "--path", str(files / "tour"), "--no-view")["stage"] == "final"
     assert run("inbox")["data"]["count"] >= 0
     crit = files / "critique.md"
