@@ -42,10 +42,12 @@ def test_saved_mark_is_an_issue_in_native_pixels(page: Any, viewer: Viewer) -> N
     open_mark(page, viewer)
     page.get_by_role("button", name="Rectangle").click()
     drag(page, (2, 3), (5, 6))
-    page.locator("#mk-rule").select_option("R-PIX-3")
+    # A rule reads by what it checks; the id is only the stored value.
+    page.locator("#mk-rule").select_option(label="Orphan pixels and specks (R-PIX-3)")
     page.locator("#mk-note").fill("clean these clusters")
     page.get_by_role("button", name="Save as an issue").click()
     expect(page.locator(".issue.sel")).to_contain_text("clean these clusters")
+    expect(page.locator(".issue.sel strong")).to_have_text("Orphan pixels and specks")
     issues = Workspace.open(viewer.root).asset("hero").issues()
     new = next(i for i in issues if i["author"] == "human")
     mask, issue = mask_of(viewer, new["id"])

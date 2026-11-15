@@ -1,9 +1,7 @@
 // Mark: draw a complaint on the image in native pixels; it is saved as an issue (a mask,
 // a rule, a note) so a fix can run only there (`R-CRIT-3`).
-import { api, btn, drawImage, esc, load, loadImage, modes, render, state } from "/static/app.js";
+import { RULES, api, btn, drawImage, esc, load, loadImage, modes, render, state } from "/static/app.js";
 
-const RULES = ["R-PIX-1", "R-PIX-2", "R-PIX-3", "R-PIX-4", "R-PIX-5", "R-PIX-6", "R-PIX-7", "R-PIX-8", "R-PIX-9",
-  "R-VAL-1", "R-DEPTH-1", "R-READ-1", "R-COLOR-1", "R-STYLE-1", "R-STYLE-3", "R-STYLE-4", "R-ANIM-4"];
 const TOOLS = [["brush", "Brush", "B", '<path d="M4 20c3 0 5-2 5-5l9-9-3-3-9 9c-3 0-5 2-5 5z"/>'],
   ["rect", "Rectangle", "U", '<rect x="4" y="6" width="16" height="12" rx="1"/>'],
   ["fill", "Fill: same color, contiguous", "F", '<path d="M5 12l7-7 7 7-7 7z"/><path d="M19 15c1 2 2 3 2 4a2 2 0 0 1-4 0c0-1 1-2 2-4z"/>'],
@@ -157,7 +155,8 @@ Object.assign(modes.mark, {
     overlay();
   },
   issuesTop() {
-    const opts = RULES.map((r) => `<option value="${r}" ${r === mk.rule ? "selected" : ""}>${r}</option>`).join("");
+    const opts = Object.entries(RULES).map(([r, name]) =>
+      `<option value="${r}" ${r === mk.rule ? "selected" : ""}>${esc(name)} (${r})</option>`).join("");
     return `<form class="newissue" aria-label="New issue" onsubmit="return false">
       <div class="cap">New issue on <span class="mono">${esc(state.route.version)}</span></div>
       <select id="mk-rule" title="Rule" aria-label="Rule"><option value="">Other (no rule)</option>${opts}</select>

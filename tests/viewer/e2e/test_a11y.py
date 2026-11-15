@@ -73,3 +73,33 @@ def test_both_themes_render(page: Any, viewer: Viewer) -> None:
     chosen = page.evaluate("document.documentElement.dataset.theme")
     page.reload()  # the choice is remembered
     assert page.evaluate("document.documentElement.dataset.theme") == chosen
+
+
+def test_tab_stays_in_the_approve_dialog(page: Any, viewer: Viewer) -> None:
+    page.goto(viewer.url + "#/hero/v0002")
+    expect(page.locator("#cv")).to_be_visible()
+    expect(page.locator(".side")).to_be_visible()
+    page.locator("body").press("a")
+    expect(page.locator("#note")).to_be_focused()
+    page.locator("#note").fill("good")
+    for _ in range(5):
+        page.keyboard.press("Tab")
+        assert page.evaluate("!!document.activeElement.closest('.pop')")
+    page.keyboard.press("Shift+Tab")
+    assert page.evaluate("!!document.activeElement.closest('.pop')")
+    expect(page.locator("#note")).to_have_value("good")
+    expect(page.locator(".side")).to_be_visible()  # Tab no longer hides the panel
+    page.keyboard.press("Escape")
+    page.locator("body").press("h")
+    expect(page.locator(".side")).to_be_hidden()
+
+
+def test_menu_is_grouped_by_what_it_acts_on(page: Any, viewer: Viewer) -> None:
+    page.goto(viewer.url + "#/hero/v0002")
+    expect(page.locator("#cv")).to_be_visible()
+    page.keyboard.press("Control+k")
+    menu = page.get_by_role("menu")
+    expect(menu.locator(".cap")).to_have_text(["Version", "Mode", "View", "Go to", "Help"])
+    expect(page.get_by_role("menuitem").first).to_be_focused()
+    page.get_by_role("menuitem", name="Previous version").click()
+    expect(page.locator(".meta")).to_contain_text("v0001")
