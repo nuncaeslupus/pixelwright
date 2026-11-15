@@ -40,6 +40,17 @@ const PATHS = {
   check: '<path d="M5 12l5 5 9-10"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
 };
+// What each rule checks, in the artist's words; issues store only the id.
+export const RULES = {
+  "R-PIX-1": "Off-palette or off-grid pixels", "R-PIX-2": "Ramps: flat or wrong hue shift",
+  "R-PIX-3": "Orphan pixels and specks", "R-PIX-4": "Jagged lines", "R-PIX-5": "Banding",
+  "R-PIX-6": "Pillow shading", "R-PIX-7": "Dither outside its zones", "R-PIX-8": "Anti-aliasing on the edge",
+  "R-PIX-9": "Outline (selout)", "R-VAL-1": "Values: too many, or focus misplaced",
+  "R-DEPTH-1": "Depth: far layers too strong", "R-READ-1": "Silhouette hard to read",
+  "R-COLOR-1": "Sprite blends into the background", "R-STYLE-1": "Off style",
+  "R-STYLE-3": "Effect or palette cycling", "R-STYLE-4": "Too much outline", "R-ANIM-4": "Animation inconsistent",
+};
+export const ruleName = (id) => RULES[id] || id;
 export const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${PATHS[name]}</svg>`;
 
 /** A visible control: its name and shortcut are on hover (title), never printed. */
@@ -180,12 +191,21 @@ function popover() {
       ${btn("confirm", reject ? "Reject this version" : "Approve this version", "Ctrl+Enter", reject ? "Reject" : "Approve", "btn pri", 'id="confirm"')}</div></div>`;
   }
   if (state.pop === "menu") {
-    const cmds = state.route.asset
-      ? [["home", "All assets", "Esc"], ["approve", "Approve", "A"], ["reject", "Reject", "R"], ["undo", "Undo last decision", "Ctrl+Z"], ["panel", "Show or hide the side panel", "Tab"], ["grid", "Pixel grid", "G"]]
-      : [];
-    const all = [...cmds, ["theme", "Light or dark theme", "T"], ["keys", "Keyboard shortcuts", "?"], ["inbox", "Inbox", "I"]];
-    return `<div class="pop" role="menu" aria-label="Menu" style="left:16px;right:auto">
-      ${all.map(([a, l, k]) => btn(a, l, k, esc(l), "issue")).join("")}</div>`;
+    const a = state.route.asset;
+    const modeItems = Object.entries(modes).filter(([, m]) => m.available())
+      .map(([id, m]) => ["mode", m.label, m.key, `data-mode="${id}"`]);
+    const groups = [
+      a && ["Version", [["approve", "Approve", "A"], ["reject", "Reject", "R"], ["undo", "Undo last decision", "Ctrl+Z"],
+        ["prev", "Previous version", "←"], ["next", "Next version", "→"]]],
+      a && ["Mode", modeItems],
+      ["View", [...(a ? [["grid", "Pixel grid", "G"], ["panel", "Side panel", "H"]] : []), ["theme", "Light or dark theme", "T"]]],
+      ["Go to", [...(a ? [["home", "All assets", "Esc"]] : []), ["inbox", "Inbox", "I"]]],
+      ["Help", [["keys", "Keyboard shortcuts", "?"]]],
+    ].filter(Boolean);
+    const item = ([act, l, k, extra = ""]) =>
+      btn(act, l, k, `<span>${esc(l)}</span><kbd>${esc(k)}</kbd>`, "mi", `role="menuitem" ${extra}`);
+    return `<div class="pop menu" role="menu" aria-label="Menu" style="left:16px;right:auto">
+      ${groups.map(([g, items]) => `<div class="cap">${g}</div>${items.map(item).join("")}`).join("")}</div>`;
   }
   return "";
 }
@@ -221,6 +241,7 @@ function renderList() {
         <div class="m">${c.newest && !seen[`${c.id}/${c.newest}`] ? '<span class="badge wait">new</span>' : ""}<span class="badge ${badgeClass(c)}">${esc(c.status)}</span></div>
       </button>`).join("")}</main>` : `<div class="empty">${state.list && state.list.length ? "No asset matches the filters." : "No assets yet. Create one with <code>pw new</code>."}</div>`}
     ${popover()}`;
+  focusPop();
 }
 
 // -- asset screen (Look) -------------------------------------------------------------
@@ -249,7 +270,7 @@ function issuesPane() {
   const verdict = crit ? `<div class="verdict"><span class="who t-claude"><span class="av a-claude">C</span>Claude's verdict</span><div>${esc(crit.verdict)}</div></div>` : "";
   const rows = list.length ? list.map((i) => btn("issue", `Show ${i.id} on the image`, "", `
       <span class="av a-${esc(i.author)}">${AUTHOR_LETTER[i.author] || "?"}</span>
-      <span><strong>${esc(i.rule || i.id)}</strong> <span class="rule">${esc(i.id)}</span><br>${esc(i.note)}</span>
+      <span><strong>${esc(i.rule ? ruleName(i.rule) : i.id)}</strong> <span class="rule">${esc(i.rule ? i.rule + " · " + i.id : "")}</span><br>${esc(i.note)}</span>
       <span class="${i.status === "fixed" ? "fixed" : "rule"}">${i.status === "fixed" ? "fixed in " + esc(i.fixed_in) : "open"}</span>`,
     "issue" + (state.selected === i.id ? " sel" : ""), `data-issue="${esc(i.id)}"`)).join("") : '<p class="muted">No issues on this version.</p>';
   const top = modes[state.route.mode].issuesTop ? modes[state.route.mode].issuesTop() : "";
@@ -310,7 +331,7 @@ function statusBar() {
     <span class="vsep"></span>
     <select id="view" title="View (V)" aria-label="View">${views.map(([id, l]) => `<option value="${id}" ${id === state.view ? "selected" : ""}>${l}</option>`).join("")}</select>
     ${btn("grid", "Pixel grid (from 4x)", "G", icon("grid"), "ib" + (state.grid ? " on" : ""), `aria-pressed="${state.grid}"`)}
-    ${btn("panel", "Show or hide the side panel", "Tab", icon("panel"), "ib" + (state.side ? " on" : ""))}
+    ${btn("panel", "Show or hide the side panel", "H", icon("panel"), "ib" + (state.side ? " on" : ""))}
     <label class="slider" title="Zoom (+ −)"><input id="zoom" type="range" min="1" max="64" step="1" value="${state.zoom || 1}" aria-label="Zoom"><span class="mono" id="zoom-label">${state.zoom || 1}x</span></label>
   </footer>`;
 }
@@ -325,8 +346,13 @@ function renderAsset() {
       <div class="canvas" id="stage">${empty ? '<div class="empty">No versions yet. Attach one with <code>pw attach</code>.</div>' : inner}</div>
       ${strip()}${statusBar()}</section>${sidePanel()}</div>${popover()}`;
   if (!empty) redraw();
-  const note = document.getElementById("note");
-  if (note) note.focus();
+  focusPop();
+}
+
+// A freshly drawn dialog or menu takes the focus, so the keyboard acts inside it.
+function focusPop() {
+  if (document.activeElement?.closest(".pop")) return;
+  document.querySelector(".pop textarea, .pop .mi")?.focus();
 }
 
 // -- canvas -----------------------------------------------------------------------------
@@ -494,6 +520,17 @@ function step(delta) {
   if (i >= 0 && i < names.length) go(state.route.asset, names[i], state.route.mode);
 }
 
+// Tab and Shift+Tab cycle inside an open dialog or menu instead of leaving it.
+function trapFocus(ev) {
+  const pop = document.querySelector(".pop");
+  const els = pop ? [...pop.querySelectorAll("button:not([disabled]), textarea, input, select")] : [];
+  if (!els.length) return;
+  const i = els.indexOf(document.activeElement);
+  const next = ev.shiftKey ? (i <= 0 ? els.length - 1 : i - 1) : (i + 1) % els.length;
+  ev.preventDefault();
+  els[next].focus();
+}
+
 function togglePop(name) {
   state.pop = state.pop === name ? null : name;
   render();
@@ -522,6 +559,8 @@ const ACTIONS = {
   issue: (el) => { state.selected = state.selected === el.dataset.issue ? null : el.dataset.issue; render(); },
   grid: () => { state.grid = !state.grid; store.set("grid", state.grid); render(); },
   panel: () => { state.side = !state.side; render(); },
+  prev: () => step(-1),
+  next: () => step(1),
 };
 
 app.addEventListener("click", (ev) => {
@@ -549,7 +588,7 @@ app.addEventListener("change", (ev) => {
 const SHORTCUTS = {
   list: [["Ctrl+K", "Menu: every command"], ["Enter", "Open the focused asset"], ["/", "Find by name"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
   asset: [["A", "Approve"], ["R", "Reject"], ["Ctrl+Z", "Undo the last decision"], ["← →", "Previous or next version"],
-    ["L C M P", "Look, Compare, Mark, Play"], ["1 2 3", "Issues, Checks, History"], ["Tab", "Show or hide the side panel"],
+    ["L C M P", "Look, Compare, Mark, Play"], ["1 2 3", "Issues, Checks, History"], ["H", "Show or hide the side panel"],
     ["V", "Next view (Color, Gray, Values, Silhouette, 25% thumb)"], ["G", "Pixel grid"], ["+ −", "Zoom"], ["Esc", "Close or go back"],
     ["Ctrl+K", "Menu: every command"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
 };
@@ -565,6 +604,7 @@ function showKeys() {
 
 document.addEventListener("keydown", (ev) => {
   const typing = ["TEXTAREA", "INPUT", "SELECT"].includes(ev.target.tagName);
+  if (ev.key === "Tab" && state.pop) return trapFocus(ev);
   if (ev.key === "Escape") {
     if (keysDialog.open) return;
     if (state.pop) { state.pop = null; render(); } else if (!typing && state.route.asset) go(null);
@@ -588,7 +628,6 @@ document.addEventListener("keydown", (ev) => {
   }
   const byKey = Object.entries(modes).find(([, m]) => m.key.toLowerCase() === k);
   if (byKey && byKey[1].available()) return go(state.route.asset, state.route.version, byKey[0]);
-  if (k === "Tab") { ev.preventDefault(); return ACTIONS.panel(); }
   const map = {
     a: () => current() && togglePop("approve"),
     r: () => current() && togglePop("reject"),
@@ -598,6 +637,7 @@ document.addEventListener("keydown", (ev) => {
     2: () => ACTIONS.tab({ dataset: { tab: "checks" } }),
     3: () => ACTIONS.tab({ dataset: { tab: "history" } }),
     g: ACTIONS.grid,
+    h: ACTIONS.panel,
     v: () => {
       const order = ["color", "gray", "values", "silhouette", "thumb"];
       state.view = order[(order.indexOf(state.view) + 1) % order.length];
