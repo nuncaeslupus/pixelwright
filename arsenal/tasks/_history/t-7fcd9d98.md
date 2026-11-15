@@ -5,6 +5,7 @@ label: "T32: Viewer polish"
 priority: 10
 deps: [t-b32fd282, t-f66b337c, t-489a441e]
 tags: [m2]
+status: merged
 ---
 
 keyboard reachability, hover titles with shortcuts, both themes, a screenshot per screen for the record.
