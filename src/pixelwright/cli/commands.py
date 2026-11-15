@@ -87,11 +87,24 @@ def _mask(asset: Asset, mask_id: str | None, shape: tuple[int, int]) -> Mask | N
     entry = next((m for m in asset.masks() if m["id"] == mask_id), None)
     if entry is None:
         raise PwError("mask_not_found", f"{asset.id} has no mask {mask_id}")
+    return region_mask(asset, entry, shape)
+
+
+def region_mask(asset: Asset, entry: dict[str, Any], shape: tuple[int, int]) -> Mask:
+    """The boolean region of an issue: its mask PNG, its box, or the whole image."""
+    region = entry.get("region", "mask")
+    if region == "image":
+        return np.ones(shape, dtype=bool)
+    if region == "box":
+        x, y, w, h = entry["box"]
+        on: Mask = np.zeros(shape, dtype=bool)
+        on[y : y + h, x : x + w] = True
+        return on
     rgba = read_png(asset.path / entry["file"]).to_rgba()
     if rgba.shape[:2] != shape:
-        raise PwError("mask_shape", f"mask {mask_id} is {rgba.shape[1]}x{rgba.shape[0]}")
-    on: Mask = (rgba[..., 3] > 0) & (rgba[..., :3].max(axis=-1) >= 128)
-    return on
+        raise PwError("mask_shape", f"mask {entry['id']} is {rgba.shape[1]}x{rgba.shape[0]}")
+    drawn: Mask = (rgba[..., 3] > 0) & (rgba[..., :3].max(axis=-1) >= 128)
+    return drawn
 
 
 def _canvas(text: str) -> dict[str, int]:

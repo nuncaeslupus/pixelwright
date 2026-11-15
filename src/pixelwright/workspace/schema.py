@@ -13,7 +13,7 @@ CURRENT: dict[str, int] = {
     "asset": 1,
     "meta": 1,
     "history": 1,
-    "masks": 1,
+    "masks": 2,
     "ramps": 1,
     "style": 1,
     "case": 1,
