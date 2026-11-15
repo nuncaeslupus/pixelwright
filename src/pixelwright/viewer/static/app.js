@@ -336,6 +336,14 @@ function statusBar() {
   </footer>`;
 }
 
+// "What next?": the one next step for this asset, the command for it and why.
+function hint() {
+  const n = state.asset.next;
+  if (!n) return "";
+  return `<div class="hint" data-testid="next-hint"><b>Next: ${esc(n.step)}</b>
+    <code>${esc(n.command)}</code><span>${esc(n.why)}</span></div>`;
+}
+
 function renderAsset() {
   if (!state.asset) { app.innerHTML = `<div class="empty">${esc(state.notice || "Loading…")}</div>`; return; }
   const empty = !state.route.version;
@@ -343,8 +351,8 @@ function renderAsset() {
   const inner = mode.canvas ? mode.canvas() : '<canvas id="cv" aria-label="Version image"></canvas>';
   app.innerHTML = `${topBar()}
     <div class="body"><section class="work">
-      <div class="canvas" id="stage">${empty ? '<div class="empty">No versions yet. Attach one with <code>pw attach</code>.</div>' : inner}</div>
-      ${strip()}${statusBar()}</section>${sidePanel()}</div>${popover()}`;
+      <div class="canvas" id="stage">${empty ? '<div class="empty">No versions yet.</div>' : inner}</div>
+      ${hint()}${strip()}${statusBar()}</section>${sidePanel()}</div>${popover()}`;
   if (!empty) redraw();
   focusPop();
 }
