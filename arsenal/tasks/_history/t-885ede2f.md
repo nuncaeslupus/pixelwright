@@ -5,6 +5,7 @@ label: "T6: Style"
 priority: 10
 deps: [t-9bdf9468, t-33df13ba]
 tags: [m0-m1]
+status: merged
 ---
 
 Style guide format (`style.yaml` @1) and `style_version` on assets; bump and re-check listing.

@@ -15,6 +15,7 @@ CURRENT: dict[str, int] = {
     "history": 1,
     "masks": 1,
     "ramps": 1,
+    "style": 1,
 }
 
 # Required top-level keys and their types, per format.
@@ -34,6 +35,7 @@ _REQUIRED: dict[str, dict[str, type | tuple[type, ...]]] = {
     "history": {"event": str, "time": str},
     "masks": {"masks": list},
     "ramps": {"ramps": dict},
+    "style": {"version": int, "palettes": list},
 }
 
 
