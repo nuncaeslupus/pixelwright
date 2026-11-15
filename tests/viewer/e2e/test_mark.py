@@ -35,7 +35,11 @@ def open_mark(page: Any, viewer: Viewer) -> None:
     page.goto(viewer.url + "#/hero/v0002/mark")
     expect(page.get_by_role("toolbar", name="Mark tools")).to_be_visible()
     expect(page.locator("#cv")).to_be_visible()
-    page.wait_for_timeout(300)  # first draw sets the zoom
+    # The first draw sets the zoom: wait until the canvas is drawn at it.
+    page.wait_for_function(
+        "() => { const c = document.getElementById('cv'), z = +document.getElementById('zoom').value;"
+        " return c && z > 1 && c.getBoundingClientRect().width === 16 * z; }"
+    )
 
 
 def test_saved_mark_is_an_issue_in_native_pixels(page: Any, viewer: Viewer) -> None:
