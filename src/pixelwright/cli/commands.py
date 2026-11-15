@@ -20,6 +20,7 @@ from pixelwright.core.palette import Palette, Ramps
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.render import grayscale, overlay, upscale, value_map
 from pixelwright.core.snap import snap
+from pixelwright.io.aseprite import flatten_frames, read_aseprite
 from pixelwright.io.palette_io import read_palette, write_palette
 from pixelwright.io.png import encode_png, read_png, write_png
 from pixelwright.workspace import Asset, Workspace, WorkspaceConfig
@@ -29,7 +30,7 @@ from pixelwright.workspace.style import bump_style, load_ramps
 
 Mask = npt.NDArray[np.bool_]
 IMAGE = "image.png"
-VIEWS = ("upscale", "gray", "values", "silhouette", "overlay")
+VIEWS = ("upscale", "gray", "values", "silhouette", "overlay", "gif", "apng")
 
 ASSET = Param("asset", help="asset id", required=True, positional=True)
 VERSION = Param("version", help="version (default: latest)")
@@ -130,10 +131,13 @@ def _rel_style(ws: Workspace, path: Path) -> str:
 @command(
     "init",
     "create a workspace (pixelwright.toml, style/, assets/...)",
+    Param("path", help="workspace folder (same as --workspace)", positional=True),
     Param("canvas", help="default canvas WIDTHxHEIGHT"),
     needs_workspace=False,
 )
 def cmd_init(root: Path, a: dict[str, Any]) -> Outcome:
+    if a["path"]:
+        root = Path(a["path"])
     config = WorkspaceConfig()
     if a["canvas"]:
         config.canvas = _canvas(a["canvas"])
@@ -277,6 +281,8 @@ class _CheckInput:
     mask: Mask | None
     layers: list[Mask]
     light: tuple[float, float]
+    export: Image | None = None
+    scale: int = 1
 
 
 class _Missing(Exception):
@@ -312,6 +318,12 @@ def _ramps(i: _CheckInput) -> C.CheckResult:
     return C.check_ramps(_pal(i), i.ramps)
 
 
+def _grid(i: _CheckInput) -> C.CheckResult:
+    _need(i.export, "--file (an upscaled export) and --scale")
+    assert i.export is not None
+    return C.check_grid(i.export, i.scale)
+
+
 def _depth(i: _CheckInput) -> C.CheckResult:
     _need(i.layers, "--layers")
     return C.check_depth_falloff(i.image, i.layers)
@@ -319,6 +331,7 @@ def _depth(i: _CheckInput) -> C.CheckResult:
 
 CHECKS: dict[str, Callable[[_CheckInput], C.CheckResult]] = {
     "palette": lambda i: C.check_palette(i.image, _pal(i)),
+    "grid": _grid,
     "orphans": lambda i: C.check_orphans(_ix(i)),
     "value-groups": lambda i: C.check_value_groups(i.image),
     "focal-contrast": lambda i: C.check_focal_contrast(i.image, _msk(i)),
@@ -344,6 +357,8 @@ CHECKS: dict[str, Callable[[_CheckInput], C.CheckResult]] = {
     Param("checks", "list", help="checks to run (default: all that apply)", choices=tuple(CHECKS)),
     Param("mask", help="mask id: focal area, sprite or dither zones"),
     Param("layers", "list", help="mask ids, near to far, for depth-falloff"),
+    Param("file", help="upscaled export PNG for the grid check"),
+    Param("scale", "int", help="upscale factor of --file for the grid check", default=1),
 )
 def cmd_check(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
@@ -364,6 +379,8 @@ def cmd_check(root: Path, a: dict[str, Any]) -> Outcome:
         mask=_mask(asset, a["mask"], shape),
         layers=[m for m in (_mask(asset, x, shape) for x in a["layers"] or []) if m is not None],
         light=(float(direction[0]), float(direction[1])),
+        export=read_png(Path(a["file"])) if a["file"] else None,
+        scale=a["scale"],
     )
     results, warnings = [], []
     for name in a["checks"] or CHECKS:
@@ -405,9 +422,11 @@ def cmd_render(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
     asset = ws.asset(a["asset"])
     version = _version(asset, a["version"])
+    view = a["view"]
+    if view in ("gif", "apng"):
+        return _render_animation(ws, asset, version, view, a["scale"])
     image = _image(asset, version)
     rgba = image.to_rgba()
-    view = a["view"]
     if view == "gray":
         rgba = grayscale(rgba)
     elif view == "values":
@@ -422,6 +441,34 @@ def cmd_render(root: Path, a: dict[str, Any]) -> Outcome:
     write_png(out, RGBImage(upscale(rgba, a["scale"])))
     source = _rel(ws, asset.versions_dir / version / IMAGE)
     data = {"view": view, "source": source}
+    return Outcome(asset.id, version, asset.stage(version), [_rel(ws, out)], data)
+
+
+def _render_animation(ws: Workspace, asset: Asset, version: str, view: str, scale: int) -> Outcome:
+    """GIF or APNG of the version's frames (from image.aseprite, else the single PNG)."""
+    from PIL import Image as PILImage
+
+    ase = asset.versions_dir / version / "image.aseprite"
+    if ase.exists():
+        frames = flatten_frames(read_aseprite(ase))
+    else:
+        frames = [(_image(asset, version).to_rgba(), 100)]
+    pics = [PILImage.fromarray(upscale(rgba, scale), "RGBA") for rgba, _ in frames]
+    durations = [ms for _, ms in frames]
+    ext = "gif" if view == "gif" else "png"
+    out = ws.path("cache") / "renders" / asset.id / f"{version}-anim.{ext}"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    extra: dict[str, Any] = {"disposal": 2} if view == "gif" else {"default_image": False}
+    pics[0].save(
+        out,
+        format="GIF" if view == "gif" else "PNG",
+        save_all=True,
+        append_images=pics[1:],
+        duration=durations,
+        loop=0,
+        **extra,
+    )
+    data = {"view": view, "frames": len(frames), "durations": durations}
     return Outcome(asset.id, version, asset.stage(version), [_rel(ws, out)], data)
 
 
@@ -621,6 +668,8 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         dest = folder / (a["name"] or f"{asset.id}.gpl")
     write_palette(dest, palette)
     rel = _register_palette(ws, dest, note=f"palette {a['action']}: {dest.name}")
+    if a["action"] == "discover" and not ws.asset(a["asset"]).spec().get("palette"):
+        ws.asset(a["asset"]).update_spec(palette="style:" + rel)
     return Outcome(outputs=[_rel(ws, dest)], data={"palette": rel, "colors": len(palette)})
 
 

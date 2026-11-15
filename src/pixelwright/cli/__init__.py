@@ -46,6 +46,8 @@ def _add(parser: argparse.ArgumentParser, p: Param) -> None:
     else:
         kw["default"] = p.default
     if p.positional:
+        if not p.required and p.kind != "list":
+            kw["nargs"] = "?"
         parser.add_argument(p.name, **kw)
     else:
         parser.add_argument(p.flag, dest=p.name, required=p.required, **kw)
