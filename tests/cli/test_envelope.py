@@ -128,6 +128,7 @@ def test_cli_json_envelope_on_every_command(
     assert gen["data"]["estimate_usd"] == 0.0
     assert "rows" in run("doctor", "--offline")["data"]
     assert run("next", "hero")["data"]["step"]
+    assert run("tour", "--path", str(files / "tour"), "--no-view")["stage"] == "final"
     assert run("inbox")["data"]["count"] >= 0
     crit = files / "critique.md"
     crit.write_text(
