@@ -74,6 +74,10 @@ class Asset:
     def spec(self) -> dict[str, Any]:
         return schema.validate("asset", read_yaml(self.spec_path))
 
+    def update_spec(self, **fields: Any) -> None:
+        """Change top-level fields of `asset.yaml` (e.g. the palette)."""
+        write_yaml(self.spec_path, schema.stamp("asset", {**self.spec(), **fields}))
+
     @classmethod
     def create(cls, path: Path, kind: str, canvas: Mapping[str, int], **fields: Any) -> Asset:
         if kind not in KINDS:

@@ -464,3 +464,56 @@ def serialize(doc: AseDocument) -> bytes:
 
 def write_aseprite(path: Path, doc: AseDocument) -> None:
     write_bytes_atomic(path, serialize(doc))
+
+
+# -- flattening --------------------------------------------------------------------------
+def flatten_frames(doc: AseDocument) -> list[tuple[npt.NDArray[np.uint8], int]]:
+    """Each frame as an H x W x 4 RGBA image (visible normal layers, alpha over) + duration."""
+    layers = doc.layers()
+    palette = doc.palette()
+    lut = np.zeros((256, 4), np.uint8)
+    for i, e in enumerate(palette[:256]):
+        lut[i] = (e.r, e.g, e.b, e.a)
+    if doc.depth == 8 and doc.transparent_index < 256:
+        lut[doc.transparent_index, 3] = 0
+    out = []
+    for f, frame in enumerate(doc.frames):
+        canvas = np.zeros((doc.height, doc.width, 4), np.float64)
+        cels = sorted(doc.cels(f), key=lambda c: (c.layer + c.z_index, c.z_index))
+        for cel in cels:
+            if cel.kind == CEL_LINKED:
+                linked = [c for c in doc.cels(cel.link) if c.layer == cel.layer]
+                if not linked:
+                    continue
+                cel = linked[0]
+            if cel.pixels is None or cel.layer >= len(layers):
+                continue
+            layer = layers[cel.layer]
+            if not layer.flags & 1 or layer.type != 0:
+                continue
+            rgba = _cel_rgba(cel.pixels, doc.depth, lut)
+            h, w = rgba.shape[:2]
+            y0, x0 = max(cel.y, 0), max(cel.x, 0)
+            y1, x1 = min(cel.y + h, doc.height), min(cel.x + w, doc.width)
+            if y1 <= y0 or x1 <= x0:
+                continue
+            src = rgba[y0 - cel.y : y1 - cel.y, x0 - cel.x : x1 - cel.x].astype(np.float64)
+            alpha = src[..., 3:] / 255 * (cel.opacity / 255) * (layer.opacity / 255)
+            dst = canvas[y0:y1, x0:x1]
+            out_a = alpha + dst[..., 3:] / 255 * (1 - alpha)
+            safe = np.where(out_a > 0, out_a, 1)
+            rgb = (src[..., :3] * alpha + dst[..., :3] * (dst[..., 3:] / 255) * (1 - alpha)) / safe
+            dst[..., :3], dst[..., 3:] = rgb, out_a * 255
+        out.append((np.rint(canvas).astype(np.uint8), frame.duration))
+    return out
+
+
+def _cel_rgba(
+    pixels: npt.NDArray[np.uint8], depth: int, lut: npt.NDArray[np.uint8]
+) -> npt.NDArray[np.uint8]:
+    if depth == 32:
+        return pixels
+    if depth == 16:
+        v, a = pixels[..., 0], pixels[..., 1]
+        return np.dstack([v, v, v, a]).astype(np.uint8)
+    return lut[pixels[..., 0]]
