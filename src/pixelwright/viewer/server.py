@@ -28,6 +28,7 @@ from pixelwright.cli.registry import REGISTRY, Outcome, PwError
 from pixelwright.core.image import RGBImage
 from pixelwright.core.render import grayscale, value_map
 from pixelwright.io.aseprite import flatten_frames, read_aseprite
+from pixelwright.io.palette_io import read_palette, read_ramps
 from pixelwright.io.png import encode_png, read_png
 from pixelwright.workspace import Workspace
 
@@ -134,7 +135,29 @@ def asset_detail(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
         )
     events = cli(v, "inbox", reader="human").data["items"]
     inbox = sum(e.get("asset") == asset.id for e in events)
-    return Reply({"id": asset.id, "spec": asset.spec(), "versions": versions, "inbox": inbox})
+    body = {"id": asset.id, "spec": asset.spec(), "versions": versions, "inbox": inbox}
+    return Reply({**body, **_palette_info(Workspace.open(v.root), asset.spec().get("palette"))})
+
+
+def _palette_info(ws: Workspace, ref: object) -> dict[str, Any]:
+    """The asset palette as hex, and which style ramp each index belongs to (status bar)."""
+    if not ref:
+        return {"palette": [], "ramps": {}}
+    style = ws.path("style")
+    path = style / str(ref).removeprefix("style:")
+    if not path.is_file():
+        return {"palette": [], "ramps": {}}
+    palette = [c.hex for c in read_palette(path).colors]
+    ramp_of: dict[str, str] = {}
+    guide = ws.style()
+    if guide.ramps:
+        ramps_file = style / guide.ramps
+        ramps = read_ramps(ramps_file)
+        if ramps.palette and (ramps_file.parent / ramps.palette).resolve() == path.resolve():
+            for name, ramp in ramps.ramps.items():
+                for step, index in enumerate(ramp.indices):
+                    ramp_of[str(index)] = f"{name} {step + 1}/{len(ramp.indices)}"
+    return {"palette": palette, "ramps": ramp_of}
 
 
 def _version_dir(v: Viewer, p: dict[str, str]) -> Path:
@@ -354,6 +377,11 @@ class Handler(BaseHTTPRequestHandler):
             raise PwError("not_found", f"no file {path}")
         if parts[0] == "cache":  # renders the API points at (diff overlays)
             file = Workspace.open(self.server.root).path("cache").joinpath(*parts[1:])
+            if not file.is_file():
+                raise PwError("not_found", f"no file {path}")
+            return Reply(file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"))
+        if parts[0] == "assets" and len(parts) == 4 and parts[2] == "masks":  # issue masks
+            file = Workspace.open(self.server.root).asset(parts[1]).path / "masks" / parts[3]
             if not file.is_file():
                 raise PwError("not_found", f"no file {path}")
             return Reply(file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"))

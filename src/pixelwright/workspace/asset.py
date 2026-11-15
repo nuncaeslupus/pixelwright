@@ -198,8 +198,17 @@ class Asset:
         if decision not in DECISIONS:
             raise ValueError(f"decision must be one of {DECISIONS}")
         self.meta(version)  # must exist and validate
-        record = {"event": "decision", "version": version, "decision": decision}
+        record: dict[str, Any] = {"event": "decision", "version": version, "decision": decision}
+        record["measurements"] = self._measurements(version)
         self._log({**record, "author": _check_author(author), "note": note})
+
+    def _measurements(self, version: str) -> list[dict[str, Any]]:
+        """The version's check results, logged with each decision (`R-CRIT-4`)."""
+        path = self.versions_dir / version / "report.json"
+        if not path.is_file():
+            return []
+        results = json.loads(path.read_text(encoding="utf-8")).get("results", [])
+        return [{k: r.get(k) for k in ("check", "status", "value")} for r in results]
 
     def note(self, text: str, *, author: str = "human", version: str | None = None) -> None:
         record = {"event": "note", "version": version, "note": text}
