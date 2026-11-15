@@ -77,6 +77,7 @@ def test_gitignore_follows_commit_stages(tmp_path: Path) -> None:
     assert text.count(BEGIN) == 1
     assert _block(tmp_path) == [
         "/cache/",
+        "/.pixelwright/secrets.toml",
         "/experiments/",
         "/assets/*/drafts/",
         "/assets/*/versions/*/",
@@ -86,4 +87,4 @@ def test_gitignore_follows_commit_stages(tmp_path: Path) -> None:
 
 def test_gitignore_commit_everything_ignores_only_cache(tmp_path: Path) -> None:
     Workspace.init(tmp_path, WorkspaceConfig(commit=["experiment", "draft", "approved", "final"]))
-    assert _block(tmp_path) == ["/cache/"]
+    assert _block(tmp_path) == ["/cache/", "/.pixelwright/secrets.toml"]
