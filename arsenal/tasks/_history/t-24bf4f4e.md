@@ -5,6 +5,7 @@ label: "T20: Issue and inbox commands"
 priority: 5
 deps: [t-c347f49a]
 tags: [m2]
+status: merged
 ---
 
 `pw issue add|list|resolve`, `pw history`, `pw status <id>`, `pw inbox [--since]`; MCP mirrors from the registry.
