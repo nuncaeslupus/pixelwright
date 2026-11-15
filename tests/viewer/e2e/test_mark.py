@@ -31,15 +31,19 @@ def mask_of(viewer: Viewer, issue_id: str) -> Any:
     return read_png(asset.path / issue["file"]).to_rgba()[..., 0] > 127, issue
 
 
+# True once the 16-pixel-wide image is drawn at the zoom the slider shows.
+DRAWN = """() => {
+  const c = document.getElementById("cv"), z = +document.getElementById("zoom").value;
+  return c && z > 1 && c.getBoundingClientRect().width === 16 * z;
+}"""
+
+
 def open_mark(page: Any, viewer: Viewer) -> None:
     page.goto(viewer.url + "#/hero/v0002/mark")
     expect(page.get_by_role("toolbar", name="Mark tools")).to_be_visible()
     expect(page.locator("#cv")).to_be_visible()
     # The first draw sets the zoom: wait until the canvas is drawn at it.
-    page.wait_for_function(
-        "() => { const c = document.getElementById('cv'), z = +document.getElementById('zoom').value;"
-        " return c && z > 1 && c.getBoundingClientRect().width === 16 * z; }"
-    )
+    page.wait_for_function(DRAWN)
 
 
 def test_saved_mark_is_an_issue_in_native_pixels(page: Any, viewer: Viewer) -> None:
