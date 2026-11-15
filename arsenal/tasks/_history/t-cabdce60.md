@@ -5,6 +5,7 @@ label: "T15: CLI pw"
 priority: 5
 deps: [t-33df13ba, t-885ede2f, t-a644041a, t-4a9b180f, t-e3a4302c]
 tags: [m0-m1]
+status: merged
 ---
 
 CLI `pw` with JSON envelope: init, new, attach, snap, quantize, clean, check, render, diff, mask, approve, reject, export, palette, style, prune.

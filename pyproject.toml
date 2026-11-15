@@ -13,6 +13,9 @@ dependencies = [
     "tomli-w>=1.2.0",
 ]
 
+[project.scripts]
+pw = "pixelwright.cli:main"
+
 [dependency-groups]
 dev = [
     "mypy>=1.13",

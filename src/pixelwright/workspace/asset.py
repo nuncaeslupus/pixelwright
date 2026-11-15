@@ -199,13 +199,28 @@ class Asset:
         record = {"event": "note", "version": version, "note": text}
         self._log({**record, "author": _check_author(author)})
 
+    def exported(self, version: str, files: list[str]) -> None:
+        self.meta(version)
+        self._log({"event": "export", "version": version, "files": files})
+
     def stage(self, version: str) -> str:
-        """Current stage of a version: its meta stage, overridden by the last decision."""
+        """Current stage: meta stage, then the last decision; an export makes it final."""
         stage = str(self.meta(version)["stage"])
         for rec in self.history():
-            if rec["event"] == "decision" and rec.get("version") == version:
+            if rec.get("version") != version:
+                continue
+            if rec["event"] == "decision":
                 stage = "approved" if rec["decision"] == "approve" else "draft"
+            elif rec["event"] == "export":
+                stage = "final"
         return stage
+
+    def clear_masks(self) -> int:
+        entries = self.masks()
+        for entry in entries:
+            (self.path / entry["file"]).unlink(missing_ok=True)
+        self.masks_index.unlink(missing_ok=True)
+        return len(entries)
 
     # -- masks --------------------------------------------------------------
     @property
