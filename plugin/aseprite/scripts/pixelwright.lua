@@ -16,8 +16,9 @@ function M.pw(args, params)
   local handle = assert(io.popen(table.concat(parts, " ")))
   local out = handle:read("a")
   handle:close()
+  -- Aseprite's json.decode returns userdata, not a table: only check that it decoded.
   local ok, env = pcall(json.decode, out)
-  if not ok or type(env) ~= "table" then
+  if not ok or env == nil then
     error("pw returned no JSON envelope: " .. tostring(out))
   end
   if not env.ok then
@@ -48,8 +49,9 @@ function M.params(names, title)
   return values
 end
 
+-- GUI: a dialog. Headless: raise, so Aseprite exits non-zero and the caller notices.
 function M.fail(message)
-  if app.isUIAvailable then app.alert(message) else print(message) end
+  if app.isUIAvailable then app.alert(message) else error(message, 0) end
 end
 
 return M

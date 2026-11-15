@@ -17,5 +17,9 @@ aseprite -b hero.aseprite --script-param asset=hero --script-param note="fixed t
   --script send_to_pixelwright.lua
 ```
 
+In the GUI, the first run opens Aseprite's *Security* dialog: the scripts shell out to
+`pw`, so grant *Allow Execute Access* (tick *Give full trust to this script* to be asked
+only once). Batch mode (`-b`) never asks.
+
 Python wrapper: `pixelwright.io.aseprite_cli` (`export`, `run_script`); set
 `PW_ASEPRITE` if the binary is not on `PATH`.

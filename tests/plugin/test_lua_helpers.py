@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -50,12 +51,41 @@ def test_attach_records_parent_and_note(
     assert notes[-1]["note"] == "hands" and notes[-1]["version"] == env["version"]
 
 
-@pytest.mark.skipif(aseprite_cli.find_aseprite() is None, reason="no Aseprite binary")
-def test_send_to_pixelwright_creates_draft_and_note(workspace: Path) -> None:
+def _pw_path() -> str:
+    """The `pw` the Lua helpers shell out to; under `uv run` it is the venv one."""
     pw = shutil.which("pw")
     assert pw is not None
-    params = {"asset": "hero", "note": "retouched", "workspace": str(workspace), "pw": pw}
-    aseprite_cli.run_script("send_to_pixelwright.lua", params, workspace.parent / "hero.png")
+    return pw
+
+
+needs_aseprite = pytest.mark.skipif(
+    aseprite_cli.find_aseprite() is None, reason="no Aseprite binary"
+)
+
+
+@needs_aseprite
+def test_send_to_pixelwright_creates_draft_and_note(workspace: Path) -> None:
+    params = {"asset": "hero", "note": "retouched", "workspace": str(workspace), "pw": _pw_path()}
+    done = aseprite_cli.run_script("send_to_pixelwright.lua", params, workspace.parent / "hero.png")
+    # Aseprite exits 0 on a swallowed script error, so check what the script printed too.
+    assert "pixelwright: hero v0001" in done.stdout
     asset = Workspace.open(workspace).asset("hero")
     assert asset.versions() == ["v0001"]
     assert any(h["event"] == "note" and h["note"] == "retouched" for h in asset.history())
+
+
+@needs_aseprite
+def test_load_version_opens_the_latest_version(workspace: Path) -> None:
+    src = str(workspace.parent / "hero.png")
+    assert main(["attach", "hero", src, "--workspace", str(workspace)]) == 0
+    params = {"asset": "hero", "workspace": str(workspace), "pw": _pw_path()}
+    done = aseprite_cli.run_script("load_version.lua", params)
+    assert "pixelwright: opened hero v0001" in done.stdout
+
+
+@needs_aseprite
+def test_a_failing_script_exits_non_zero(workspace: Path) -> None:
+    params = {"asset": "nosuch", "workspace": str(workspace), "pw": _pw_path()}
+    with pytest.raises(subprocess.CalledProcessError) as exc:
+        aseprite_cli.run_script("load_version.lua", params)
+    assert "not_found" in exc.value.stdout

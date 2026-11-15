@@ -25,6 +25,7 @@ FIT_MARGIN = 0.08
 INNER_REL = 1.3
 INNER_ABS = 2.0  # RMS, 0-255 units
 MULTIPLE_KEEP = 0.8  # a multiple of the pick keeping this share of its raw on-grid weight wins
+MULTIPLE_INNER = 1.0  # ... if its inner error is at most this times the pick's (+ INNER_ABS / 2)
 
 
 @dataclass(frozen=True)
@@ -186,11 +187,15 @@ def detect_grid(
     scale = max(s for s in candidates if inner[s] <= limit)
     # With many off-grid peaks (noise, gradients) chance normalization favors divisors of
     # the true scale. A multiple of a wrong divisor keeps about half of its on-grid peaks;
-    # the true scale keeps nearly all of them.
+    # the true scale keeps nearly all of them. Blurred art drawn mostly in 2x2 blocks also
+    # keeps most peaks on a multiple, but there its cells straddle the 1-px details.
     multiples = [m for m in fits if m > scale > MIN_SCALE and m % scale == 0]
     for m in sorted(multiples, reverse=True):
-        if raw.get(m, 0.0) >= MULTIPLE_KEEP * raw[scale] and (
-            _inner_error(rgb, m, *phases[m]) <= limit
+        m_inner = _inner_error(rgb, m, *phases[m])
+        if (
+            raw.get(m, 0.0) >= MULTIPLE_KEEP * raw[scale]
+            and m_inner <= limit
+            and m_inner <= MULTIPLE_INNER * inner[scale] + INNER_ABS / 2
         ):
             scale = m
             break

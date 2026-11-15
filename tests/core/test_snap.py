@@ -70,3 +70,21 @@ def test_noisy_low_contrast_dither_keeps_the_large_scale() -> None:
         art = IndexedImage.from_array(idx, pal)
         hits += snap(degrade(art, Degradation(12, (3, 5), noise=5.0), rng)).scale == 12
     assert hits >= 10
+
+
+def test_blurred_art_on_an_even_subgrid_keeps_the_true_scale() -> None:
+    """Art built mostly from 2x2 blocks (as on VGA screenshots) puts most borders on a
+    grid of twice the scale too; after blur its coarse cells straddle the sparse 1-px
+    details, so they are less uniform than the true scale's and must not win."""
+    hits = 0
+    for seed in range(60):
+        rng = np.random.default_rng(seed)
+        base = make_art(rng, 24, 18)
+        idx = np.kron(base.indices, np.ones((2, 2), dtype=np.uint16))
+        detail = rng.random(idx.shape) < 0.05
+        idx[detail] = rng.integers(0, len(base.palette.colors), int(detail.sum()))
+        art = IndexedImage.from_array(idx, base.palette)
+        scale = int(rng.integers(5, 9))
+        observed = degrade(art, Degradation(scale, (1, 2), blur=scale / 4), rng)
+        hits += snap(observed).scale == scale
+    assert hits >= 55
