@@ -433,8 +433,40 @@ def cmd_diff(root: Path, a: dict[str, Any]) -> Outcome:
     )
     out = ws.path("cache") / "renders" / asset.id / f"diff-{va}-{vb}.png"
     write_png(out, RGBImage(upscale(overlay(rb, changed), 4)))
-    data = {"changed": int(changed.sum()), "share": float(changed.mean()), "bbox": bbox}
+    data = {
+        "changed": int(changed.sum()),
+        "share": float(changed.mean()),
+        "bbox": bbox,
+        "colors": [_colors_used(ra), _colors_used(rb)],
+        "checks": _check_deltas(asset, va, vb),
+    }
     return Outcome(asset.id, vb, asset.stage(vb), [_rel(ws, out)], data)
+
+
+def _colors_used(rgba: npt.NDArray[np.uint8]) -> int:
+    opaque = rgba[rgba[..., 3] > 0]
+    return int(np.unique(opaque.reshape(-1, 4), axis=0).shape[0]) if opaque.size else 0
+
+
+def _check_deltas(asset: Asset, va: str, vb: str) -> list[dict[str, Any]]:
+    """Per check: status and value in A and in B, from each version's report.json."""
+
+    def results(version: str) -> dict[str, dict[str, Any]]:
+        path = asset.versions_dir / version / "report.json"
+        return {r["check"]: r for r in C.read_report(path)} if path.exists() else {}
+
+    ra, rb = results(va), results(vb)
+    rows = []
+    for name in sorted(ra.keys() | rb.keys()):
+        a, b = ra.get(name), rb.get(name)
+        rows.append(
+            {
+                "check": name,
+                "a": {"status": a["status"], "value": a["value"]} if a else None,
+                "b": {"status": b["status"], "value": b["value"]} if b else None,
+            }
+        )
+    return rows
 
 
 # -- review -------------------------------------------------------------------

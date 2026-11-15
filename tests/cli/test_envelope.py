@@ -115,3 +115,25 @@ def test_errors_use_the_envelope(files: Path, capsys: pytest.CaptureFixture[str]
     pw(capsys, "init", *ws)
     assert pw(capsys, "snap", "ghost", *ws, code=3)["error"]["code"] == "not_found"
     assert pw(capsys, "new", "Bad_Id", "--kind", "prop", *ws, code=3)["error"]["code"] == "invalid"
+
+
+def test_diff_reports_check_deltas_and_changed_area(
+    files: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    w = ["--workspace", str(files / "ws")]
+    pw(capsys, "init", "--canvas", "16x12", *w)
+    pw(capsys, "palette", "import", "--file", str(files / "scene.gpl"), *w)
+    pw(capsys, "new", "hero", "--kind", "sprite", "--palette", "palettes/scene.gpl", *w)
+    pw(capsys, "attach", "hero", str(files / "src.png"), *w)
+    pw(capsys, "snap", "hero", *w)
+    pw(capsys, "quantize", "hero", *w)
+    main(["check", "hero", *w, "--json"])  # exit code depends on the findings
+    capsys.readouterr()
+    pw(capsys, "mask", "hero", "add", "--file", str(files / "focal.png"), "--id", "focal", *w)
+    pw(capsys, "clean", "hero", "--mask", "focal", *w)
+    data = pw(capsys, "diff", "hero", "v0003", "v0004", *w)["data"]
+    assert len(data["colors"]) == 2 and all(c >= 1 for c in data["colors"])
+    rows = {r["check"]: r for r in data["checks"]}
+    assert rows and all(r["a"] is not None and r["b"] is None for r in rows.values())
+    assert data["changed"] == 0 or len(data["bbox"]) == 4
