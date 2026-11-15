@@ -28,6 +28,7 @@ class StyleGuide:
     dithering: dict[str, Any] = field(default_factory=lambda: {"allowed": False})
     references: list[str] = field(default_factory=list)
     presets: dict[str, Any] = field(default_factory=dict)
+    test_assets: list[str] = field(default_factory=list)  # asset ids `style test` checks
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:

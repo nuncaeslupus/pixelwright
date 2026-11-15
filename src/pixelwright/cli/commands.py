@@ -16,18 +16,18 @@ from pixelwright.cli.registry import EXIT_CHECK, Outcome, Param, PwError, comman
 from pixelwright.core import checks as C
 from pixelwright.core.clean import clean
 from pixelwright.core.image import Image, IndexedImage, RGBImage
-from pixelwright.core.palette import Palette, Ramps
+from pixelwright.core.palette import Color, Palette, Ramps, analyze_ramp, propose_ramps
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.render import grayscale, overlay, upscale, value_map
 from pixelwright.core.snap import snap
 from pixelwright.io.aseprite import flatten_frames, read_aseprite
-from pixelwright.io.palette_io import read_palette, write_palette
+from pixelwright.io.palette_io import read_palette, read_ramps, write_palette, write_ramps
 from pixelwright.io.png import encode_png, read_png, write_png
 from pixelwright.workspace import Asset, Workspace, WorkspaceConfig, critique
 from pixelwright.workspace.asset import KINDS
 from pixelwright.workspace.files import sha256_bytes, write_bytes_atomic
 from pixelwright.workspace.schema import SchemaError
-from pixelwright.workspace.style import bump_style, load_ramps
+from pixelwright.workspace.style import bump_style, load_ramps, style_path
 
 Mask = npt.NDArray[np.bool_]
 IMAGE = "image.png"
@@ -672,17 +672,23 @@ def cmd_export(root: Path, a: dict[str, Any]) -> Outcome:
         help="what to do",
         required=True,
         positional=True,
-        choices=("import", "discover", "show"),
+        choices=("import", "discover", "show", "edit"),
     ),
     Param("file", help="palette file (.gpl or .hex) for import"),
     Param("asset", help="asset id for discover"),
     Param("version", help="version for discover (default: latest)"),
     Param("colors", "int", help="number of colors for discover", default=16),
     Param("name", help="file name under style/palettes/ (default: from the source)"),
+    Param("set", "list", help="edit: replace colors, as INDEX=RRGGBB"),
+    Param("add", "list", help="edit: append colors, as RRGGBB"),
+    Param("remove", "list", help="edit: drop colors by index"),
+    Param("order", help="edit: new order as comma-separated indices, e.g. 2,0,1"),
 )
 def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
     folder = ws.path("style") / "palettes"
+    if a["action"] == "edit":
+        return _palette_edit(ws, folder, a)
     if a["action"] == "show":
         style_dir = ws.path("style")
         sizes = {rel: len(read_palette(style_dir / rel)) for rel in ws.style().palettes}
@@ -708,15 +714,144 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
     return Outcome(outputs=[_rel(ws, dest)], data={"palette": rel, "colors": len(palette)})
 
 
+def _palette_edit(ws: Workspace, folder: Path, a: dict[str, Any]) -> Outcome:
+    if not a["name"]:
+        raise PwError("invalid", "palette edit needs --name")
+    path = folder / str(a["name"]).removeprefix("palettes/")
+    if not path.is_file():
+        raise PwError("not_found", f"no such palette: {a['name']}")
+    colors = list(read_palette(path).colors)
+    try:
+        for item in a["set"]:
+            index, _, value = item.partition("=")
+            colors[int(index)] = Color.from_hex(value, colors[int(index)].name)
+        for index in sorted({int(i) for i in a["remove"]}, reverse=True):
+            del colors[index]
+        colors += [Color.from_hex(v) for v in a["add"]]
+        if a["order"]:
+            order = [int(i) for i in a["order"].split(",")]
+            if sorted(order) != list(range(len(colors))):
+                raise ValueError(f"--order must list each of the {len(colors)} indices once")
+            colors = [colors[i] for i in order]
+    except (ValueError, IndexError) as exc:
+        raise PwError("invalid", f"palette edit: {exc}") from exc
+    old = read_palette(path)
+    palette = Palette(colors, old.name, old.columns)
+    write_palette(path, palette)
+    rel = _register_palette(ws, path, note=f"palette edit: {path.name}")
+    data: dict[str, Any] = {
+        "palette": rel,
+        "colors": len(palette),
+        "ramps": _recheck_ramps(ws, path, palette),
+    }
+    warnings = [f"ramp {r['ramp']}: {r['error']}" for r in data["ramps"] if "error" in r]
+    return Outcome(outputs=[_rel(ws, path)], data=data, warnings=warnings)
+
+
+def _recheck_ramps(ws: Workspace, path: Path, palette: Palette) -> list[dict[str, Any]]:
+    """Re-analyze the style's ramps when they index into the edited palette."""
+    guide = ws.style()
+    if not guide.ramps:
+        return []
+    ramps_file = ws.path("style") / guide.ramps
+    ramps = read_ramps(ramps_file)
+    target = (ramps_file.parent / ramps.palette).resolve() if ramps.palette else None
+    if target != path.resolve():
+        return []
+    rows: list[dict[str, Any]] = []
+    for name, ramp in ramps.ramps.items():
+        if any(not 0 <= i < len(palette) for i in ramp.indices):
+            rows.append({"ramp": name, "error": "indices outside the palette"})
+            continue
+        report = analyze_ramp(palette, ramp)
+        rows.append(
+            {
+                "ramp": name,
+                "monotonic_lightness": report.monotonic_lightness,
+                "hue_shift_deg": round(report.hue_shift_deg, 1),
+            }
+        )
+    return rows
+
+
+def _style_propose(ws: Workspace, a: dict[str, Any]) -> Outcome:
+    style_dir = ws.path("style")
+    files = [Path(f) for f in a["file"]] or [
+        *(style_dir / r for r in ws.style().references),
+        *sorted((style_dir / "references").glob("*.png")),
+    ]
+    files = [f for f in dict.fromkeys(files) if f.suffix.lower() == ".png"]
+    if not files:
+        raise PwError("invalid", "style propose needs reference PNGs (--file or style/references/)")
+    pixels = []
+    for f in files:
+        if not f.is_file():
+            raise PwError("not_found", f"no such file: {f}")
+        rgba = read_png(f).to_rgba().reshape(-1, 4)
+        pixels.append(rgba[rgba[:, 3] > 0])
+    stacked = np.concatenate(pixels)[None, :, :]
+    palette = discover_palette(RGBImage(np.ascontiguousarray(stacked)), a["colors"])
+    pal_path = style_dir / "palettes" / "proposed.gpl"
+    ramps_path = style_dir / "palettes" / "proposed-ramps.yaml"
+    write_palette(pal_path, palette)
+    ramps = propose_ramps(palette)
+    ramps.palette = pal_path.name
+    write_ramps(ramps_path, ramps)
+    data = {
+        "palette": _rel_style(ws, pal_path),
+        "ramps": {n: [palette[i].hex for i in r.indices] for n, r in ramps.ramps.items()},
+        "references": [str(f) for f in files],
+    }
+    return Outcome(outputs=[_rel(ws, pal_path), _rel(ws, ramps_path)], data=data)
+
+
+def _style_test(ws: Workspace, root: Path, a: dict[str, Any]) -> Outcome:
+    ids = a["assets"] or ws.style().test_assets
+    if not ids:
+        raise PwError("invalid", "no test assets: pass --assets or set test_assets in the style")
+    rows, warnings = [], []
+    for asset_id in ids:
+        args: dict[str, Any] = {
+            "asset": asset_id,
+            "version": None,
+            "checks": [],
+            "mask": None,
+            "layers": [],
+        }
+        out = cmd_check(root, {**args, "file": None, "scale": 1})
+        failed = [r["check"] for r in out.data["results"] if r["status"] == "fail"]
+        rows.append({"asset": asset_id, "version": out.version, "failed": failed, **out.data})
+        warnings += [f"{asset_id}: {w}" for w in out.warnings]
+    data = {
+        "style_version": ws.style().version,
+        "assets": rows,
+        "passed": not any(r["failed"] for r in rows),
+    }
+    return Outcome(outputs=[_rel(ws, style_path(ws.path("style")))], data=data, warnings=warnings)
+
+
 @command(
     "style",
-    "show the style guide or bump it with changes",
-    Param("action", help="what to do", required=True, positional=True, choices=("show", "bump")),
+    "show, bump, propose (palette and ramps from references) or test the style guide",
+    Param(
+        "action",
+        help="what to do",
+        required=True,
+        positional=True,
+        choices=("show", "bump", "propose", "test"),
+    ),
     Param("changes", help='JSON object of fields to change, e.g. {"notes": "..."}'),
     Param("note", help="why", default=""),
+    Param("file", "list", help="propose: reference PNGs (default: style/references/)"),
+    Param("colors", "int", help="propose: palette size", default=16),
+    Param("assets", "list", help="test: asset ids (default: the style's test_assets)"),
 )
 def cmd_style(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
+    if a["action"] == "propose":
+        return _style_propose(ws, a)
+    if a["action"] == "test":
+        return _style_test(ws, root, a)
     if a["action"] == "bump":
         try:
             changes = json.loads(a["changes"] or "")

@@ -137,3 +137,36 @@ def analyze_ramp(palette: Palette, ramp: Ramp | Sequence[int]) -> RampReport:
         monotonic_lightness=bool(np.all(np.diff(lightness) > 0)),
         hue_shift_deg=shift,
     )
+
+
+# OKLCH hue bands (degrees, upper bounds); pure sRGB red sits near 29, blue near 264.
+FAMILIES = (
+    (45.0, "red"),
+    (80.0, "orange"),
+    (125.0, "yellow"),
+    (175.0, "green"),
+    (230.0, "cyan"),
+    (300.0, "blue"),
+    (350.0, "magenta"),
+    (360.0, "red"),
+)
+
+
+def hue_family(hue: float) -> str:
+    return next(name for top, name in FAMILIES if hue % 360.0 < top)
+
+
+def propose_ramps(palette: Palette, neutral_chroma: float = 0.03) -> Ramps:
+    """Group colors into hue families (OKLCH bands, plus neutrals) and order each dark
+    to light. Families with fewer than two colors get no ramp."""
+    lch = oklab_to_oklch(palette.oklab())
+    groups: dict[str, list[int]] = {}
+    for i, (_, chroma, hue) in enumerate(lch):
+        family = "neutral" if chroma < neutral_chroma else hue_family(float(hue))
+        groups.setdefault(family, []).append(i)
+    ramps = {
+        name: Ramp(tuple(sorted(members, key=lambda i: float(lch[i, 0]))))
+        for name, members in groups.items()
+        if len(members) >= 2
+    }
+    return Ramps(ramps)
