@@ -4,7 +4,7 @@
 **Ticket / PR**: initial specification
 **Author**: Claude (for the repository owner)
 **Revision**: 2
-**Status**: draft
+**Status**: approved (2026-11-15, revision 2) — without annotations
 **Revision log**:
 - r1 — first draft, built from the project brief and the research in `docs/research/` (v1.10)
 - r2 — applied `pixelwright-spec-v1-2026-11-15-1209-notes.md` (13 notes): sizes are per asset, character-in-scene and lighting, effects, game-repo integration with experiments vs finals, style definition as the first workflow, privacy check without a deny-list, open questions resolved
@@ -305,4 +305,88 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 
 ---
 
-> Sections 5–6 (contracts, risks) are appended by `design`.
+## 5. Contracts
+
+All file formats carry `schema: pixelwright/<name>@<major>`. Readers accept the current major and refuse a newer one with a clear error; a major bump ships a `pw migrate` step. Paths inside files are relative to the asset folder unless they start with a workspace role (`style:`, `game:`).
+
+### API contracts
+
+#### CLI result envelope (`pw <command> --json`)
+
+- **Auth**: none (local)
+- **Request**: command-line arguments; every command accepts `--workspace <dir>` (default: nearest parent with `pixelwright.toml`) and `--json`.
+- **Response (exit 0)**:
+  ```json
+  {"ok": true, "command": "snap", "asset": "bg-harbour-night",
+   "version": "v0004", "stage": "draft",
+   "outputs": ["assets/bg-harbour-night/versions/v0004/image.png"],
+   "data": {"scale": 6, "offset": [2, 3], "confidence": 0.97},
+   "warnings": [], "duration_ms": 412}
+  ```
+- **Errors**: exit 2 usage error, exit 3 validation error (bad spec/schema), exit 4 check failure on `export`, exit 5 provider error, exit 6 budget exceeded. Body: `{"ok": false, "error": {"code": "palette_mismatch", "message": "...", "details": {}}}`.
+- **Backwards compatible**: additive fields only within a schema major.
+
+#### MCP tools (`pw mcp`, stdio, MCP spec)
+
+- **Auth**: none (local stdio process started by Claude Code / Desktop)
+- **Request** (example `check`):
+  ```json
+  {"asset": "bg-harbour-night", "version": "v0004", "checks": ["palette", "orphans", "line-runs"], "mask": null}
+  ```
+- **Response**: the CLI envelope as structured content; `render` additionally returns image content (PNG, integer-upscaled, longest side <= 1024 px) plus the file path.
+- **Errors**: MCP tool error with the envelope's `error` object.
+- **Backwards compatible**: tool names and parameters mirror CLI commands one to one; a parity test enforces it.
+
+#### Provider interface (Python)
+
+```python
+class Provider(Protocol):
+    name: str
+    capabilities: Capabilities   # img2img, n_references, style_refs, mask_inpaint,
+                                 # palette_input, max_size, animation, price_per_image,
+                                 # watermark, licence_note
+    def estimate(self, req: GenRequest) -> Cost: ...
+    def generate(self, req: GenRequest) -> GenResult: ...   # images + raw response + cost
+```
+
+`GenRequest` = mode (`txt2img|img2img|edit|inpaint|animate`), prompt, init image, mask, references, palette, size, seed, provider params. Requests are hashed (canonical JSON + input image hashes) and cached in `cache/`; a cache hit costs 0 and is logged as such.
+
+### Inter-service contracts
+
+| Caller | Callee | Protocol | Contract | Failure handling |
+|--------|--------|----------|----------|-----------------|
+| Claude Code / Desktop | `pw mcp` | MCP over stdio | Tools mirror CLI; envelope above | Tool error returned; no partial writes (write to temp, then rename) |
+| `pw` core | Provider APIs | HTTPS | `Provider` protocol | Retry 2x with backoff on 429/5xx; budget check before every call; exit 5/6 |
+| `pw` core | Local ComfyUI | HTTP on localhost | ComfyUI workflow JSON per preset | Clear error when not running |
+| `pw` core | Aseprite (optional) | CLI `aseprite --batch --script` | Lua helpers in `plugin/aseprite/` | Feature disabled with a warning when Aseprite is absent |
+| Aseprite Lua helpers | Workspace files | File system | "Send to pixelwright" writes `drafts/<ts>.aseprite` + note; "Load version" opens `versions/vNNNN/image.aseprite` | Helper shows the error in an Aseprite dialog |
+| Viewer (`pw view`) | Workspace files | HTTP on 127.0.0.1 | Reads versions and reports; writes only `masks/` and `history.jsonl` via core functions | Refuses non-local connections |
+
+### Database migrations
+
+No database. File schemas (versioned as above):
+
+| Service | Database | Change | Reversible | Forward-compatible |
+|---------|----------|--------|------------|-------------------|
+| core | `pixelwright.toml` | create `@1`: roles to paths, defaults (canvas 320x180), stages to commit, providers, budgets | yes | yes |
+| core | `style/style.yaml` | create `@1`: version, palettes, ramps, light/outline/density/dither conventions, references, generation presets | yes | yes |
+| core | `asset.yaml` | create `@1` (section 2.4) plus `style_version` and `stage` | yes | yes |
+| core | `versions/vNNNN/meta.yaml` | create `@1`: parent, step, params, provider, request hash, cost, seed, input and output SHA-256 | yes | yes |
+| core | `report.json` | create `@1`: `[{"check","rule","status","value","threshold","regions":[{"box":[x,y,w,h]}|{"mask":"..."}]}]` | yes | yes |
+| core | `masks/masks.yaml` | create `@1`: id, file, rule, note, author (`human`/`claude`/`check`), created | yes | yes |
+| core | `history.jsonl` | create `@1`: one JSON object per event (`step`, `decision`, `note`, `style_bump`); append-only | yes | yes |
+
+## 6. Risks & Validation
+
+| Risk | Likelihood | Impact | Mitigation | Validation |
+|------|-----------|--------|------------|------------|
+| Grid snap fails on heavily blurred or non-uniform generator output | Med | High | Edge-profile autocorrelation plus fallback to user-given scale; benchmark reused implementations; report confidence | unit tests on synthetic fixtures; benchmark in M3 |
+| Detector thresholds give many false warnings, so the report is ignored | High | Med | Start with warn-only for uncalibrated checks; calibration from approved assets (`R-CRIT-5`); fixture precision/recall gates | fixture tests; calibration report |
+| `.aseprite` format details (compression, tilemaps, user data) break round-trip | Med | Med | Implement the documented spec; unsupported chunks preserved raw; fixtures exported from a real Aseprite build | round-trip tests |
+| Provider APIs, models or prices change | High | Med | Provider adapters isolated; capability flags; cached responses; re-check before M3 | contract tests with recorded responses |
+| Provider output licence unsuitable for a published game | Med | High | Record licence per provider before use (`R-GEN-3`); local ComfyUI route as fallback | manual review checklist |
+| API spend overruns | Low | Med | Per-workspace budget with hard stop; `estimate` before every call | unit tests on budget guard |
+| Images sent to Claude via MCP too large (token cost) | Med | Med | Crops, integer upscale caps (<= 1024 px), grayscale/value maps instead of full renders | MCP response size test |
+| Personal data or other-project references committed | Low | High | gitleaks in host gate; pre-PR review checklist item; no deny-list in repo | host gate |
+| Reused open-source snapper has an incompatible licence | Med | Low | Licence check before vendoring; own implementation as default | review |
+| Scope creep from animation/scene features into the MVP | Med | Med | M0-M1 plan only; M2-M5 planned in later design rounds | plan review |

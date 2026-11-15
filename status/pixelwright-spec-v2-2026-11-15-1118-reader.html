@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="65e02cfa3d1c4563769a7cbe3166fb44e5799c43030fac7efc973f004a8bbd27">
+<meta name="arsenal-source-sha256" content="ea5f118584ab322e008d87319fed4726a3acc738708d892faf0272eb1a410148">
 <title>Pixelwright — Specification (annotatable)</title>
 <style>
 :root{
@@ -199,7 +199,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
     <button class="btn primary" id="btn-export">Save / Export</button>
   </div>
 </div>
-<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 20 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 25 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
 <div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
 
 <div class="wrap">
@@ -240,6 +240,11 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <li class="sub"><a href="#s-spec-option-c-desktop-application-wit">Option C: Desktop application with embedded editor</a></li>
 <li class="sub"><a href="#s-spec-comparison">Comparison</a></li>
 <li><a href="#s-spec-4">§4 Recommendation</a></li>
+<li><a href="#s-spec-5">§5 Contracts</a></li>
+<li class="sub"><a href="#s-spec-api-contracts">API contracts</a></li>
+<li class="sub"><a href="#s-spec-inter-service-contracts">Inter-service contracts</a></li>
+<li class="sub"><a href="#s-spec-database-migrations">Database migrations</a></li>
+<li><a href="#s-spec-6">§6 Risks &amp; Validation</a></li>
 </ul>
 </details>
   <section class="part">
@@ -249,7 +254,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <strong>Ticket / PR</strong>: initial specification<br />
 <strong>Author</strong>: Claude (for the repository owner)<br />
 <strong>Revision</strong>: 2<br />
-<strong>Status</strong>: draft<br />
+<strong>Status</strong>: approved (2026-11-15, revision 2) — without annotations<br />
 <strong>Revision log</strong>:
 - r1 — first draft, built from the project brief and the research in <code>docs/research/</code> (v1.10)
 - r2 — applied <code>pixelwright-spec-v1-2026-11-15-1209-notes.md</code> (13 notes): sizes are per asset, character-in-scene and lighting, effects, game-repo integration with experiments vs finals, style definition as the first workflow, privacy check without a deny-list, open questions resolved</p>
@@ -970,11 +975,264 @@ checks: {profile: background-default, overrides: {}}
 <td>2026-11-15</td>
 </tr>
 </tbody>
-</table>
-<blockquote>
-<p>Sections 5–6 (contracts, risks) are appended by <code>design</code>.</p>
-</blockquote></div>
+</table></div>
 <div class="note" data-for="s-spec-4"><label class="note-head" for="n-s-spec-4"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §4</span></label><textarea class="note-ta" data-key="s-spec-4" id="n-s-spec-4" data-label="§4 Recommendation" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-5" data-ref="SPEC §5" data-label="§5 Contracts" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§5</span><span class="sec-title">Contracts</span></h3>
+<div class="sec-body"><p>All file formats carry <code>schema: pixelwright/&lt;name&gt;@&lt;major&gt;</code>. Readers accept the current major and refuse a newer one with a clear error; a major bump ships a <code>pw migrate</code> step. Paths inside files are relative to the asset folder unless they start with a workspace role (<code>style:</code>, <code>game:</code>).</p></div>
+<div class="note" data-for="s-spec-5"><label class="note-head" for="n-s-spec-5"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5</span></label><textarea class="note-ta" data-key="s-spec-5" id="n-s-spec-5" data-label="§5 Contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-api-contracts" data-ref="SPEC › API contracts" data-label="API contracts" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">API contracts</span></h4>
+<div class="sec-body"><h4>CLI result envelope (<code>pw &lt;command&gt; --json</code>)</h4>
+<ul>
+<li><strong>Auth</strong>: none (local)</li>
+<li><strong>Request</strong>: command-line arguments; every command accepts <code>--workspace &lt;dir&gt;</code> (default: nearest parent with <code>pixelwright.toml</code>) and <code>--json</code>.</li>
+<li><strong>Response (exit 0)</strong>:
+  <code>json
+  {"ok": true, "command": "snap", "asset": "bg-harbour-night",
+   "version": "v0004", "stage": "draft",
+   "outputs": ["assets/bg-harbour-night/versions/v0004/image.png"],
+   "data": {"scale": 6, "offset": [2, 3], "confidence": 0.97},
+   "warnings": [], "duration_ms": 412}</code></li>
+<li><strong>Errors</strong>: exit 2 usage error, exit 3 validation error (bad spec/schema), exit 4 check failure on <code>export</code>, exit 5 provider error, exit 6 budget exceeded. Body: <code>{"ok": false, "error": {"code": "palette_mismatch", "message": "...", "details": {}}}</code>.</li>
+<li><strong>Backwards compatible</strong>: additive fields only within a schema major.</li>
+</ul>
+<h4>MCP tools (<code>pw mcp</code>, stdio, MCP spec)</h4>
+<ul>
+<li><strong>Auth</strong>: none (local stdio process started by Claude Code / Desktop)</li>
+<li><strong>Request</strong> (example <code>check</code>):
+  <code>json
+  {"asset": "bg-harbour-night", "version": "v0004", "checks": ["palette", "orphans", "line-runs"], "mask": null}</code></li>
+<li><strong>Response</strong>: the CLI envelope as structured content; <code>render</code> additionally returns image content (PNG, integer-upscaled, longest side &lt;= 1024 px) plus the file path.</li>
+<li><strong>Errors</strong>: MCP tool error with the envelope's <code>error</code> object.</li>
+<li><strong>Backwards compatible</strong>: tool names and parameters mirror CLI commands one to one; a parity test enforces it.</li>
+</ul>
+<h4>Provider interface (Python)</h4>
+<pre><code class="language-python">class Provider(Protocol):
+    name: str
+    capabilities: Capabilities   # img2img, n_references, style_refs, mask_inpaint,
+                                 # palette_input, max_size, animation, price_per_image,
+                                 # watermark, licence_note
+    def estimate(self, req: GenRequest) -&gt; Cost: ...
+    def generate(self, req: GenRequest) -&gt; GenResult: ...   # images + raw response + cost
+</code></pre>
+<p><code>GenRequest</code> = mode (<code>txt2img|img2img|edit|inpaint|animate</code>), prompt, init image, mask, references, palette, size, seed, provider params. Requests are hashed (canonical JSON + input image hashes) and cached in <code>cache/</code>; a cache hit costs 0 and is logged as such.</p></div>
+<div class="note" data-for="s-spec-api-contracts"><label class="note-head" for="n-s-spec-api-contracts"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › API contracts</span></label><textarea class="note-ta" data-key="s-spec-api-contracts" id="n-s-spec-api-contracts" data-label="API contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-inter-service-contracts" data-ref="SPEC › Inter-service contracts" data-label="Inter-service contracts" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Inter-service contracts</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Callee</th>
+<th>Protocol</th>
+<th>Contract</th>
+<th>Failure handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code / Desktop</td>
+<td><code>pw mcp</code></td>
+<td>MCP over stdio</td>
+<td>Tools mirror CLI; envelope above</td>
+<td>Tool error returned; no partial writes (write to temp, then rename)</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Provider APIs</td>
+<td>HTTPS</td>
+<td><code>Provider</code> protocol</td>
+<td>Retry 2x with backoff on 429/5xx; budget check before every call; exit 5/6</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Local ComfyUI</td>
+<td>HTTP on localhost</td>
+<td>ComfyUI workflow JSON per preset</td>
+<td>Clear error when not running</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Aseprite (optional)</td>
+<td>CLI <code>aseprite --batch --script</code></td>
+<td>Lua helpers in <code>plugin/aseprite/</code></td>
+<td>Feature disabled with a warning when Aseprite is absent</td>
+</tr>
+<tr>
+<td>Aseprite Lua helpers</td>
+<td>Workspace files</td>
+<td>File system</td>
+<td>"Send to pixelwright" writes <code>drafts/&lt;ts&gt;.aseprite</code> + note; "Load version" opens <code>versions/vNNNN/image.aseprite</code></td>
+<td>Helper shows the error in an Aseprite dialog</td>
+</tr>
+<tr>
+<td>Viewer (<code>pw view</code>)</td>
+<td>Workspace files</td>
+<td>HTTP on 127.0.0.1</td>
+<td>Reads versions and reports; writes only <code>masks/</code> and <code>history.jsonl</code> via core functions</td>
+<td>Refuses non-local connections</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-inter-service-contracts"><label class="note-head" for="n-s-spec-inter-service-contracts"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Inter-service contracts</span></label><textarea class="note-ta" data-key="s-spec-inter-service-contracts" id="n-s-spec-inter-service-contracts" data-label="Inter-service contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-database-migrations" data-ref="SPEC › Database migrations" data-label="Database migrations" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Database migrations</span></h4>
+<div class="sec-body"><p>No database. File schemas (versioned as above):</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Database</th>
+<th>Change</th>
+<th>Reversible</th>
+<th>Forward-compatible</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>core</td>
+<td><code>pixelwright.toml</code></td>
+<td>create <code>@1</code>: roles to paths, defaults (canvas 320x180), stages to commit, providers, budgets</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>style/style.yaml</code></td>
+<td>create <code>@1</code>: version, palettes, ramps, light/outline/density/dither conventions, references, generation presets</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>asset.yaml</code></td>
+<td>create <code>@1</code> (section 2.4) plus <code>style_version</code> and <code>stage</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>versions/vNNNN/meta.yaml</code></td>
+<td>create <code>@1</code>: parent, step, params, provider, request hash, cost, seed, input and output SHA-256</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>report.json</code></td>
+<td>create <code>@1</code>: <code>[{"check","rule","status","value","threshold","regions":[{"box":[x,y,w,h]}|{"mask":"..."}]}]</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>masks/masks.yaml</code></td>
+<td>create <code>@1</code>: id, file, rule, note, author (<code>human</code>/<code>claude</code>/<code>check</code>), created</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>history.jsonl</code></td>
+<td>create <code>@1</code>: one JSON object per event (<code>step</code>, <code>decision</code>, <code>note</code>, <code>style_bump</code>); append-only</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-database-migrations"><label class="note-head" for="n-s-spec-database-migrations"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Database migrations</span></label><textarea class="note-ta" data-key="s-spec-database-migrations" id="n-s-spec-database-migrations" data-label="Database migrations" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-6" data-ref="SPEC §6" data-label="§6 Risks &amp; Validation" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§6</span><span class="sec-title">Risks &amp; Validation</span></h3>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grid snap fails on heavily blurred or non-uniform generator output</td>
+<td>Med</td>
+<td>High</td>
+<td>Edge-profile autocorrelation plus fallback to user-given scale; benchmark reused implementations; report confidence</td>
+<td>unit tests on synthetic fixtures; benchmark in M3</td>
+</tr>
+<tr>
+<td>Detector thresholds give many false warnings, so the report is ignored</td>
+<td>High</td>
+<td>Med</td>
+<td>Start with warn-only for uncalibrated checks; calibration from approved assets (<code>R-CRIT-5</code>); fixture precision/recall gates</td>
+<td>fixture tests; calibration report</td>
+</tr>
+<tr>
+<td><code>.aseprite</code> format details (compression, tilemaps, user data) break round-trip</td>
+<td>Med</td>
+<td>Med</td>
+<td>Implement the documented spec; unsupported chunks preserved raw; fixtures exported from a real Aseprite build</td>
+<td>round-trip tests</td>
+</tr>
+<tr>
+<td>Provider APIs, models or prices change</td>
+<td>High</td>
+<td>Med</td>
+<td>Provider adapters isolated; capability flags; cached responses; re-check before M3</td>
+<td>contract tests with recorded responses</td>
+</tr>
+<tr>
+<td>Provider output licence unsuitable for a published game</td>
+<td>Med</td>
+<td>High</td>
+<td>Record licence per provider before use (<code>R-GEN-3</code>); local ComfyUI route as fallback</td>
+<td>manual review checklist</td>
+</tr>
+<tr>
+<td>API spend overruns</td>
+<td>Low</td>
+<td>Med</td>
+<td>Per-workspace budget with hard stop; <code>estimate</code> before every call</td>
+<td>unit tests on budget guard</td>
+</tr>
+<tr>
+<td>Images sent to Claude via MCP too large (token cost)</td>
+<td>Med</td>
+<td>Med</td>
+<td>Crops, integer upscale caps (&lt;= 1024 px), grayscale/value maps instead of full renders</td>
+<td>MCP response size test</td>
+</tr>
+<tr>
+<td>Personal data or other-project references committed</td>
+<td>Low</td>
+<td>High</td>
+<td>gitleaks in host gate; pre-PR review checklist item; no deny-list in repo</td>
+<td>host gate</td>
+</tr>
+<tr>
+<td>Reused open-source snapper has an incompatible licence</td>
+<td>Med</td>
+<td>Low</td>
+<td>Licence check before vendoring; own implementation as default</td>
+<td>review</td>
+</tr>
+<tr>
+<td>Scope creep from animation/scene features into the MVP</td>
+<td>Med</td>
+<td>Med</td>
+<td>M0-M1 plan only; M2-M5 planned in later design rounds</td>
+<td>plan review</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-6"><label class="note-head" for="n-s-spec-6"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §6</span></label><textarea class="note-ta" data-key="s-spec-6" id="n-s-spec-6" data-label="§6 Risks &amp; Validation" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 </section>
 </div>
