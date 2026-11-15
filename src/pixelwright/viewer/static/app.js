@@ -223,7 +223,7 @@ function renderList() {
 }
 
 // -- asset screen (Look) -------------------------------------------------------------
-function current() {
+export function current() {
   return state.asset && state.asset.versions.find((v) => v.version === state.route.version);
 }
 
@@ -255,6 +255,8 @@ function issuesPane() {
 }
 
 function checksPane() {
+  const mode = modes[state.route.mode];
+  if (mode.checks) return mode.checks();
   if (!state.report) return '<p class="muted">No checks yet. Run <code>pw check</code>.</p>';
   return state.report.results.map((r) => `<div class="crow"><span class="st ${esc(r.status)}" aria-label="${esc(r.status)}">${STATUS_MARK[r.status] || "?"}</span>
     <span>${esc(r.check)}</span><span class="m">${esc(typeof r.value === "number" ? +r.value.toFixed(3) : r.value ?? "")}</span></div>`).join("");
@@ -286,12 +288,14 @@ function sidePanel() {
 }
 
 function strip() {
+  const mode = modes[state.route.mode];
+  if (mode.strip) return mode.strip();
   const seen = store.get("seen-versions", {});
   return `<div class="strip" aria-label="Versions">${state.asset.versions.map((v) => btn("version", `${v.version} · ${v.step} · ${v.stage}`, "← →", `
     <img alt="" src="/api/assets/${esc(state.asset.id)}/${v.version}/image.png">
     ${v.stage === "approved" || v.stage === "final" ? '<span class="okt">✓</span>' : ""}
     ${seen[`${state.asset.id}/${v.version}`] ? "" : '<span class="dot"></span>'}<span class="mono">${v.version}</span>`,
-    "th" + (v.version === state.route.version ? " sel" : ""), `data-version="${v.version}"`)).join("")}</div>`;
+    "th" + (v.version === state.route.version ? " sel" : "") + (mode.thumbClass ? mode.thumbClass(v.version) : ""), `data-version="${v.version}"`)).join("")}</div>`;
 }
 
 function statusBar() {
@@ -299,7 +303,7 @@ function statusBar() {
   const views = [["color", "Color"], ["gray", "Gray"], ["values", "Values"], ["silhouette", "Silhouette"]];
   return `<footer class="bar">
     <span id="pixel" class="mono">${esc(state.notice)}</span>
-    <span class="sp"></span>
+    <span class="sp"></span>${modes[state.route.mode].bar ? modes[state.route.mode].bar() : ""}
     <span>${v ? `${esc(v.stage)} · ${esc(v.step)}${v.parent ? ` from <span class="mono">${esc(v.parent)}</span>` : ""}` : ""}</span>
     <span class="vsep"></span>
     <select id="view" title="View (V)" aria-label="View">${views.map(([id, l]) => `<option value="${id}" ${id === state.view ? "selected" : ""}>${l}</option>`).join("")}</select>
@@ -312,11 +316,13 @@ function statusBar() {
 function renderAsset() {
   if (!state.asset) { app.innerHTML = `<div class="empty">${esc(state.notice || "Loading…")}</div>`; return; }
   const empty = !state.route.version;
+  const mode = modes[state.route.mode].available() ? modes[state.route.mode] : modes.look;
+  const inner = mode.canvas ? mode.canvas() : '<canvas id="cv" aria-label="Version image"></canvas>';
   app.innerHTML = `${topBar()}
     <div class="body"><section class="work">
-      <div class="canvas" id="stage">${empty ? '<div class="empty">No versions yet. Attach one with <code>pw attach</code>.</div>' : '<canvas id="cv" aria-label="Version image"></canvas>'}</div>
+      <div class="canvas" id="stage">${empty ? '<div class="empty">No versions yet. Attach one with <code>pw attach</code>.</div>' : inner}</div>
       ${strip()}${statusBar()}</section>${sidePanel()}</div>${popover()}`;
-  if (!empty) drawImage();
+  if (!empty) redraw();
   const note = document.getElementById("note");
   if (note) note.focus();
 }
@@ -324,13 +330,67 @@ function renderAsset() {
 // -- canvas -----------------------------------------------------------------------------
 const pixels = { data: null, w: 0, h: 0, key: "" };
 
-function loadImage(src) {
+export function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
   });
+}
+
+/** Draw the current mode's canvas (Look: the version in the chosen view). */
+export function redraw() {
+  const mode = modes[state.route.mode];
+  return (mode.available() && mode.draw ? mode.draw : drawImage)();
+}
+
+/** Integer zoom that fits an image of `w` x `h` in the canvas area. */
+export function fitZoom(w, h, columns = 1) {
+  const stage = document.getElementById("stage");
+  if (!state.zoom && stage) {
+    state.zoom = Math.min(64, Math.max(1, Math.floor(Math.min((stage.clientWidth - 24 * columns) / (w * columns), (stage.clientHeight - 24) / h))));
+    const zoom = document.getElementById("zoom");
+    if (zoom) { zoom.value = state.zoom; document.getElementById("zoom-label").textContent = state.zoom + "x"; }
+  }
+  return state.zoom || 1;
+}
+
+/** Checkerboard (for transparent pixels), then `img` scaled to the canvas, then the grid. */
+export function paint(cv, img, z, alpha = 1, clip = null) {
+  cv.width = img.width * z;
+  cv.height = img.height * z;
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const cell = Math.max(4, z * 2);
+  for (let y = 0; y < cv.height; y += cell) for (let x = 0; x < cv.width; x += cell) {
+    ctx.fillStyle = ((x + y) / cell) % 2 ? "#9a9a9a" : "#b0b0b0";
+    ctx.fillRect(x, y, cell, cell);
+  }
+  layer(cv, img, alpha, clip);
+  return ctx;
+}
+
+/** Draw `img` over what the canvas already shows; `clip` = [x0, x1) in canvas pixels. */
+export function layer(cv, img, alpha = 1, clip = null) {
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  if (clip) { ctx.beginPath(); ctx.rect(clip[0], 0, clip[1] - clip[0], cv.height); ctx.clip(); }
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  ctx.restore();
+}
+
+export function drawGrid(cv, w, h, z) {
+  if (!state.grid || z < 4) return;
+  const ctx = cv.getContext("2d");
+  ctx.strokeStyle = "rgba(0,0,0,.18)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= w; x++) { ctx.moveTo(x * z + 0.5, 0); ctx.lineTo(x * z + 0.5, h * z); }
+  for (let y = 0; y <= h; y++) { ctx.moveTo(0, y * z + 0.5); ctx.lineTo(w * z, y * z + 0.5); }
+  ctx.stroke();
 }
 
 async function drawImage() {
@@ -345,32 +405,10 @@ async function drawImage() {
     Object.assign(pixels, { data: ctx.getImageData(0, 0, color.width, color.height).data, w: color.width, h: color.height, key });
   }
   const cv = document.getElementById("cv");
-  const stage = document.getElementById("stage");
-  if (!cv || !stage) return;
-  if (!state.zoom) {
-    state.zoom = Math.min(64, Math.max(1, Math.floor(Math.min((stage.clientWidth - 24) / shown.width, (stage.clientHeight - 24) / shown.height))));
-    document.getElementById("zoom").value = state.zoom;
-    document.getElementById("zoom-label").textContent = state.zoom + "x";
-  }
-  const z = state.zoom;
-  cv.width = shown.width * z;
-  cv.height = shown.height * z;
-  const ctx = cv.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const cell = Math.max(4, z * 2); // checkerboard behind transparent pixels
-  for (let y = 0; y < cv.height; y += cell) for (let x = 0; x < cv.width; x += cell) {
-    ctx.fillStyle = ((x + y) / cell) % 2 ? "#9a9a9a" : "#b0b0b0";
-    ctx.fillRect(x, y, cell, cell);
-  }
-  ctx.drawImage(shown, 0, 0, cv.width, cv.height);
-  if (state.grid && z >= 4) {
-    ctx.strokeStyle = "rgba(0,0,0,.18)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = 0; x <= shown.width; x++) { ctx.moveTo(x * z + 0.5, 0); ctx.lineTo(x * z + 0.5, cv.height); }
-    for (let y = 0; y <= shown.height; y++) { ctx.moveTo(0, y * z + 0.5); ctx.lineTo(cv.width, y * z + 0.5); }
-    ctx.stroke();
-  }
+  if (!cv) return;
+  const z = fitZoom(shown.width, shown.height);
+  const ctx = paint(cv, shown, z);
+  drawGrid(cv, shown.width, shown.height, z);
   await outlineIssue(ctx, z, shown.width, shown.height);
 }
 
@@ -400,7 +438,7 @@ async function outlineIssue(ctx, z, w, h) {
 
 function pixelInfo(ev) {
   const cv = ev.target;
-  if (cv.id !== "cv" || !pixels.data) return;
+  if (cv.id !== "cv" || !pixels.data || pixels.key !== `${state.route.asset}/${state.route.version}`) return;
   const z = state.zoom || 1;
   const x = Math.floor(ev.offsetX / z), y = Math.floor(ev.offsetY / z);
   if (x < 0 || y < 0 || x >= pixels.w || y >= pixels.h) return;
@@ -460,7 +498,10 @@ const ACTIONS = {
   home: () => go(null),
   open: (el) => go(el.dataset.asset),
   "open-item": (el) => { state.pop = null; go(el.dataset.asset, el.dataset.version || null); },
-  version: (el) => go(state.route.asset, el.dataset.version, state.route.mode),
+  version: (el, ev) => {
+    const mode = modes[state.route.mode];
+    if (!(mode.onVersion && mode.onVersion(el.dataset.version, ev))) go(state.route.asset, el.dataset.version, state.route.mode);
+  },
   mode: (el) => go(state.route.asset, state.route.version, el.dataset.mode),
   approve: () => togglePop("approve"),
   reject: () => togglePop("reject"),
@@ -482,17 +523,19 @@ app.addEventListener("click", (ev) => {
   const el = ev.target.closest("[data-action]");
   if (!el || el.disabled) return;
   if (state.pop === "menu" && el.dataset.action !== "menu") state.pop = null;
-  ACTIONS[el.dataset.action]?.(el);
+  (ACTIONS[el.dataset.action] || modeAction(el.dataset.action))?.(el, ev);
 });
+const modeAction = (name) => modes[state.route.mode].actions?.[name];
 app.addEventListener("mousemove", pixelInfo);
 app.addEventListener("input", (ev) => {
   const t = ev.target;
-  if (t.id === "zoom") { state.zoom = +t.value; document.getElementById("zoom-label").textContent = t.value + "x"; drawImage(); }
+  if (t.id === "zoom") { state.zoom = +t.value; document.getElementById("zoom-label").textContent = t.value + "x"; redraw(); }
+  modes[state.route.mode].onInput?.(t);
   if (t.id === "f-find") { state.filters.find = t.value; renderList(); const f = document.getElementById("f-find"); f.focus(); f.setSelectionRange(t.value.length, t.value.length); }
 });
 app.addEventListener("change", (ev) => {
   const t = ev.target;
-  if (t.id === "view") { state.view = t.value; drawImage(); }
+  if (t.id === "view") { state.view = t.value; redraw(); }
   if (t.id === "f-stage") { state.filters.stage = t.value; renderList(); }
   if (t.id === "f-kind") { state.filters.kind = t.value; renderList(); }
 });
@@ -564,4 +607,5 @@ export function render() {
 }
 
 state.route = parseRoute();
-load();
+const MODE_MODULES = ["compare"];
+Promise.all(MODE_MODULES.map((m) => import(`/static/${m}.js`))).finally(load);
