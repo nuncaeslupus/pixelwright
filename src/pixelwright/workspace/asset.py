@@ -25,6 +25,8 @@ from pixelwright.workspace.files import (
 KINDS = ("background", "sprite", "prop", "animation", "effect", "tileset")
 DECISIONS = ("approve", "reject")
 AUTHORS = ("human", "claude", "check")
+ISSUE_STATUS = ("open", "fixed")
+REGIONS = ("mask", "box", "image")
 ASSET_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 VERSION = re.compile(r"^v(\d{4,})$")
 FILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -218,7 +220,8 @@ class Asset:
     def clear_masks(self) -> int:
         entries = self.masks()
         for entry in entries:
-            (self.path / entry["file"]).unlink(missing_ok=True)
+            if entry.get("file"):
+                (self.path / entry["file"]).unlink(missing_ok=True)
         self.masks_index.unlink(missing_ok=True)
         return len(entries)
 
@@ -228,32 +231,94 @@ class Asset:
         return self.path / "masks" / "masks.yaml"
 
     def masks(self) -> list[dict[str, Any]]:
+        """Issue entries (`masks@2`); a `masks@1` file reads as open mask issues."""
         if not self.masks_index.exists():
             return []
-        entries = schema.validate("masks", read_yaml(self.masks_index))["masks"]
+        raw = read_yaml(self.masks_index)
+        if isinstance(raw, dict) and raw.get("schema") == f"{schema.PREFIX}masks@1":
+            raw = {**raw, "schema": schema.tag("masks")}
+            raw["masks"] = [_upgrade_v1(e) for e in raw.get("masks") or []]
+        entries = schema.validate("masks", raw)["masks"]
         return list(entries)
+
+    issues = masks
+
+    def issue(self, issue_id: str) -> dict[str, Any]:
+        found = next((m for m in self.masks() if m["id"] == issue_id), None)
+        if found is None:
+            raise KeyError(f"{self.id} has no issue {issue_id}")
+        return found
 
     def add_mask(
         self, mask_id: str, png: bytes, *, rule: str = "", note: str = "", author: str = "human"
     ) -> Path:
-        check_asset_id(mask_id)
+        self.add_issue(mask_id, png=png, rule=rule, note=note, author=author)
+        return self.path / "masks" / f"{mask_id}.png"
+
+    def add_issue(
+        self,
+        issue_id: str,
+        *,
+        png: bytes | None = None,
+        box: tuple[int, int, int, int] | None = None,
+        version: str | None = None,
+        rule: str = "",
+        note: str = "",
+        author: str = "human",
+    ) -> dict[str, Any]:
+        """Record an issue on a region: a mask PNG, a box (x, y, w, h), or the whole image."""
+        check_asset_id(issue_id)
+        if png is not None and box is not None:
+            raise ValueError("an issue has a mask or a box, not both")
+        if version is not None:
+            self.meta(version)
         entries = self.masks()
-        if any(m["id"] == mask_id for m in entries):
-            raise FileExistsError(f"mask already exists: {mask_id}")
-        file = self.path / "masks" / f"{mask_id}.png"
-        write_bytes_atomic(file, png)
-        entries.append(
+        if any(m["id"] == issue_id for m in entries):
+            raise FileExistsError(f"issue already exists: {issue_id}")
+        entry: dict[str, Any] = {"id": issue_id, "region": "image"}
+        if png is not None:
+            write_bytes_atomic(self.path / "masks" / f"{issue_id}.png", png)
+            entry = {"id": issue_id, "region": "mask", "file": f"masks/{issue_id}.png"}
+        elif box is not None:
+            x, y, w, h = (int(v) for v in box)
+            if w < 1 or h < 1 or x < 0 or y < 0:
+                raise ValueError(f"box must be x,y,w,h with w,h >= 1: {box}")
+            entry = {"id": issue_id, "region": "box", "box": [x, y, w, h]}
+        entry.update(
             {
-                "id": mask_id,
-                "file": f"masks/{mask_id}.png",
                 "rule": rule,
                 "note": note,
                 "author": _check_author(author),
+                "version": version,
+                "status": "open",
+                "fixed_in": None,
                 "created": utc_now(),
             }
         )
+        entries.append(entry)
         write_yaml(self.masks_index, schema.stamp("masks", {"masks": entries}))
-        return file
+        self._log({"event": "issue_add", "issue": issue_id, "version": version, "author": author})
+        return entry
+
+    def resolve_issue(
+        self, issue_id: str, version: str, *, author: str = "human"
+    ) -> dict[str, Any]:
+        """Mark an issue fixed by `version`."""
+        self.meta(version)
+        entries = self.masks()
+        entry = next((m for m in entries if m["id"] == issue_id), None)
+        if entry is None:
+            raise KeyError(f"{self.id} has no issue {issue_id}")
+        entry.update({"status": "fixed", "fixed_in": version})
+        write_yaml(self.masks_index, schema.stamp("masks", {"masks": entries}))
+        record = {"event": "issue_resolve", "issue": issue_id, "version": version}
+        self._log({**record, "author": _check_author(author)})
+        return entry
+
+
+def _upgrade_v1(entry: dict[str, Any]) -> dict[str, Any]:
+    """A `masks@1` entry: always a mask region, version unknown, still open."""
+    return {"region": "mask", "version": None, "status": "open", "fixed_in": None, **entry}
 
 
 def _check_author(author: str) -> str:
