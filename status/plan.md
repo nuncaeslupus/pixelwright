@@ -1,12 +1,12 @@
-# Plan: pixelwright M0-M1 (foundations and MVP pipeline)
+# Plan: pixelwright M2 (viewer and critique loop)
 
 **Date**: 2026-11-15
-**Specification**: `status/specification.md`
+**Specification**: `status/specification.md` (M2 in §4) and `status/viewer/screens.md` (r4, accepted 2026-11-15)
 **Author**: Claude (for the repository owner)
 **Revision**: 1
-**Status**: approved (2026-11-15, revision 1) — without annotations
+**Status**: draft
 **Revision log**:
-- r1 — first draft: technical solution and the M0-M1 task split; M2-M5 are planned in later design rounds
+- r1 — first draft: M2 task split (T19-T33). The M0-M1 plan is in `status/archive/plan-m0-m1.md`.
 
 > Review record, kept the way the spec keeps its own: each round of notes bumps
 > **Revision** with a log line naming the `<repo>-plan-v<N>-<date>-notes.md`
@@ -18,113 +18,135 @@
 
 ### Architecture overview
 
-One Python package, `pixelwright` (`src/pixelwright/`), with thin front ends over the same functions:
+M2 adds three things on top of the M1 package, all over the same workspace files:
 
-- `core/` — pure functions over an in-memory `IndexedImage` (H x W uint16 indices + `Palette` + optional alpha) and `RGBImage` (generator output): `color` (OKLab/OKLCH), `palette` (I/O, ramps), `snap`, `quantize`, `clean`, `render`, `checks/` (one module per check, common `CheckResult`).
-- `workspace/` — `pixelwright.toml`, style guide, asset folders, versions, stages, masks, history, game path mapping, `.gitignore` writer.
-- `io/` — PNG (indexed and RGBA), `.aseprite` reader/writer, GPL/HEX palettes.
-- `cli/` — `pw` (Typer), JSON envelope.
-- `mcp/` — `pw mcp` (official MCP Python SDK, stdio); tool table generated from the same command registry as the CLI, so parity is structural.
-- `plugin/` (repository root) — Claude Code plugin (skills, MCP registration) and `plugin/aseprite/` Lua helpers. Skills come in M2; M1 ships only the MCP registration and Lua helpers.
+- **Issues and critique** (`workspace/`, `cli/`): an issue is a `masks.yaml` entry with a
+  region (mask PNG, box, or the whole image), rule, note, author, version and status.
+  `critique.md` gets a parseable format whose complaints point at issues. Stages
+  `quantize` and `clean` take `--mask <issue>` and change pixels only inside it.
+- **Viewer** (`src/pixelwright/viewer/`): `pw view` serves one page (plain HTML/CSS/JS and
+  two OFL font files shipped as package data, no build step) from a stdlib
+  `ThreadingHTTPServer` on 127.0.0.1. A small JSON API calls the same functions as the CLI
+  command registry, so the viewer adds no business logic of its own.
+- **Plugin v0** (`plugin/`): Claude Code skills for art direction (critique protocol, review
+  loop, zone-fix loop, style definition) that drive `pw` / `pw mcp`, starting from
+  `pw inbox`.
 
-Providers, viewer, animation, scenes and lighting are M2-M5 and get their own plan revisions.
+Plus the small M1 leftovers chosen for M2 (`style propose|test`, `palette edit`,
+`render --view gif`, `grid` from the CLI) and the gaps found by the real Aseprite test
+(`load_version` through the `.aseprite` codec, `palette discover --asset`, positional
+`pw init <path>`).
 
 ### Data flow
 
 ```drawspec
-{"version": 1, "kind": "flow", "title": "M1 pipeline",
+{"version": 1, "kind": "flow", "title": "M2 review loop",
  "nodes": [
-  {"id": "in", "text": "input image"},
-  {"id": "snap", "text": "snap + quantize"},
-  {"id": "clean", "text": "clean + check"},
-  {"id": "ver", "text": "new version"},
-  {"id": "ase", "text": "Aseprite retouch"}
+  {"id": "cl", "text": "Claude: pw / pw mcp"},
+  {"id": "ws", "text": "workspace files"},
+  {"id": "vw", "text": "pw view (browser)"},
+  {"id": "pp", "text": "person"}
  ],
  "edges": [
-  {"from": "in", "to": "snap"}, {"from": "snap", "to": "clean"},
-  {"from": "clean", "to": "ver"}, {"from": "ver", "to": "ase"},
-  {"from": "ase", "to": "ver"}
+  {"from": "cl", "to": "ws", "label": "writes"},
+  {"from": "ws", "to": "vw", "label": "polls"},
+  {"from": "pp", "to": "vw", "label": "reviews"},
+  {"from": "vw", "to": "ws", "label": "writes"},
+  {"from": "ws", "to": "cl", "label": "inbox"}
  ]}
 ```
 
-Every step reads a version (or input), writes a new version folder with `meta.yaml` (parent, step, params, hashes) and appends to `history.jsonl`. Writes go to a temp folder and are renamed into place.
-
 ### State changes
 
-| Service | Database | Change | Description |
-|---------|----------|--------|-------------|
-| core | workspace files | CREATE | `pixelwright.toml`, `style/`, `experiments/`, `assets/<id>/` per section 5 schemas |
-| core | asset folder | CREATE/UPDATE | new version folders (never modified after creation), masks, append-only history |
-| core | game repository | UPDATE | `.gitignore` entries for uncommitted stages; exports to mapped game paths |
+- `masks.yaml` schema `masks@2`: entries gain `version`, `status` (`open` | `fixed`),
+  `fixed_in`, `region` (`mask` | `box` | `image`), optional `box`. `masks@1` files read as
+  `open`, version unknown, region `mask`; the first write upgrades the file.
+- `critique.md`: YAML front matter (`version`, `compared_to`, `verdict`) and one `##` per
+  complaint with `issue: <id>`; written by `pw critique write`, parsed for the viewer.
+- `history.jsonl`: new events `issue_add`, `issue_resolve`, `decision_revert`; existing
+  events unchanged.
+- `asset.yaml`: `palette` set by `pw palette discover --asset`.
+
+### Contracts
+
+HTTP API (`pw view`, all JSON except images; every write needs header `X-PW-Token`, the
+per-run token embedded in the page; requests with a non-local peer or a `Host` other than
+`127.0.0.1:<port>` / `localhost:<port>` get 403):
+
+| Method | Path | Returns / does |
+|---|---|---|
+| GET | `/api/assets` | cards: id, kind, newest version, stage, status line, thumbnail URL |
+| GET | `/api/assets/<id>` | spec, versions (stage, parent, steps), inbox count |
+| GET | `/api/assets/<id>/<v>/image.png?view=color\|gray\|values\|silhouette` | native-size PNG |
+| GET | `/api/assets/<id>/<v>/report` | `report.json` |
+| GET | `/api/assets/<id>/<v>/frames` | frames, durations, tags (from `.aseprite`) |
+| GET | `/api/assets/<id>/diff?a=&b=` | changed mask PNG URL, counts, check deltas |
+| GET | `/api/assets/<id>/issues?version=` | issues, critique verdict |
+| GET | `/api/assets/<id>/history` | history entries, newest first |
+| GET | `/api/inbox?since=` | new versions, decisions, issues, notes |
+| POST | `/api/assets/<id>/issues` | add (mask PNG base64, box, or none) |
+| POST | `/api/assets/<id>/issues/<issue>/resolve` | mark fixed in a version |
+| POST | `/api/assets/<id>/<v>/decision` | approve / reject (+ note; reject needs one) |
+| POST | `/api/assets/<id>/revert` | log `decision_revert` for the last decision (undo) |
+
+Errors use the CLI envelope's `error.code` / `error.message`. New CLI commands (same
+envelope, mirrored in MCP): `issue add|list|resolve`, `critique write|show`, `history`,
+`status`, `inbox`, `view [--open]`.
 
 ### Technology choices
 
-| Choice | Justification |
-|--------|--------------|
-| Python 3.12+, uv, ruff, mypy strict, pytest, Makefile | Owner's standard toolchain (`python-bootstrap` skill) |
-| NumPy + Pillow | Pixel arrays and PNG I/O, indexed PNG support |
-| scikit-image | Connected components, skeletons, contours for detectors |
-| Own OKLab/OKLCH (about 60 lines, vectorized) | Exact control and no heavy dependency; tested against Ottosson's reference values |
-| Typer | CLI with typed options; one registry feeds CLI and MCP |
-| `mcp` (official Python SDK) | Standard stdio server for Claude Code / Desktop |
-| PyYAML + tomllib/tomli-w | Spec and config files |
-| Own `.aseprite` codec | Format is documented; avoids depending on an Aseprite binary |
-| gitleaks | Secret and personal-data scan in the host gate |
+- Stdlib `http.server` + vanilla JS modules: no web framework, no Node build, nothing new
+  to install (`R-FORM-2`, spec §2.8 "no UI framework required").
+- Fonts: Atkinson Hyperlegible Next and Mono (OFL), shipped as package data.
+- Viewer end-to-end tests with Playwright (dev dependency only; the CI image needs
+  Chromium).
 
 ### Out of scope
 
-- Providers and generation, viewer, plugin skills, animation, scenes, lighting, effects, LoRA (M2-M5).
-- Any GUI beyond Aseprite helpers.
-
----
+Providers and `generate` (M3); scene preview, light zones, rigs and cross-frame checks
+(M4); LoRA (M5); editing pixels in the viewer (never: Aseprite does that).
 
 ## Implementation tasks
 
 | T# | Description | Service | Size | Depends | Gate | Tests |
 |----|-------------|---------|------|---------|------|-------|
-| T1 | Scaffold | repo | S | — | `make_check_exit_code == 0` | `test_package_import_version_matches_pyproject` in `tests/test_meta.py` — `pixelwright.__version__` equals the pyproject version |
-| T2 | OKLab | core.color | S | T1 | `oklab_max_abs_error <= 0.001` | `test_oklab_reference_values_match_published` in `tests/core/test_color.py` — sRGB to OKLab matches Ottosson's published pairs within 1e-3 |
-| T3 | Palettes | core.palette, io | S | T2 | `palette_roundtrip_failures == 0` | `test_gpl_roundtrip_preserves_order_and_names` in `tests/io/test_palette_io.py` — write then read returns identical palette |
-| T4 | Images | core.image, core.render | M | T3 | `render_golden_mismatches == 0` | `test_upscale_integer_factor_is_blocky` in `tests/core/test_render.py` — every NxN block of an upscale is one color |
-| T5 | Workspace | workspace | M | T1 | `schema_validation_failures == 0` | `test_new_version_is_immutable_and_logged` in `tests/workspace/test_versions.py` — creating a version writes meta and one history line and never rewrites earlier versions |
-| T6 | Style | workspace.style | S | T3, T5 | `schema_validation_failures == 0` | `test_style_bump_records_version_on_new_assets` in `tests/workspace/test_style.py` — assets created after a bump carry the new style version |
-| T7 | ASE codec | io.aseprite | L | T4 | `aseprite_roundtrip_failures == 0` | `test_roundtrip_fixture_files_semantically_equal` in `tests/io/test_aseprite.py` — every fixture reads, writes and re-reads to an equal document |
-| T8 | Fixtures | tests.fixtures | M | T4 | `fixture_cases >= 200` | `test_fixture_generator_is_deterministic` in `tests/fixtures/test_synth.py` — same seed gives byte-identical cases |
-| T9 | snap | core.snap | M | T8 | `snap_scale_exact_rate >= 0.98` | `test_snap_recovers_scale_on_synthetic_set` in `tests/core/test_snap.py` — scale exact on >= 98% and per-pixel accuracy >= 97% |
-| T10 | quantize | core.quantize | M | T3, T4 | `palette_compliance == 1.0` | `test_quantize_fixed_palette_output_fully_in_palette` in `tests/core/test_quantize.py` — every output pixel is a palette index |
-| T11 | Checks A | core.checks | M | T4, T8 | `detector_precision_min >= 0.90` | `test_orphans_detector_meets_precision_recall` in `tests/core/checks/test_orphans.py` — precision >= 0.90 and recall >= 0.80 on fixtures |
-| T12 | Checks B | core.checks | L | T11 | `detector_recall_min >= 0.80` | `test_line_runs_flags_broken_run_sequences` in `tests/core/checks/test_line_runs.py` — 2,1,3,1 runs flagged, 1,1,2,2,3 not |
-| T13 | Checks C | core.checks | L | T11 | `detector_precision_min >= 0.90` | `test_pillow_detector_flags_edge_driven_shading` in `tests/core/checks/test_pillow.py` — outline-inward shading fails, light-vector shading passes |
-| T14 | clean | core.clean | M | T11 | `orphans_after_clean == 0` | `test_clean_removes_orphans_only_inside_mask` in `tests/core/test_clean.py` — orphans inside the mask removed, pixels outside unchanged |
-| T15 | CLI pw | cli | M | T5, T6, T9, T10, T14 | `cli_contract_failures == 0` | `test_cli_json_envelope_on_every_command` in `tests/cli/test_envelope.py` — each command's `--json` output validates against the envelope schema |
-| T16 | MCP server | mcp | M | T15 | `cli_mcp_parity_gaps == 0` | `test_every_cli_command_has_matching_mcp_tool` in `tests/mcp/test_parity.py` — tool names and parameters equal the CLI registry |
-| T17 | ASE helpers | io.aseprite, plugin | M | T7, T16 | `lua_helper_tests_failed == 0` | `test_send_to_pixelwright_creates_draft_and_note` in `tests/plugin/test_lua_helpers.py` — running the helper headless writes a draft and a history note (skipped if no Aseprite binary) |
-| T18 | Perf | tests.perf | S | T15 | `p95_ms_per_100k_px <= 2000` | `test_pipeline_rerun_is_byte_identical` in `tests/perf/test_determinism.py` — two runs give identical output hashes |
+| T19 | Issues model | workspace | S | — | `make_check_exit_code == 0` | `test_masks_v1_reads_as_open_issues` in `tests/workspace/test_issues.py` — a `masks@1` file loads with status open and region mask |
+| T20 | Issue and inbox commands | cli, mcp | M | T19 | `make_check_exit_code == 0` | `test_inbox_since_lists_new_versions_and_decisions` in `tests/cli/test_inbox.py` — only events after `--since` are returned |
+| T21 | Critique format | workspace, cli | S | T19 | `make_check_exit_code == 0` | `test_critique_roundtrip_keeps_verdict_and_issue_links` in `tests/workspace/test_critique.py` — write then parse gives the same front matter and issue ids |
+| T22 | Masked stages | core, cli | M | T19 | `pixels_changed_outside_mask == 0` | `test_clean_with_mask_changes_nothing_outside` in `tests/core/test_masked_stages.py` — quantize and clean with `--mask` leave every pixel outside the mask identical |
+| T23 | Diff deltas | cli | S | — | `make_check_exit_code == 0` | `test_diff_reports_check_deltas_and_changed_area` in `tests/cli/test_diff.py` — deltas per check, changed count and bounding box |
+| T24 | CLI leftovers | cli, core | M | — | `make_check_exit_code == 0` | `test_render_gif_matches_frame_count_and_durations` in `tests/cli/test_render.py` — GIF has the file's frames and timings; `test_palette_discover_asset_sets_asset_palette`; `test_init_accepts_positional_path` |
+| T25 | Bridge on the codec | io, plugin | S | — | `make_check_exit_code == 0` | `test_load_version_prefers_aseprite_file` in `tests/plugin/test_lua_helpers.py` — a version with `image.aseprite` opens with its layers |
+| T26 | Style and palette edit | workspace, cli | M | — | `make_check_exit_code == 0` | `test_style_test_reports_per_asset_results` in `tests/cli/test_style.py` — `style test` runs checks on the style's test assets |
+| T27 | Viewer server | viewer | L | T20, T21, T23 | `api_endpoints_covered == 13` | `test_write_without_token_is_forbidden` and `test_foreign_host_is_forbidden` in `tests/viewer/test_server.py` — 403 on both; one test per endpoint |
+| T28 | Viewer Look | viewer | L | T27 | `e2e_failed == 0` | `test_approve_writes_history_with_measurements` in `tests/viewer/e2e/test_look.py` — clicking Approve logs a decision with the check results |
+| T29 | Viewer Compare | viewer | M | T28 | `e2e_failed == 0` | `test_compare_defaults_a_to_latest_approved` in `tests/viewer/e2e/test_compare.py` — A is the newest approved version |
+| T30 | Viewer Mark | viewer | M | T28 | `e2e_failed == 0` | `test_saved_mark_is_an_issue_in_native_pixels` in `tests/viewer/e2e/test_mark.py` — the saved mask PNG has the canvas's native size and the drawn pixels |
+| T31 | Viewer Play | viewer | M | T28, T25 | `e2e_failed == 0` | `test_play_uses_file_durations` in `tests/viewer/e2e/test_play.py` — frame advance follows the `.aseprite` durations |
+| T32 | Viewer polish | viewer | S | T29, T30, T31 | `e2e_failed == 0` | `test_every_control_has_a_title_and_shortcut` in `tests/viewer/e2e/test_a11y.py` — every button has a hover title; every mode reachable by keyboard; both themes render |
+| T33 | Plugin v0 skills | plugin | M | T20, T21, T22 | `make_check_exit_code == 0` | `test_plugin_skills_reference_existing_commands` in `tests/plugin/test_skills.py` — every `pw` command a skill names exists in the registry |
 
 ### Task details
 
-- **T1 Scaffold**: Scaffold package with uv, ruff, mypy strict, pytest, Makefile (`make check`), GitHub CI, gitleaks; set arsenal `host-gate = "make check"`.
-- **T2 OKLab**: OKLab/OKLCH conversions and color distance.
-- **T3 Palettes**: Palette model, ramps and I/O (GPL, HEX, `ramps.yaml`).
-- **T4 Images**: `IndexedImage` / `RGBImage`, PNG I/O (indexed + RGBA), renders (integer upscale, grayscale, value map, overlay).
-- **T5 Workspace**: Workspace: `pixelwright.toml` roles/paths, stages, `.gitignore` writer, asset folder, versions, `meta.yaml`, `history.jsonl`, masks, schema versioning.
-- **T6 Style**: Style guide format (`style.yaml` @1) and `style_version` on assets; bump and re-check listing.
-- **T7 ASE codec**: `.aseprite` reader/writer (layers, cels, frames, durations, tags, palette, slices; unknown chunks kept raw).
-- **T8 Fixtures**: Synthetic fixtures: pseudo-pixel generator (upscale x2..x12, blur, sub-cell jitter, JPEG, noise) and detector case format.
-- **T9 snap**: `snap`: scale and offset detection, mode-per-cell downsample, confidence.
-- **T10 quantize**: `quantize`: fixed palette (OKLab nearest), discovery (median cut and k-means in OKLab), Bayer dithering inside masks only.
-- **T11 Checks A**: Checks batch A: `palette`, `grid`, `orphans`, `value-groups`, `focal-contrast`, common `CheckResult` and `report.json` writer.
-- **T12 Checks B**: Checks batch B: `line-runs`, `banding`.
-- **T13 Checks C**: Checks batch C: `pillow`, `ramps`, `dither-zones`, `aa`, `selout`, `outline-share`, `depth-falloff`, `figure-ground`, `diagnostics`.
-- **T14 clean**: `clean`: orphan removal and AA-noise cleanup driven by detector regions, mask-limited.
-- **T15 CLI pw**: CLI `pw` with JSON envelope: init, new, attach, snap, quantize, clean, check, render, diff, mask, approve, reject, export, palette, style, prune.
-- **T16 MCP server**: MCP server `pw mcp` from the same registry; image content for `render` capped at 1024 px.
-- **T17 ASE helpers**: Aseprite bridge: headless export wrapper and Lua helpers (send to pixelwright, load version) in `plugin/aseprite/`; plugin manifest registering the MCP server.
-- **T18 Perf**: Determinism and performance harness: rerun fixture pipelines twice; time local ops.
+- **T19 Issues model**: `masks@2` (version, status, fixed_in, region mask/box/image), `Asset.add_issue`, `resolve_issue`, reading `masks@1`.
+- **T20 Commands**: `pw issue add|list|resolve`, `pw history`, `pw status <id>`, `pw inbox [--since]`; MCP mirrors from the registry.
+- **T21 Critique**: `critique.md` front matter + complaints linked to issues; `pw critique write|show`.
+- **T22 Masked stages**: `--mask <issue>` on `quantize` and `clean`; pixels outside unchanged; issue can be resolved by the new version.
+- **T23 Diff**: `pw diff` adds per-check deltas, changed pixel count and share, colors used, bounding box.
+- **T24 CLI leftovers**: `render --view gif` (GIF and APNG from frames), `check --only grid` on exports, `pw init <path>` positional (keeps `--workspace`), `palette discover --asset` writes `asset.yaml` palette.
+- **T25 Bridge**: `load_version.lua` opens `image.aseprite` when present (layers, frames); `send_to_pixelwright` keeps the `.aseprite` alongside the PNG.
+- **T26 Style and palette**: `style propose` (palette families and ramps from references), `style test` (checks on the style's test assets), `palette edit` (set, add, remove, reorder colors; ramps re-checked).
+- **T27 Viewer server**: `pw view [--port] [--open id/version]`, the API above, token and host checks, static files and fonts as package data.
+- **T28 Shell, Assets, Look**: layout, light/dark, top bar, versions strip, status bar (pixel info, view, grid, zoom), Issues/Checks/History panels, decision popover, inbox, shortcuts dialog, 2 s polling.
+- **T29 Compare**: side by side (synced), onion, swipe, difference; A/B selection; check deltas.
+- **T30 Mark**: brush, rectangle, fill, erase, size; issue form; issue without a mark; undo of strokes and saved issues.
+- **T31 Play**: frames strip, play/step, tag, speed, loop, onion skin.
+- **T32 Pass**: keyboard reachability, hover titles with shortcuts, both themes, a screenshot per screen for the record.
+- **T33 Plugin v0**: skills `art-direction` (critique protocol §2.7), `review-loop` (inbox → critique → issues → masked fixes → checks), `style-definition` (workflow 0); slash commands wrap them.
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged
 
-**Merge order**: T1; then T2, T5 (parallel); T3; T4, T6; T7, T8, T10; T9, T11; T12, T13, T14; T15; T16; T17, T18
+**Merge order**: T19, T23, T24, T25, T26 (parallel); T20, T21, T22 (parallel); T27, T33; T28; T29, T30, T31 (parallel); T32
 **Branch pattern**: `pw-T<N>-description` from the default branch
 
 ### Dependency graph
@@ -134,77 +156,80 @@ Generated from the **Depends** column — never drawn by hand.
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phases",
  "nodes": [
-  {"id": "P1", "text": "Phase 1\nT1, T2, T5, T3, T4, T6, T7, T8, T10"},
-  {"id": "P2", "text": "Phase 2\nT9, T11, T12, T13, T14, T15, T16, T…"}
+  {"id": "P1", "text": "Phase 1\nT19, T23, T24, T25, T26, T20, T21,…"},
+  {"id": "P2", "text": "Phase 2\nT27, T33, T28, T29, T30, T31, T32"}
  ],
  "edges": [
   {"from": "P1", "to": "P2"}
  ]}
 ```
 
-**Phase 1** — T1, T2, T5, T3, T4, T6, T7, T8, T10
+**Phase 1** — T19, T23, T24, T25, T26, T20, T21, T22
 
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phase 1",
  "nodes": [
-  {"id": "T1", "text": "T1\nScaffold"},
-  {"id": "T2", "text": "T2\nOKLab"},
-  {"id": "T5", "text": "T5\nWorkspace"},
-  {"id": "T3", "text": "T3\nPalettes"},
-  {"id": "T4", "text": "T4\nImages"},
-  {"id": "T6", "text": "T6\nStyle"},
-  {"id": "T7", "text": "T7\nASE codec"},
-  {"id": "T8", "text": "T8\nFixtures"},
-  {"id": "T10", "text": "T10\nquantize"}
+  {"id": "T19", "text": "T19\nIssues model"},
+  {"id": "T23", "text": "T23\nDiff deltas"},
+  {"id": "T24", "text": "T24\nCLI leftovers"},
+  {"id": "T25", "text": "T25\nBridge on the codec"},
+  {"id": "T26", "text": "T26\nStyle and palette edit"},
+  {"id": "T20", "text": "T20\nIssue and inbox commands"},
+  {"id": "T21", "text": "T21\nCritique format"},
+  {"id": "T22", "text": "T22\nMasked stages"}
  ],
  "edges": [
-  {"from": "T1", "to": "T2"},
-  {"from": "T2", "to": "T3"},
-  {"from": "T3", "to": "T4"},
-  {"from": "T1", "to": "T5"},
-  {"from": "T3", "to": "T6"},
-  {"from": "T5", "to": "T6"},
-  {"from": "T4", "to": "T7"},
-  {"from": "T4", "to": "T8"},
-  {"from": "T4", "to": "T10"}
+  {"from": "T19", "to": "T20"},
+  {"from": "T19", "to": "T21"},
+  {"from": "T19", "to": "T22"}
  ]}
 ```
 
-**Phase 2** — T9, T11, T12, T13, T14, T15, T16, T18, T17 (with T6, T7, T8, T10 from earlier phases)
+**Phase 2** — T27, T33, T28, T29, T30, T31, T32 (with T20, T21, T22, T23, T25 from earlier phases)
 
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phase 2",
  "nodes": [
-  {"id": "T6", "text": "T6\nphase 1"},
-  {"id": "T7", "text": "T7\nphase 1"},
-  {"id": "T8", "text": "T8\nphase 1"},
-  {"id": "T10", "text": "T10\nphase 1"},
-  {"id": "T9", "text": "T9\nsnap"},
-  {"id": "T11", "text": "T11\nChecks A"},
-  {"id": "T12", "text": "T12\nChecks B"},
-  {"id": "T13", "text": "T13\nChecks C"},
-  {"id": "T14", "text": "T14\nclean"},
-  {"id": "T15", "text": "T15\nCLI pw"},
-  {"id": "T16", "text": "T16\nMCP server"},
-  {"id": "T18", "text": "T18\nPerf"},
-  {"id": "T17", "text": "T17\nASE helpers"}
+  {"id": "T20", "text": "T20\nphase 1"},
+  {"id": "T21", "text": "T21\nphase 1"},
+  {"id": "T22", "text": "T22\nphase 1"},
+  {"id": "T23", "text": "T23\nphase 1"},
+  {"id": "T25", "text": "T25\nphase 1"},
+  {"id": "T27", "text": "T27\nViewer server"},
+  {"id": "T33", "text": "T33\nPlugin v0 skills"},
+  {"id": "T28", "text": "T28\nViewer Look"},
+  {"id": "T29", "text": "T29\nViewer Compare"},
+  {"id": "T30", "text": "T30\nViewer Mark"},
+  {"id": "T31", "text": "T31\nViewer Play"},
+  {"id": "T32", "text": "T32\nViewer polish"}
  ],
  "edges": [
-  {"from": "T8", "to": "T9"},
-  {"from": "T8", "to": "T11"},
-  {"from": "T11", "to": "T12"},
-  {"from": "T11", "to": "T13"},
-  {"from": "T11", "to": "T14"},
-  {"from": "T6", "to": "T15"},
-  {"from": "T9", "to": "T15"},
-  {"from": "T10", "to": "T15"},
-  {"from": "T14", "to": "T15"},
-  {"from": "T15", "to": "T16"},
-  {"from": "T7", "to": "T17"},
-  {"from": "T16", "to": "T17"},
-  {"from": "T15", "to": "T18"}
+  {"from": "T20", "to": "T27"},
+  {"from": "T21", "to": "T27"},
+  {"from": "T23", "to": "T27"},
+  {"from": "T27", "to": "T28"},
+  {"from": "T28", "to": "T29"},
+  {"from": "T28", "to": "T30"},
+  {"from": "T25", "to": "T31"},
+  {"from": "T28", "to": "T31"},
+  {"from": "T29", "to": "T32"},
+  {"from": "T30", "to": "T32"},
+  {"from": "T31", "to": "T32"},
+  {"from": "T20", "to": "T33"},
+  {"from": "T21", "to": "T33"},
+  {"from": "T22", "to": "T33"}
  ]}
 ```
+
+## Risks
+
+| Risk | Likelihood | Impact | Mitigation | Rollback |
+|---|---|---|---|---|
+| Viewer write endpoints reachable from another site (CSRF, DNS rebinding) | Med | High | Bind 127.0.0.1, check `Host`, per-run token header, no CORS | Start read-only (`--read-only`) |
+| `masks@2` breaks existing workspaces | Low | Med | Read `@1` forever; upgrade on first write; fixture test | Writer can emit `@1` again |
+| Playwright in CI is slow or flaky | Med | Low | One Chromium, `--trace off`, e2e in its own job; unit tests cover the API | Mark e2e job non-blocking while fixing |
+| Masked stages leak changes at mask edges | Med | Med | Gate measures pixels changed outside the mask = 0 | Revert the version; history keeps the parent |
+| Viewer grows into an editor | Low | Med | Spec rule: never edits pixels; review checks the API has no pixel writes | — |
 
 ## Evidence log
 
@@ -216,6 +241,6 @@ Generated from the **Depends** column — never drawn by hand.
 ## Sign-off
 
 - [ ] Design reviewed by the owner
-- [ ] Contracts agreed (section 5 of the spec)
-- [ ] Migration strategy validated (schema versioning)
+- [ ] Contracts agreed (API table above, `masks@2`, `critique.md`)
+- [ ] Migration strategy validated (`masks@1` read forever)
 - [ ] Ready for execution
