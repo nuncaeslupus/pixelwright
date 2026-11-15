@@ -34,7 +34,8 @@ VIEWS = ("upscale", "gray", "values", "silhouette", "overlay", "gif", "apng")
 
 ASSET = Param("asset", help="asset id", required=True, positional=True)
 VERSION = Param("version", help="version (default: latest)")
-MASK = Param("mask", help="mask id from the asset's masks/")
+MASK = Param("mask", help="issue (mask) id: change only pixels inside its region")
+RESOLVE = Param("resolve", "bool", help="mark the --mask issue fixed by the new version")
 
 
 # -- helpers ------------------------------------------------------------------
@@ -89,6 +90,30 @@ def _mask(asset: Asset, mask_id: str | None, shape: tuple[int, int]) -> Mask | N
     if entry is None:
         raise PwError("mask_not_found", f"{asset.id} has no mask {mask_id}")
     return region_mask(asset, entry, shape)
+
+
+def _keep_outside(new: Image, old: Image, region: Mask) -> Image:
+    """`new` inside `region`, `old` everywhere else, pixel for pixel."""
+    if (
+        isinstance(new, IndexedImage)
+        and isinstance(old, IndexedImage)
+        and new.palette == old.palette
+    ):
+        indices = np.where(region, new.indices, old.indices).astype(np.uint16)
+        opaque = np.where(region, new.opaque(), old.opaque())
+        return IndexedImage(indices, new.palette, None if opaque.all() else opaque)
+    old_rgba = old.rgba if isinstance(old, RGBImage) else old.to_rgba()
+    new_rgba = new.rgba if isinstance(new, RGBImage) else new.to_rgba()
+    return RGBImage(np.where(region[..., None], new_rgba, old_rgba).astype(np.uint8))
+
+
+def _resolved(asset: Asset, a: dict[str, Any], outcome: Outcome) -> Outcome:
+    """With `--resolve`, mark the `--mask` issue fixed by the version just made."""
+    if a["resolve"]:
+        assert outcome.version is not None
+        asset.resolve_issue(a["mask"], outcome.version, author="claude")
+        outcome.data["resolved"] = a["mask"]
+    return outcome
 
 
 def region_mask(asset: Asset, entry: dict[str, Any], shape: tuple[int, int]) -> Mask:
@@ -229,8 +254,12 @@ def cmd_snap(root: Path, a: dict[str, Any]) -> Outcome:
     Param("palette", help="palette file under style/ (default: the asset palette)"),
     Param("discover", "int", help="discover a palette of this many colors instead"),
     Param("dither_mask", help="mask id where Bayer dithering is allowed"),
+    MASK,
+    RESOLVE,
 )
 def cmd_quantize(root: Path, a: dict[str, Any]) -> Outcome:
+    if a["resolve"] and not a["mask"]:
+        raise PwError("invalid", "--resolve needs --mask")
     ws = Workspace.open(root)
     asset = ws.asset(a["asset"])
     parent = _version(asset, a["version"])
@@ -244,10 +273,12 @@ def cmd_quantize(root: Path, a: dict[str, Any]) -> Outcome:
         raise PwError("no_palette", "no palette: pass --palette, --discover or set one on `new`")
     dither = _mask(asset, a["dither_mask"], (rgb.height, rgb.width))
     indexed, report = quantize_fixed(rgb, palette, dither_mask=dither)
-    params = {k: a[k] for k in ("palette", "discover", "dither_mask") if a[k]}
-    outcome = _publish(ws, asset, "quantize", indexed, parent, **params)
+    region = _mask(asset, a["mask"], (rgb.height, rgb.width))
+    result = indexed if region is None else _keep_outside(indexed, image, region)
+    params = {k: a[k] for k in ("palette", "discover", "dither_mask", "mask") if a[k]}
+    outcome = _publish(ws, asset, "quantize", result, parent, **params)
     outcome.data = {**asdict(report), "colors": len(palette)}
-    return outcome
+    return _resolved(asset, a, outcome)
 
 
 @command(
@@ -257,8 +288,11 @@ def cmd_quantize(root: Path, a: dict[str, Any]) -> Outcome:
     VERSION,
     MASK,
     Param("pairs", "bool", help="also remove isolated two-pixel clusters"),
+    RESOLVE,
 )
 def cmd_clean(root: Path, a: dict[str, Any]) -> Outcome:
+    if a["resolve"] and not a["mask"]:
+        raise PwError("invalid", "--resolve needs --mask")
     ws = Workspace.open(root)
     asset = ws.asset(a["asset"])
     parent = _version(asset, a["version"])
@@ -268,7 +302,7 @@ def cmd_clean(root: Path, a: dict[str, Any]) -> Outcome:
     params = {k: a[k] for k in ("mask", "pairs") if a[k]}
     outcome = _publish(ws, asset, "clean", cleaned, parent, **params)
     outcome.data = asdict(report)
-    return outcome
+    return _resolved(asset, a, outcome)
 
 
 # -- checks -------------------------------------------------------------------
