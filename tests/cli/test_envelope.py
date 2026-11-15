@@ -109,6 +109,14 @@ def test_cli_json_envelope_on_every_command(
     assert run("status", "hero")["data"]["assets"][0]["open_issues"] == 1
     assert run("history", "hero")["data"]["history"]
     assert run("inbox")["data"]["count"] >= 0
+    crit = files / "critique.md"
+    crit.write_text(
+        "---\nschema: pixelwright/critique@1\nversion: v0004\nverdict: fine\n---\n"
+        "## Focal area\nissue: focal\nrule: R-VAL-1\n\nReads well.\n"
+    )
+    run("critique", "hero", "write", "--version", "v0004", "--file", str(crit))
+    shown = run("critique", "hero", "show", "--version", "v0004")["data"]
+    assert shown["complaints"][0]["issue"] == "focal"
     run("mask", "hero", "clear")
     assert seen == set(REGISTRY)
 

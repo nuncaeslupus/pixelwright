@@ -23,9 +23,10 @@ from pixelwright.core.snap import snap
 from pixelwright.io.aseprite import flatten_frames, read_aseprite
 from pixelwright.io.palette_io import read_palette, write_palette
 from pixelwright.io.png import encode_png, read_png, write_png
-from pixelwright.workspace import Asset, Workspace, WorkspaceConfig
+from pixelwright.workspace import Asset, Workspace, WorkspaceConfig, critique
 from pixelwright.workspace.asset import KINDS
 from pixelwright.workspace.files import sha256_bytes, write_bytes_atomic
+from pixelwright.workspace.schema import SchemaError
 from pixelwright.workspace.style import bump_style, load_ramps
 
 Mask = npt.NDArray[np.bool_]
@@ -857,3 +858,42 @@ def cmd_inbox(root: Path, a: dict[str, Any]) -> Outcome:
         ]
     items.sort(key=lambda h: h["time"])
     return Outcome(data={"items": items, "count": len(items)})
+# -- critique -------------------------------------------------------------------------
+@command(
+    "critique",
+    "write or show Claude's critique of a version (critique.md, complaints linked to issues)",
+    ASSET,
+    Param("action", help="what to do", required=True, positional=True, choices=("write", "show")),
+    VERSION,
+    Param("file", help="critique.md to store (write)"),
+)
+def cmd_critique(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    asset = ws.asset(a["asset"])
+    version = _version(asset, a["version"])
+    dest = asset.versions_dir / version / "critique.md"
+    if a["action"] == "write":
+        if not a["file"]:
+            raise PwError("invalid", "critique write needs --file")
+        text = Path(a["file"]).read_text(encoding="utf-8")
+        parsed = _parse_critique(text)
+        if parsed.version != version:
+            raise PwError("invalid", f"critique is about {parsed.version}, not {version}")
+        known = {i["id"] for i in asset.issues()}
+        unknown = [k.issue for k in parsed.complaints if k.issue and k.issue not in known]
+        if unknown:
+            raise PwError("issue_not_found", f"unknown issue ids: {', '.join(unknown)}")
+        dest.write_text(text, encoding="utf-8")
+        asset.note(f"critique: {parsed.verdict}", author="claude", version=version)
+        return Outcome(asset.id, version, asset.stage(version), [_rel(ws, dest)], parsed.to_dict())
+    if not dest.exists():
+        raise PwError("not_found", f"{asset.id} {version} has no critique.md")
+    parsed = _parse_critique(dest.read_text(encoding="utf-8"))
+    return Outcome(asset.id, version, asset.stage(version), [_rel(ws, dest)], parsed.to_dict())
+
+
+def _parse_critique(text: str) -> critique.Critique:
+    try:
+        return critique.parse(text)
+    except (SchemaError, ValueError) as err:
+        raise PwError("invalid", f"critique.md: {err}") from err
