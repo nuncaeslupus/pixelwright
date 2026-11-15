@@ -24,6 +24,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import numpy as np
 
+from pixelwright.bench.rank import items, next_pair, record
 from pixelwright.cli.registry import REGISTRY, Outcome, PwError
 from pixelwright.core.image import RGBImage
 from pixelwright.core.render import grayscale, value_map
@@ -309,6 +310,41 @@ def decision(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
     return Reply({"decision": choice, "version": out.version, "stage": out.stage})
 
 
+# -- blind pairwise (benchmark) ---------------------------------------------------
+BENCH = r"/api/bench/(?P<name>[a-z0-9][a-z0-9_-]*)"
+
+
+def _bench(v: Viewer, p: dict[str, str]) -> Path:
+    out = Workspace.open(v.root).root / "benchmarks" / p["name"]
+    if not (out / "scores.json").is_file():
+        raise PwError("not_found", f"no benchmark {p['name']}")
+    return out
+
+
+@route("GET", rf"{BENCH}/pair")
+def bench_pair(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
+    """The next pair for the human reader: opaque tokens only, never a provider name."""
+    return Reply({"pair": next_pair(_bench(v, p), "human")})
+
+
+@route("GET", rf"{BENCH}/img/(?P<token>[0-9a-f]{{12}})")
+def bench_image(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
+    out = _bench(v, p)
+    row = next((r for r in items(out) if r["token"] == p["token"]), None)
+    if row is None:
+        raise PwError("not_found", "no such image")
+    ws = Workspace.open(v.root)
+    file = ws.asset(row["asset"]).versions_dir / row["version"] / "image.png"
+    return Reply(file.read_bytes(), "image/png")
+
+
+@route("POST", rf"{BENCH}/vote")
+def bench_vote(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
+    out = _bench(v, p)
+    record(out, "human", str(b.get("a", "")), str(b.get("b", "")), str(b.get("winner", "")))
+    return Reply({"pair": next_pair(out, "human")})
+
+
 @route("POST", rf"/api/assets/{ID}/revert")
 def revert(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
     ws = Workspace.open(v.root)
@@ -377,8 +413,10 @@ class Handler(BaseHTTPRequestHandler):
         return body
 
     def _static(self, path: str) -> Reply:
-        if path in ("/", "/index.html"):
-            page = (STATIC / "index.html").read_text(encoding="utf-8")
+        if path in ("/", "/index.html", "/blind"):
+            page = (STATIC / ("blind.html" if path == "/blind" else "index.html")).read_text(
+                encoding="utf-8"
+            )
             return Reply(page.replace("{{TOKEN}}", self.server.token).encode(), "text/html")
         parts = [s for s in path.split("/") if s]
         if not parts or any(s in ("..", ".") or s.startswith(".") for s in parts):

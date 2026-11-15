@@ -17,7 +17,7 @@ export function candidates() {
 function candidatesCanvas(cands) {
   const figs = cands.map((c) => `<figure class="cmp"><canvas id="cv-c-${esc(c.version)}" aria-label="Candidate ${esc(c.version)}"></canvas>
     <figcaption><span class="mono">${esc(c.version)}</span> · ${esc(c.stage)}
-    ${btn("cmp-pick", `Pick ${c.version}, reject the other candidates`, "", "Pick", "tb", `data-v="${esc(c.version)}"`)}</figcaption></figure>`).join("");
+    ${btn("cmp-pick", `Pick ${c.version}, reject the other candidates`, "", "Pick", "btn", `data-v="${esc(c.version)}"`)}</figcaption></figure>`).join("");
   return `<div class="pair" id="pair">${figs}</div>`;
 }
 

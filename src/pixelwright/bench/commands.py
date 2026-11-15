@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from pixelwright.bench.matrix import Matrix, load_matrix
+from pixelwright.bench.rank import READERS, WINNERS, items, next_pair, ranking, record
+from pixelwright.bench.report import write_report
 from pixelwright.cli.gen_commands import DEFAULT_SCALE, provider_config
 from pixelwright.cli.registry import REGISTRY, Outcome, Param, PwError, command
 from pixelwright.core import providers as pv
@@ -20,6 +22,7 @@ from pixelwright.core.providers.base import EXIT_BUDGET
 from pixelwright.workspace import Workspace
 from pixelwright.workspace.asset import utc_now
 from pixelwright.workspace.budget import Ledger, month_of, monthly_limit
+from pixelwright.workspace.config import save_config
 from pixelwright.workspace.files import write_bytes_atomic
 
 
@@ -134,15 +137,85 @@ def run_matrix(ws: Workspace, m: Matrix, out: Path) -> list[dict[str, Any]]:
     return scores
 
 
+ACTIONS = ("run", "pair", "vote", "rank", "report", "apply")
+
+
+def bench_dir(ws: Workspace, name: str | None) -> Path:
+    base = ws.root / "benchmarks"
+    if name:
+        out = base / name
+    else:
+        found = sorted(base.glob("*/scores.json"), key=lambda p: p.stat().st_mtime)
+        if not found:
+            raise PwError("not_found", "no benchmark results; run `pw bench run --yes` first")
+        out = found[-1].parent
+    if not (out / "scores.json").is_file():
+        raise PwError("not_found", f"no scores in {out}")
+    return out
+
+
+def _after_run(ws: Workspace, a: dict[str, Any]) -> Outcome:
+    out = bench_dir(ws, a["name"])
+    act = a["action"]
+    if act == "pair":
+        pair = next_pair(out, a["reader"])
+        text = "No pairs left to vote on." if pair is None else json.dumps(pair, indent=1)
+        return Outcome(data={"pair": pair, "name": out.name}, text=text)
+    if act == "vote":
+        if not (a["a"] and a["b"] and a["winner"]):
+            raise PwError("invalid", "bench vote needs --a, --b and --winner")
+        vote = record(out, a["reader"], a["a"], a["b"], a["winner"], a["note"])
+        return Outcome(data={"vote": vote, "next": next_pair(out, a["reader"])})
+    tables = {r: ranking(out, r) for r in (*READERS, None)}
+    if act == "rank":
+        text = "\n".join(
+            f"{i + 1}. {r['system']:<32} {r['strength']:.3f}  ({r['games']} votes, "
+            f"{r['mean_fails']} failing checks on average)"
+            for i, r in enumerate(tables[None])
+        )
+        return Outcome(
+            data={"ranking": tables[None], "human": tables["human"], "claude": tables["claude"]},
+            text=text,
+        )
+    if act == "report":
+        path = write_report(out, tables)
+        rel = path.relative_to(ws.root).as_posix()
+        return Outcome(outputs=[rel], data={"report": rel}, text=f"Report: {path}")
+    # apply: the strongest system's provider becomes the default for each kind benchmarked
+    best = tables["human"] if any(r["games"] for r in tables["human"]) else tables[None]
+    kinds = sorted({_kind(ws, r) for r in items(out)})
+    defaults = dict(ws.config.extra.get("defaults", {}))
+    for kind in kinds:
+        defaults[kind] = best[0]["provider"]
+    ws.config.extra["defaults"] = defaults
+    save_config(ws.root, ws.config)
+    return Outcome(
+        data={"defaults": defaults, "from": best[0]["system"]},
+        text=f"[defaults] now: {defaults} (from {best[0]['system']})",
+    )
+
+
+def _kind(ws: Workspace, row: dict[str, Any]) -> str:
+    return str(ws.asset(row["asset"]).spec()["kind"])
+
+
 @command(
     "bench",
-    "provider benchmark: `run` shows the cost estimate, and spends only with --yes",
-    Param("action", help="what to do", required=True, positional=True, choices=("run",)),
+    "provider benchmark: run (estimate; --yes spends), pair/vote, rank, report, apply",
+    Param("action", help="what to do", required=True, positional=True, choices=ACTIONS),
     Param("matrix", help="matrix.yaml (providers x chains x briefs x samples)"),
     Param("yes", "bool", help="send the requests (paid providers cost money)"),
+    Param("name", help="benchmark name under benchmarks/ (default: the only or newest one)"),
+    Param("reader", help="who votes", choices=READERS, default="claude"),
+    Param("a", help="vote: token of image A"),
+    Param("b", help="vote: token of image B"),
+    Param("winner", help="vote: the better image", choices=WINNERS),
+    Param("note", help="vote: why", default=""),
 )
 def cmd_bench(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
+    if a["action"] != "run":
+        return _after_run(ws, a)
     if not a["matrix"]:
         raise PwError("invalid", "bench run needs --matrix <matrix.yaml>")
     m = load_matrix(Path(a["matrix"]))
