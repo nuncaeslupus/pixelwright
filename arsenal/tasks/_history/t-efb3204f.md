@@ -5,6 +5,7 @@ label: "T40: tour"
 priority: 5
 deps: [t-37ccc6af]
 tags: [m3]
+status: merged
 ---
 
 steps with a "what happened / why / look at" block each; `--path` keeps the workspace; opens `pw view` at the end unless `--no-view`.
