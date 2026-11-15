@@ -13,7 +13,7 @@ from pixelwright.core.providers.base import (
     request_hash,
 )
 from pixelwright.core.providers.cache import Cache
-from pixelwright.core.providers.registry import get, names, register
+from pixelwright.core.providers.registry import get, names, needs_key, register
 from pixelwright.core.providers.run import run
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     "check_capability",
     "get",
     "names",
+    "needs_key",
     "register",
     "request_hash",
     "run",

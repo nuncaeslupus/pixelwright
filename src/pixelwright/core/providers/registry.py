@@ -29,3 +29,8 @@ def get(name: str, **config: Any) -> Provider:
             exit_code=EXIT_USAGE,
         ) from None
     return factory(**config)
+
+
+def needs_key(name: str) -> bool:
+    """Whether the provider's factory takes an `api_key` (paid, remote providers)."""
+    return bool(getattr(_FACTORIES.get(name), "needs_key", False))
