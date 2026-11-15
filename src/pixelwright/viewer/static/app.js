@@ -55,7 +55,7 @@ const when = (iso) => (iso ? new Date(iso).toLocaleString([], { dateStyle: "shor
 // -- state and routing ----------------------------------------------------------------
 export const state = {
   route: { asset: null, version: null, mode: "look" },
-  list: null, asset: null, issues: null, history: null, report: null, inbox: [],
+  list: null, asset: null, issues: null, history: null, report: null, frames: null, inbox: [],
   view: "color", zoom: 0, grid: store.get("grid", false), tab: "issues", side: true,
   selected: null, pop: null, notice: "", filters: { stage: "", kind: "", find: "" },
 };
@@ -111,12 +111,13 @@ async function fetchAsset() {
   }
   const v = state.route.version;
   if (!v) return;
-  const [issues, history, report] = await Promise.all([
+  const [issues, history, report, frames] = await Promise.all([
     api(`/api/assets/${id}/issues?version=${v}`),
     api(`/api/assets/${id}/history`),
     api(`/api/assets/${id}/${v}/report`).catch(() => null),
+    api(`/api/assets/${id}/${v}/frames`).catch(() => null),
   ]);
-  Object.assign(state, { issues, history: history.history, report });
+  Object.assign(state, { issues, history: history.history, report, frames });
   const seen = store.get("seen-versions", {});
   seen[`${id}/${v}`] = true;
   store.set("seen-versions", seen);
@@ -609,5 +610,5 @@ export function render() {
 }
 
 state.route = parseRoute();
-const MODE_MODULES = ["compare", "mark"];
+const MODE_MODULES = ["compare", "mark", "play"];
 Promise.all(MODE_MODULES.map((m) => import(`/static/${m}.js`))).finally(load);
