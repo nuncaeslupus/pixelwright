@@ -117,6 +117,7 @@ class Asset:
         params: Mapping[str, Any] | None = None,
         parent: str | None = None,
         inputs: Mapping[str, str] | None = None,
+        stage: str = "draft",
         **extra: Any,
     ) -> str:
         """Write a new immutable version folder and log it; return its name (`v0001`...).
@@ -126,6 +127,8 @@ class Asset:
         """
         if not files:
             raise ValueError("a version needs at least one file")
+        if stage not in ("draft", "experiment"):
+            raise ValueError("stage is reserved: a new version starts as draft or experiment")
         clash = set(extra) & _META_CORE
         if clash:
             raise ValueError(f"reserved meta keys cannot be passed as extras: {sorted(clash)}")
@@ -138,7 +141,7 @@ class Asset:
             for name, data in files.items():
                 write_bytes_atomic(tmp / _check_file_name(name), data)
                 outputs[name] = sha256_bytes(data)
-            return self._publish(tmp, step, params, parent, inputs, outputs, extra)
+            return self._publish(tmp, step, params, parent, inputs, outputs, extra, stage)
         except BaseException:
             shutil.rmtree(tmp, ignore_errors=True)
             raise
@@ -152,6 +155,7 @@ class Asset:
         inputs: Mapping[str, str] | None,
         outputs: dict[str, str],
         extra: Mapping[str, Any],
+        stage: str = "draft",
     ) -> str:
         for _ in range(100):
             latest = self.latest()
@@ -163,7 +167,7 @@ class Asset:
                     "parent": parent,
                     "step": step,
                     "params": dict(params or {}),
-                    "stage": "draft",
+                    "stage": stage,
                     "created": utc_now(),
                     "inputs": dict(inputs or {}),
                     "outputs": outputs,

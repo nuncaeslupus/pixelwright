@@ -1,15 +1,67 @@
-"""Generation commands (M3): cost, and later generate, regen-region, doctor, next, tour."""
+"""Generation commands (M3): generate, cost; later regen-region, doctor, next, tour."""
 
 from __future__ import annotations
 
+import io
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pixelwright.cli.registry import Outcome, Param, PwError, command
-from pixelwright.workspace import Workspace
-from pixelwright.workspace.budget import Ledger, monthly_limit
+import numpy as np
+from PIL import Image as PILImage
+
+from pixelwright.cli.registry import EXIT_USAGE, Outcome, Param, PwError, command
+from pixelwright.core import providers as pv
+from pixelwright.core.image import RGBImage
+from pixelwright.io.palette_io import read_palette
+from pixelwright.io.png import encode_png
+from pixelwright.workspace import Asset, Workspace
+from pixelwright.workspace.budget import Ledger, api_key, budget_guard, monthly_limit
+from pixelwright.workspace.files import sha256_file
+from pixelwright.workspace.style import load_style
+
+IMAGE = "image.png"
+DEFAULT_SCALE = 4  # painters work at a multiple of the native canvas; snap brings it back
+
+
+def provider_config(ws: Workspace, name: str) -> dict[str, Any]:
+    """`[providers.<name>]` from pixelwright.toml, plus the key and defaults it needs."""
+    cfg = dict(ws.config.extra.get("providers", {}).get(name, {}))
+    if cfg.pop("enabled", True) is False:
+        raise PwError("provider_disabled", f"provider {name} is disabled in pixelwright.toml")
+    if name == "replay":
+        cfg["folder"] = str(ws.root / cfg.get("folder", "replay"))
+    if pv.needs_key(name):
+        cfg["api_key"] = api_key(ws.root, name)
+    return cfg
+
+
+def default_provider(ws: Workspace, kind: str) -> str:
+    defaults = ws.config.extra.get("defaults", {})
+    return str(defaults.get(kind) or defaults.get("provider") or "comfyui")
+
+
+def _sketch(asset: Asset) -> Path | None:
+    found = sorted((asset.path / "inputs").glob("sketch.*"))
+    return found[0] if found else None
+
+
+def _png_bytes(data: bytes) -> bytes:
+    """Re-encode whatever the provider sent as an RGBA PNG (stable bytes, one format)."""
+    with PILImage.open(io.BytesIO(data)) as im:
+        rgba = np.asarray(im.convert("RGBA"), dtype=np.uint8)
+    return encode_png(RGBImage.from_array(rgba))
+
+
+def _size(text: str | None, canvas: dict[str, int], scale: int) -> tuple[int, int]:
+    if text:
+        try:
+            w, h = (int(v) for v in text.lower().split("x"))
+        except ValueError:
+            raise PwError("invalid", f"size must be WIDTHxHEIGHT, got {text!r}") from None
+        return w, h
+    return canvas["width"] * scale, canvas["height"] * scale
 
 
 @command(
@@ -40,3 +92,123 @@ def cmd_cost(root: Path, a: dict[str, Any]) -> Outcome:
     else:
         data["rows"] = rows
     return Outcome(data=data)
+
+
+@command(
+    "generate",
+    "paint candidate versions with an image provider (the style preset shapes the request)",
+    Param("asset", help="asset id", required=True, positional=True),
+    Param("provider", help="provider name (default: [defaults] in pixelwright.toml)"),
+    Param("mode", help="what to send", choices=pv.MODES),
+    Param("prompt", help="what to paint (added after the style preamble)", default=""),
+    Param("prompt_file", help="read the prompt from this file"),
+    Param("init", help="init image: `sketch` or a version (default: the sketch if any)"),
+    Param("n", "int", help="candidates, 1-4", default=1),
+    Param("seed", "int", help="seed, for reproducible calls"),
+    Param("size", help="generation size WIDTHxHEIGHT (default: canvas x 4)"),
+    Param("experiment", "bool", help="keep the results as experiments, not drafts"),
+    Param("dry_run", "bool", help="show the request hash and estimated cost; send nothing"),
+    Param("budget_override", "bool", help="allow this call to pass the monthly budget"),
+)
+def cmd_generate(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    asset = ws.asset(a["asset"])
+    spec = asset.spec()
+    name = a["provider"] or default_provider(ws, spec["kind"])
+    provider = pv.get(name, **provider_config(ws, name))
+    style = load_style(ws.path("style"))
+    preset: dict[str, Any] = dict(style.presets.get(name, {}))
+    prompt = Path(a["prompt_file"]).read_text(encoding="utf-8") if a["prompt_file"] else a["prompt"]
+    prompt = " ".join(p for p in (preset.get("preamble", ""), prompt.strip()) if p)
+    if not prompt:
+        raise PwError("invalid", "generate needs --prompt, --prompt-file or a style preamble")
+
+    init: Path | None = None
+    if a["init"] and a["init"] != "sketch":
+        init = asset.versions_dir / a["init"] / IMAGE
+        if not init.is_file():
+            raise PwError("version_not_found", f"{asset.id} has no version {a['init']}")
+    elif a["init"] == "sketch" or a["mode"] in (None, "img2img", "edit"):
+        init = _sketch(asset)
+        if init is None and a["init"] == "sketch":
+            raise PwError("not_found", f"{asset.id} has no sketch; run `pw attach --as sketch`")
+    mode = a["mode"] or ("img2img" if init is not None else "txt2img")
+    if mode == "txt2img":
+        init = None
+    if mode == "inpaint":
+        raise PwError("invalid", "inpaint goes through `pw regen-region`", exit_code=EXIT_USAGE)
+
+    refs = [ws.path("style") / r for r in style.references if (ws.path("style") / r).is_file()]
+    refs += sorted((asset.path / "inputs" / "refs").glob("*.png"))
+    palette = None
+    if spec.get("palette") and provider.capabilities.palette_input:
+        pal = read_palette(ws.path("style") / str(spec["palette"]).removeprefix("style:"))
+        palette = tuple(c.hex for c in pal.colors)
+    scale = int(preset.get("scale", DEFAULT_SCALE))
+    req = pv.GenRequest(
+        mode=mode,
+        prompt=prompt,
+        negative=str(preset.get("negative", "")),
+        size=_size(a["size"], spec["canvas"], scale),
+        init_image=init,
+        references=tuple(refs[: provider.capabilities.n_references]),
+        palette=palette,
+        seed=a["seed"],
+        n=a["n"],
+        params=dict(preset.get("params", {})),
+    )
+    pv.check_capability(provider, req)
+    key = pv.request_hash(name, req)
+    if a["dry_run"]:
+        estimate = provider.estimate(req).usd
+        return Outcome(
+            asset.id,
+            data={
+                "provider": name,
+                "mode": mode,
+                "prompt": prompt,
+                "request_hash": key,
+                "estimate_usd": estimate,
+                "size": list(req.size),
+            },
+        )
+
+    guard = None if a["budget_override"] else budget_guard(ws.root, ws.config)
+    result = pv.run(provider, req, pv.Cache(ws.path("cache")), guard)
+    inputs = {"init": sha256_file(init)} if init is not None else {}
+    stage = "experiment" if a["experiment"] else "draft"
+    per_image = round(result.cost.usd / max(1, len(result.images)), 6)
+    versions = []
+    for image in result.images:
+        versions.append(
+            asset.new_version(
+                "generate",
+                {IMAGE: _png_bytes(image)},
+                params={"mode": mode, "prompt": prompt, "n": req.n, "size": list(req.size)},
+                inputs=inputs,
+                stage=stage,
+                provider=name,
+                model=result.model,
+                request_hash=result.request_hash,
+                seed=result.seed,
+                cost_usd=0.0 if result.cache_hit else per_image,
+                cache_hit=result.cache_hit,
+                licence=provider.capabilities.licence_note,
+            )
+        )
+    Ledger(ws.root).record(name, result, asset=asset.id, versions=versions)
+    last = versions[-1]
+    return Outcome(
+        asset.id,
+        last,
+        asset.stage(last),
+        [(asset.versions_dir / v / IMAGE).relative_to(ws.root).as_posix() for v in versions],
+        {
+            "versions": versions,
+            "provider": name,
+            "mode": mode,
+            "request_hash": key,
+            "cost_usd": 0.0 if result.cache_hit else result.cost.usd,
+            "cache_hit": result.cache_hit,
+        },
+    )
