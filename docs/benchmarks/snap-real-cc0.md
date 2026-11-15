@@ -32,9 +32,16 @@ that keeps >= 80% of its raw on-grid share and passes the inner-error check wins
 x10: 85.0 -> 89.4%, x12: 89.4 -> 94.4%; no other scale moved by more than one case;
 synthetic set unchanged (98.75% scale-exact).
 
+## Adventure-game set (after the fix)
+
+10 CC0 point-and-click images (eight 320x200 rooms or portraits, one 800x500 scene, one
+creature sprite and a mockup; 7-76 colors), same protocol: 2200 cases, **97.5%
+scale-exact, 95.5% pixels**. Worst sheet: a room with large flat walls (85.5%), where
+few borders leave the grid underdetermined. Worst mode: blur (90.8% pixels).
+
 ## Remaining weak spots
 
 - x2 with JPEG or blur (about 81% scale-exact): picks x4 or x8.
-- The set is modern short-palette art. 256-color VGA adventure-game backgrounds
-  (dithering, soft lighting gradients) are not covered yet; a synthetic low-contrast
-  dither case now pins the large-scale behaviour (`test_noisy_low_contrast_dither_*`).
+- No CC0 image found uses a full 256-color VGA palette with soft lighting gradients;
+  a synthetic low-contrast dither case pins that behaviour at x12
+  (`test_noisy_low_contrast_dither_*`, about half the seeds recovered, none on main).
