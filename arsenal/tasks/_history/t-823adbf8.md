@@ -4,6 +4,7 @@ title: "T23: Diff deltas"
 label: "T23: Diff deltas"
 priority: 10
 tags: [m2]
+status: merged
 ---
 
 `pw diff` adds per-check deltas, changed pixel count and share, colors used, bounding box.
