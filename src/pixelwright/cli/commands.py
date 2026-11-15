@@ -858,6 +858,8 @@ def cmd_inbox(root: Path, a: dict[str, Any]) -> Outcome:
         ]
     items.sort(key=lambda h: h["time"])
     return Outcome(data={"items": items, "count": len(items)})
+
+
 # -- critique -------------------------------------------------------------------------
 @command(
     "critique",
