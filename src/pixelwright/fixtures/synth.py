@@ -34,13 +34,13 @@ def random_palette(rng: np.random.Generator, n: int) -> Palette:
 
 
 def make_art(rng: np.random.Generator, width: int, height: int, n_colors: int = 6) -> IndexedImage:
-    """Flat shapes (rectangles, discs, lines) on a background, no isolated pixels by design."""
+    """Flat shapes (rectangles, discs, lines, small blocks) on a background."""
     palette = random_palette(rng, n_colors)
     idx = np.zeros((height, width), dtype=np.uint16)
     ys, xs = np.mgrid[0:height, 0:width]
-    for _ in range(int(rng.integers(3, 8))):
+    for _ in range(int(rng.integers(8, 17))):
         color = int(rng.integers(1, n_colors))
-        kind = int(rng.integers(0, 3))
+        kind = int(rng.integers(0, 4))
         cx, cy = int(rng.integers(0, width)), int(rng.integers(0, height))
         if kind == 0:
             w, h = (
@@ -51,6 +51,9 @@ def make_art(rng: np.random.Generator, width: int, height: int, n_colors: int = 
         elif kind == 1:
             r = int(rng.integers(2, max(3, min(width, height) // 3)))
             idx[(xs - cx) ** 2 + (ys - cy) ** 2 <= r * r] = color
+        elif kind == 2:
+            size = int(rng.integers(2, 4))
+            idx[cy : cy + size, cx : cx + size] = color
         else:
             thick = int(rng.integers(2, 4))
             if rng.random() < 0.5:

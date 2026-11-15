@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -60,11 +61,27 @@ def read_case(folder: Path) -> DetectorCase:
     )
 
 
+def remove_isolated(
+    indices: np.ndarray[Any, np.dtype[np.uint16]],
+) -> np.ndarray[Any, np.dtype[np.uint16]]:
+    """Repaint every pixel with no same-colored 8-neighbour with its most common neighbour."""
+    idx = indices.copy()
+    h, w = idx.shape
+    for y in range(h):
+        for x in range(w):
+            nb = idx[max(0, y - 1) : y + 2, max(0, x - 1) : x + 2].ravel().tolist()
+            nb.remove(int(idx[y, x]))
+            if nb and int(idx[y, x]) not in nb:
+                idx[y, x] = max(set(nb), key=nb.count)
+    return idx
+
+
 def orphan_cases(seed: int = 0, count: int = 40) -> Iterator[DetectorCase]:
     """Half clean flat art (pass), half with planted isolated pixels (fail, boxes around them)."""
     for i in range(count):
         rng = np.random.default_rng(seed * 1_000_003 + 500_000 + i)
-        art = make_art(rng, int(rng.integers(20, 40)), int(rng.integers(16, 32)))
+        raw = make_art(rng, int(rng.integers(20, 40)), int(rng.integers(16, 32)))
+        art = IndexedImage(remove_isolated(raw.indices), raw.palette)
         if i % 2 == 0:
             yield DetectorCase(f"orphans-{seed}-{i:03d}", "orphans", "pass", art)
             continue
