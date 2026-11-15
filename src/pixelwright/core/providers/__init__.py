@@ -1,7 +1,7 @@
 """Image providers (spec §2.9, §5): one contract, one adapter module per provider."""
 
-from pixelwright.core.providers import replay as _replay  # noqa: F401  (registers it)
 from pixelwright.core.providers import comfyui as _comfyui  # noqa: F401  (registers it)
+from pixelwright.core.providers import replay as _replay  # noqa: F401  (registers it)
 from pixelwright.core.providers.base import (
     MODES,
     Capabilities,
