@@ -1,0 +1,1640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="arsenal-source-sha256" content="ea5f118584ab322e008d87319fed4726a3acc738708d892faf0272eb1a410148">
+<title>Pixelwright — Specification (annotatable)</title>
+<style>
+:root{
+  --bg:#fbfaf7;--fg:#1d1c1a;--muted:#5f5c56;--line:#e3ded4;
+  --card:#ffffff;--accent:#0f766e;--accent2:#9a4a0b;--chip:#e8efed;
+  --note:#fffaf0;--note-line:#d9a441;--note-fg:#7a3b06;--code:#f1eee8;--link:#0f766e;
+  --measure:70ch;
+  --serif:Charter,"Bitstream Charter","Iowan Old Style","Sitka Text",Cambria,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:17px/1.65 var(--sans);
+  padding-bottom:48px;
+}
+/* The document reads in a book face; the reader's own chrome (bars, buttons,
+   headings, notes) stays in the UI face, so the two never blur together. */
+.sec-body{font-family:var(--serif);font-size:1.06em;line-height:1.7}
+.sec-body table,.sec-body pre{font-family:var(--sans)}
+.sec-body pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:calc(var(--measure) + 120px);margin:0 auto;padding:0 16px}
+a{color:var(--link);text-underline-offset:2px}
+code{background:var(--code);padding:.08em .35em;border-radius:5px;font-size:.86em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+pre{background:var(--code);padding:12px;border-radius:8px;overflow:auto;font-size:.88em;line-height:1.5}
+pre code{background:none;padding:0;font-size:1em}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--line);backdrop-filter:saturate(120%) blur(6px)}
+.topbar .wrap{display:flex;align-items:center;gap:8px;padding-top:10px;padding-bottom:10px}
+.brand{font-weight:700;font-size:16px;margin-right:auto;letter-spacing:.2px;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand small{font-weight:500;color:var(--muted);display:block;font-size:11px;letter-spacing:0}
+.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);
+  border-radius:9px;padding:8px 11px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.count{font-size:12px;color:var(--muted);white-space:nowrap;font-weight:600}
+.savestate{font-size:12px;font-weight:700;white-space:nowrap;transition:color .2s}
+.savestate.ok{color:var(--accent)}
+.savestate.warn{color:#9a4a0b}
+.statusbar{border-bottom:1px solid var(--line);background:var(--card)}
+.statusbar .wrap{padding:7px 16px;font-size:12px;color:var(--muted)}
+#warnbar{display:none;background:#fff4e5;border-bottom:1px solid var(--note-line);color:#7c2d12}
+#warnbar .wrap{padding:10px 16px;font-size:13px;line-height:1.45}
+.hero{padding:34px 0 8px}
+.hero h1{font-size:2rem;line-height:1.15;margin:.1em 0 .3em;letter-spacing:-.02em}
+.hero p{color:var(--muted);margin:.3em 0;max-width:var(--measure)}
+.help{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:4px 14px;margin:14px 0}
+.help summary{cursor:pointer;font-weight:600;padding:10px 0}
+.help ul{margin:.2em 0 1em;padding-left:1.2em}
+.help li{margin:.3em 0}
+.toc{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:4px 14px;margin:14px 0}
+.toc>summary{cursor:pointer;font-weight:700;padding:11px 0;font-size:15px}
+.toc-part{margin:2px 0;border-top:1px solid var(--line)}
+.toc-part>summary{cursor:pointer;padding:9px 2px;font-weight:600;font-size:14px}
+.toc-part ul{margin:.1em 0 .7em;padding-left:1.1em}
+.toc-part li{margin:.22em 0;font-size:13.5px;line-height:1.4}
+.toc-part a,.toc-flat a{text-decoration:none}
+.toc-flat{margin:.1em 0 .8em;padding-left:1.1em}
+.toc-flat li{margin:.25em 0;font-size:14px;line-height:1.4;break-inside:avoid}
+.toc-flat li.sub{margin-left:1.1em;font-size:13px}
+.toc-flat a:hover{text-decoration:underline}
+.toc-part a:hover{text-decoration:underline}
+.part{margin:30px 0}
+.part-title{font-size:1.45rem;line-height:1.25;border-bottom:2px solid var(--accent);
+  padding-bottom:8px;margin:18px 0 10px}
+.badge{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  vertical-align:middle;padding:3px 7px;border-radius:6px;margin-right:8px}
+.badge.spec,.badge.plan{background:var(--chip);color:var(--accent)}
+.badge.workspace{background:var(--chip);color:var(--accent2)}
+/* Two heading levels, told apart by size, weight and a rule: a ## section opens
+   with a full-width rule; a ### section sits indented under it on a side rule. */
+.sec{scroll-margin-top:72px}
+.sec.l2{padding:22px 0 6px;border-top:1px solid var(--line);margin-top:18px}
+.part>.sec.l2:first-of-type{border-top:none;margin-top:0}
+.sec.l3{margin:6px 0 6px 2px;padding:2px 0 2px 14px;border-left:3px solid var(--line)}
+.sec-h{margin:6px 0 8px;line-height:1.3}
+h3.sec-h{font-size:1.3rem;font-weight:750}
+h4.sec-h{font-size:1.08rem;font-weight:650;color:var(--fg)}
+.sec.bare>.sec-h{margin-bottom:2px}
+.chip{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;
+  color:var(--accent);background:var(--chip);border-radius:6px;padding:2px 7px;margin-right:8px;vertical-align:middle}
+h4 .chip{font-size:11px;color:var(--muted)}
+.sec-title{vertical-align:middle}
+.sec-body{margin:.2em 0 .4em}
+.sec-body p,.sec-body li,.sec-body blockquote{max-width:var(--measure)}
+.sec-body p{margin:.6em 0}
+.sec-body ul,.sec-body ol{margin:.5em 0;padding-left:1.35em}
+.sec-body li{margin:.3em 0}
+.sec-body h4,.sec-body h5,.sec-body h6{font-size:1em;margin:1em 0 .3em}
+.sec-body blockquote{margin:.7em 0;padding:.5em .9em;border-left:3px solid var(--accent);
+  background:var(--code);border-radius:0 8px 8px 0;color:var(--fg)}
+.sec-body blockquote p{margin:.3em 0}
+.sec-body figure.drawspec{margin:.8em 0;overflow-x:auto}
+.sec-body figure.drawspec svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.sec-body table{border-collapse:separate;border-spacing:0;font-size:14px;line-height:1.45;margin:.8em 0;
+  display:block;width:max-content;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.sec-body th,.sec-body td{border-bottom:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+.sec-body tr:last-child td{border-bottom:none}
+.sec-body tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--chip) 45%,transparent)}
+.sec-body th{background:var(--chip);font-weight:700;font-size:12.5px;letter-spacing:.02em}
+.sec-body strong{font-weight:700}
+/* The note field: the one thing on the page that is the reviewer's, so it must
+   not read as more document — but an empty one must not shout over the text
+   either. Empty: a quiet dashed margin slip. Focused: it opens into a writing
+   card. Written in: a solid amber card that stands out on a skim. */
+.note{max-width:var(--measure);background:transparent;border:1.5px dashed var(--note-line);
+  border-radius:10px;padding:6px 12px;margin:14px 0 20px;opacity:.78;
+  transition:background .15s,box-shadow .15s,opacity .15s,padding .15s}
+.note:hover{opacity:1}
+.note:focus-within,.note.filled{opacity:1;background:var(--note);border-style:solid;
+  border-left:4px solid var(--note-line);padding:10px 14px}
+.note:focus-within{box-shadow:0 0 0 3px color-mix(in srgb,var(--note-line) 28%,transparent),0 6px 20px #0000000f}
+.note-head{display:flex;align-items:center;gap:8px;cursor:text}
+.note-ico{color:var(--note-fg);font-weight:800}
+.note-label{font-size:11px;font-weight:800;color:var(--note-fg);text-transform:uppercase;letter-spacing:.07em}
+.note-ref{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* While empty the label row collapses into the placeholder line beside the icon. */
+.note:not(.filled):not(:focus-within){display:flex;align-items:center;gap:8px}
+.note:not(.filled):not(:focus-within) .note-label,
+.note:not(.filled):not(:focus-within) .note-ref{display:none}
+.note:focus-within .note-head,.note.filled .note-head{margin-bottom:4px}
+.note-ta{display:block;width:100%;border:none;background:transparent;color:var(--fg);font:inherit;font-size:16px;
+  resize:none;outline:none;line-height:1.55;padding:2px 0;overflow:hidden;min-height:1.6em}
+.note:focus-within .note-ta{min-height:4.8em}
+.note-ta::placeholder{color:var(--muted);opacity:1;font-style:italic}
+.modal{position:fixed;inset:0;z-index:60;background:#0008;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-card{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:680px;width:100%;
+  max-height:86vh;display:flex;flex-direction:column;padding:16px}
+.modal-card h3{margin:.1em 0 .5em}
+.modal-card p{color:var(--muted);font-size:13.5px;margin:.2em 0 .6em}
+.modal-card textarea{width:100%;flex:1;min-height:220px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--fg);font:13px/1.5 ui-monospace,Menlo,monospace;padding:10px;resize:vertical}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hidden-input{display:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:32px;z-index:70;background:#111;color:#fff;
+  padding:9px 14px;border-radius:9px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:.96}
+/* Phone width: smaller type, the hint dropped. */
+@media(max-width:600px){
+  body{font-size:16px}
+  .hero h1{font-size:1.45rem}
+  .part-title{font-size:1.25rem}
+  h3.sec-h{font-size:1.15rem}
+  h4.sec-h{font-size:1rem}
+  .sec.l3{padding-left:10px}
+  .statusbar .hint{display:none}
+  .topbar .btn{padding:7px 9px}
+  .toast{bottom:24px}
+}
+/* Block notes: a faint ✎ in the right margin of every paragraph, item and table. */
+.bn-host{position:relative}
+.bn-btn{position:absolute;top:0;right:-34px;width:26px;height:26px;border-radius:7px;border:1px solid transparent;
+  background:transparent;color:var(--note-fg);font-size:14px;line-height:1;cursor:pointer;opacity:.3;padding:0}
+.bn-host:hover>.bn-btn,.bn-btn:focus-visible,.bn-btn.has{opacity:1;border-color:var(--note-line);background:var(--note)}
+.bn-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.note.bnote{margin:6px 0 12px}
+li>.note.bnote{margin:6px 0}
+@media(max-width:820px){.bn-host{padding-right:30px}.bn-btn{right:0}}
+@media print{.topbar,.statusbar,.help,.bn-btn,.note:not(.filled){display:none}}
+/* Pictures: full column width, zoomed in place (see the zoom script). The frame
+   scrolls sideways; its height follows the picture, so the page scrolls past it. */
+.sec-body p:has(img){max-width:none}
+.zwrap{margin:.6em 0}
+.zbox{overflow-x:auto;overflow-y:hidden;touch-action:pan-x pan-y;border:1px solid var(--line);border-radius:8px;
+  background:#fff;overscroll-behavior-x:contain}
+.zbox>img,.zbox>svg{display:block;margin:0 auto;width:100%;max-width:none!important;height:auto;cursor:zoom-in;-webkit-user-drag:none;user-select:none}
+.zwrap.on .zbox>img,.zwrap.on .zbox>svg{cursor:zoom-out}
+.zbar{display:none;position:sticky;top:58px;z-index:5;align-items:center;gap:6px;padding:4px 0;background:var(--bg)}
+.zwrap.on .zbar{display:flex}
+.zbar button{font:inherit;font-size:14px;min-width:34px;height:30px;border:1px solid var(--line);border-radius:7px;
+  background:var(--card);color:var(--fg);cursor:pointer}
+.zpct{font-size:12px;color:var(--muted);min-width:3.4em;text-align:center}
+.zhint{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Reviewed copy (--bake): the notes as text, no controls. */
+.note-text{white-space:pre-wrap;font-size:16px;line-height:1.55;overflow-wrap:anywhere}
+body.baked #btn-import,body.baked #btn-export,body.baked .savestate,body.baked .statusbar,body.baked .help,
+body.baked .bn-btn,body.baked #warnbar{display:none!important}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand">Pixelwright — Specification<small>annotatable reader · 2026-11-15</small></div>
+    <span class="savestate ok" id="savestate">✓ Auto-saving</span>
+    <button class="btn" id="btn-import">Import</button>
+    <button class="btn primary" id="btn-export">Save / Export</button>
+  </div>
+</div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 25 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Pixelwright — Specification</h1>
+    <p>Read at your own pace and leave a note on any point you want to discuss.</p>
+  </div>
+  <details class="help">
+    <summary>How to annotate (tap)</summary>
+    <ul>
+      <li>Tap the note field under any section and type. Each note is tagged so your feedback maps to an exact point.</li>
+      <li>Tap <strong>✎</strong> at the right of any paragraph, list item or table to note on that exact spot — the box opens right below it, with the text still in view.</li>
+      <li><strong>Notes save automatically</strong> in this browser as you type.</li>
+      <li><strong>Save / Export</strong> downloads a Markdown file of your notes — the copy to send back. Tap whenever you pause, especially on a phone.</li>
+      <li><strong>Import</strong> reloads notes from a file you exported earlier (after clearing the browser or switching devices).</li>
+    </ul>
+  </details>
+  <details class="toc"><summary>Contents</summary>
+<ul class="toc-flat">
+<li><a href="#s-spec-intro">Preamble &amp; scope</a></li>
+<li><a href="#s-spec-1">§1 Problem statement</a></li>
+<li><a href="#s-spec-2">§2 Systems &amp; Impact</a></li>
+<li class="sub"><a href="#s-spec-2-1">§2.1 Actors and roles</a></li>
+<li class="sub"><a href="#s-spec-2-2">§2.2 Workflows</a></li>
+<li class="sub"><a href="#s-spec-2-3">§2.3 Workspace layout</a></li>
+<li class="sub"><a href="#s-spec-2-4">§2.4 Asset spec (asset.yaml)</a></li>
+<li class="sub"><a href="#s-spec-2-5">§2.5 Pipeline stages (core functions)</a></li>
+<li class="sub"><a href="#s-spec-2-6">§2.6 Check catalog</a></li>
+<li class="sub"><a href="#s-spec-2-7">§2.7 Critique protocol</a></li>
+<li class="sub"><a href="#s-spec-2-8">§2.8 Interfaces</a></li>
+<li class="sub"><a href="#s-spec-2-9">§2.9 Providers</a></li>
+<li class="sub"><a href="#s-spec-2-10">§2.10 Aseprite bridge</a></li>
+<li class="sub"><a href="#s-spec-2-11">§2.11 Non-functional requirements</a></li>
+<li class="sub"><a href="#s-spec-2-12">§2.12 Out of scope (v1)</a></li>
+<li><a href="#s-spec-3">§3 Options</a></li>
+<li class="sub"><a href="#s-spec-option-a-cli-mcp-only-aseprite-a">Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)</a></li>
+<li class="sub"><a href="#s-spec-option-b-layered-tool-core-cli-m">Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)</a></li>
+<li class="sub"><a href="#s-spec-option-c-desktop-application-wit">Option C: Desktop application with embedded editor</a></li>
+<li class="sub"><a href="#s-spec-comparison">Comparison</a></li>
+<li><a href="#s-spec-4">§4 Recommendation</a></li>
+<li><a href="#s-spec-5">§5 Contracts</a></li>
+<li class="sub"><a href="#s-spec-api-contracts">API contracts</a></li>
+<li class="sub"><a href="#s-spec-inter-service-contracts">Inter-service contracts</a></li>
+<li class="sub"><a href="#s-spec-database-migrations">Database migrations</a></li>
+<li><a href="#s-spec-6">§6 Risks &amp; Validation</a></li>
+</ul>
+</details>
+  <section class="part">
+<article class="sec l2" id="s-spec-intro" data-ref="SPEC · intro" data-label="Preamble &amp; scope" data-part="Specification">
+<h3 class="sec-h"><span class="chip">overview</span><span class="sec-title">Preamble &amp; scope</span></h3>
+<div class="sec-body"><p><strong>Date</strong>: 2026-11-15<br />
+<strong>Ticket / PR</strong>: initial specification<br />
+<strong>Author</strong>: Claude (for the repository owner)<br />
+<strong>Revision</strong>: 2<br />
+<strong>Status</strong>: approved (2026-11-15, revision 2) — without annotations<br />
+<strong>Revision log</strong>:
+- r1 — first draft, built from the project brief and the research in <code>docs/research/</code> (v1.10)
+- r2 — applied <code>pixelwright-spec-v1-2026-11-15-1209-notes.md</code> (13 notes): sizes are per asset, character-in-scene and lighting, effects, game-repo integration with experiments vs finals, style definition as the first workflow, privacy check without a deny-list, open questions resolved</p>
+<blockquote>
+<p>Review record. Each round of reviewer notes makes a new revision: bump
+<strong>Revision</strong>, add a log line naming the export it applied, and commit that
+export beside this file in the same commit. On approval set <strong>Status</strong> to
+<code>approved (YYYY-MM-DD, revision N)</code>.</p>
+</blockquote>
+<p>Rule ids such as <code>R-PIX-4</code> refer to the adopted rules in
+<code>docs/research/pixelart-research_v1.10-source.md</code> (rendered: <code>docs/research/pixelart-research.html</code>).</p></div>
+<div class="note" data-for="s-spec-intro"><label class="note-head" for="n-s-spec-intro"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC · intro</span></label><textarea class="note-ta" data-key="s-spec-intro" id="n-s-spec-intro" data-label="Preamble &amp; scope" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-1" data-ref="SPEC §1" data-label="§1 Problem statement" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§1</span><span class="sec-title">Problem statement</span></h3>
+<div class="sec-body"><p>Hand-made pixel art at the level of the VGA-era point-and-click adventures (320x200, up to 256 colors, painted backgrounds, expressive animated characters) is slow and laborious, and one artist cannot produce the hundreds of backgrounds, sprites and animations a full adventure game needs. Image models now paint convincing scenes, but their output only looks like pixel art: it ignores the pixel grid and the palette, breaks clusters and lines, and is inconsistent between frames. Claude can direct art and write code but cannot reach that quality by drawing with code alone, and under a Claude Max subscription it cannot be called from a program; it has to drive the tool from Claude Code or Claude Desktop. pixelwright is the tool that closes this gap: a local pipeline in which image models paint, deterministic post-processing turns their output into true pixel art, automatic checks plus Claude's critique find defects region by region, Claude fixes or regenerates those regions, and the human artist sketches, approves and retouches in Aseprite. The research (<code>docs/research/</code>) shows this is the same shape as the original LucasArts process (paint, reduce to ~256 colors, retouch by hand at native resolution: <code>R-STYLE-1</code>), so quality depends mostly on post-processing, checks and the retouch loop rather than on the generator.</p>
+<p><strong>Success criteria (measurable)</strong>:</p>
+<ul>
+<li>[ ] <code>palette_compliance == 1.0</code> and <code>grid_compliance == 1.0</code> for every asset exported by <code>pw export</code> (every pixel in the asset palette; one logical pixel per cell) (<code>R-PIX-1</code>).</li>
+<li>[ ] Grid snap: on the synthetic fixture set (reference pixel art upscaled x2..x12, then blurred, jittered by a sub-cell offset, JPEG-compressed and color-noised), recovered scale is exact in <code>&gt;= 0.98</code> of cases and per-pixel color accuracy after snap is <code>&gt;= 0.97</code> (<code>R-POST-1</code>).</li>
+<li>[ ] Each detector in the check catalog (section 2.6) ships with a labelled fixture set of at least 20 positive and 20 negative cases and reaches <code>precision &gt;= 0.90</code> and <code>recall &gt;= 0.80</code> on it.</li>
+<li>[ ] Aseprite round-trip: <code>.aseprite -&gt; pixelwright -&gt; .aseprite</code> preserves layers, cels, frames, per-frame durations, tags, palette and cel offsets; semantic-equality test passes on all fixtures.</li>
+<li>[ ] Determinism: the same inputs, parameters and provider responses (cached) give byte-identical outputs (<code>R-POST-4</code>); checked by re-running the fixture pipelines twice.</li>
+<li>[ ] Parity: every CLI command that changes or inspects an asset has an MCP tool with the same parameters and result schema; a parity test enumerates both.</li>
+<li>[ ] Asset sizes are free per asset (a 16x16 icon, a 48x80 character, a 640x180 scrolling background); nothing in the core assumes a canvas size. Local operations (snap, quantize, all checks, render previews) finish in <code>p95 &lt;= 2 s</code> per 100k native pixels on the developer machine (a 320x180 frame is about 58k); provider calls are excluded.</li>
+<li>[ ] Offline: every non-provider feature works with no network and no API keys; CI runs with network disabled.</li>
+<li>[ ] Core test line coverage <code>&gt;= 0.90</code>.</li>
+<li>[ ] Benchmark (M3): at least 3 generators x 2 post-processing chains x 3 briefs x 3 samples run for <code>&lt;= 20 USD</code> total, producing a report with detector scores, Claude pairwise verdicts and blind human pairwise ranking (Bradley-Terry) (<code>R-BENCH-1..3</code>).</li>
+<li>[ ] Quality bar (judged by the owner; sizes are indicative): (a) from a Wacom sketch, one background at the workspace default canvas is approved as "target quality" after <code>&lt;= 30 min</code> of human retouch; (b) one character gets an approved walk cycle; (c) that character walking across that background, passing from a lit to a dark zone, is approved as a scene preview with correct palette-mapped lighting; (d) one effect (water, fire or light flicker) is approved. All decisions are logged in the asset history.</li>
+<li>[ ] Effects and lighting keep pixel art intact: every frame produced by <code>fx</code>, <code>light</code> or <code>scene</code> passes <code>palette</code> and <code>grid</code> checks with the scene palette.</li>
+<li>[ ] Outputs can be still images, animations (sprite sheet + JSON, GIF/APNG, <code>.aseprite</code>) or both, and scene previews (character moving through a background) as GIF/APNG/MP4.</li>
+<li>[ ] Privacy: gitleaks runs in the host gate and passes, and the pre-PR review checklist includes "no personal data, no references to unrelated projects". No deny-list of names is committed (a list of words to avoid would itself leak them); an optional personal list may live only outside the repository (for example in the user's home config) and is read by the check if present.</li>
+</ul></div>
+<div class="note" data-for="s-spec-1"><label class="note-head" for="n-s-spec-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §1</span></label><textarea class="note-ta" data-key="s-spec-1" id="n-s-spec-1" data-label="§1 Problem statement" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-2" data-ref="SPEC §2" data-label="§2 Systems &amp; Impact" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§2</span><span class="sec-title">Systems &amp; Impact</span></h3>
+<div class="sec-body"><p>Greenfield project: every component is new. "Needs changes" means "to be built".</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Type</th>
+<th>Role</th>
+<th>Needs changes?</th>
+<th>Impact</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pixelwright</code> core (Python package)</td>
+<td>Primary</td>
+<td>Image model of an asset, palettes, post-processing, checks, renders, history</td>
+<td>Yes</td>
+<td>All features depend on it</td>
+<td>High</td>
+</tr>
+<tr>
+<td>CLI <code>pw</code></td>
+<td>Primary</td>
+<td>Scriptable interface over the core; used by humans, tests and any agent</td>
+<td>Yes</td>
+<td>First user-facing surface</td>
+<td>High</td>
+</tr>
+<tr>
+<td>MCP server <code>pw mcp</code> (stdio)</td>
+<td>Primary</td>
+<td>Same operations as tools for Claude Code / Claude Desktop under Claude Max</td>
+<td>Yes</td>
+<td>How Claude drives the tool</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Local web viewer <code>pw view</code></td>
+<td>Primary</td>
+<td>Versions side by side, overlays, region annotations saved as masks</td>
+<td>Yes</td>
+<td>Human review and annotation loop</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>Aseprite bridge</td>
+<td>Dependent</td>
+<td>Read/write <code>.aseprite</code> directly; optional headless Aseprite CLI + Lua for previews and exports</td>
+<td>Yes</td>
+<td>Human retouch round-trip</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Provider adapters</td>
+<td>Dependent</td>
+<td>Gemini, Retro Diffusion, PixelLab, GPT Image, local ComfyUI (Flux/SDXL + LoRA)</td>
+<td>Yes</td>
+<td>Generation; costs money</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>Claude Code plugin</td>
+<td>Dependent</td>
+<td>Thin plugin: art-direction skills (rubric, prompts, workflows) and MCP registration</td>
+<td>Yes</td>
+<td>Encodes the technique manual for Claude</td>
+<td>Med</td>
+</tr>
+<tr>
+<td>Workspace (asset folders)</td>
+<td>Shared resource</td>
+<td>Plain files per asset inside the game repository, mapped onto that repository's own directory structure: inputs, spec, experiments, drafts, versions, masks, reports, log, exports</td>
+<td>Yes (format)</td>
+<td>Single source of truth; must stay stable</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Style guide</td>
+<td>Shared resource</td>
+<td>Per-project style: palettes, ramps, light and outline conventions, reference set, generation presets</td>
+<td>Yes (format)</td>
+<td>Drives both generation and checks; versioned</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Aseprite / LibreSprite</td>
+<td>Infrastructure</td>
+<td>Human editor; Aseprite compiled for personal use or bought</td>
+<td>No</td>
+<td>External dependency</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>NVIDIA GPU + ComfyUI</td>
+<td>Infrastructure</td>
+<td>Local generation and, later, style LoRA training</td>
+<td>No (setup only)</td>
+<td>Free, licence-clear route</td>
+<td>Low</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-2"><label class="note-head" for="n-s-spec-2"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2</span></label><textarea class="note-ta" data-key="s-spec-2" id="n-s-spec-2" data-label="§2 Systems &amp; Impact" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-1" data-ref="SPEC §2.1" data-label="§2.1 Actors and roles" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.1</span><span class="sec-title">Actors and roles</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Artist (human)</strong>: sketches (Wacom, any raster), picks references, approves or rejects versions, draws annotations, retouches in Aseprite. Owns final taste.</li>
+<li><strong>Claude (driver)</strong>: art direction (asset spec, prompts, reference choice), runs the pipeline through MCP/CLI, reads check reports, writes pairwise critiques with regions, applies zone fixes, writes animation key specs, keeps assets coherent with the style guide. Never the source of truth for pixel facts (<code>R-CRIT-1</code>).</li>
+<li><strong>Image models (painters)</strong>: produce detail and atmosphere from sketch, references and prompt. Swappable (<code>R-GEN-1</code>). How their input is prepared decides how well the output converts to pixel art, so every generation is conditioned on the style guide: style reference images, a prompt preamble, the scene palette (as palette input where the provider supports it, otherwise as a color swatch reference), lighting notes and provider presets. The goal is raw output already close to the target style and palette, so snap and quantize change little; the <code>style-match</code> check measures that distance before post-processing.</li>
+<li><strong>pixelwright (craftsman)</strong>: deterministic transforms, measurements, renders and bookkeeping. Never calls Claude.</li>
+</ul></div>
+<div class="note" data-for="s-spec-2-1"><label class="note-head" for="n-s-spec-2-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.1</span></label><textarea class="note-ta" data-key="s-spec-2-1" id="n-s-spec-2-1" data-label="§2.1 Actors and roles" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-2" data-ref="SPEC §2.2" data-label="§2.2 Workflows" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.2</span><span class="sec-title">Workflows</span></h4>
+<div class="sec-body"><p>All workflows run inside one asset folder and append to its history.</p>
+<ol start="0">
+<li><strong>Style definition</strong> (first, per project; revisited when needed): Claude and the artist build the style guide together: mood references (own sketches and approved assets; commercial games only as analysed style notes, <code>DA-Q003-1</code>), palette families and ramps proposed by Claude and edited by the artist, light and outline conventions, density and dithering policy, generation presets per provider. Claude produces 3-5 small test assets with it; the artist approves; the style guide gets a version. Every later asset records which style version it used, and a style change can re-check or re-run older assets.</li>
+<li><strong>Background from a sketch</strong> (main case): <code>new</code> (canvas, palette, light, depth layers) -&gt; attach sketch and style references -&gt; Claude writes the prompt and generation plan -&gt; <code>generate</code> (img2img, 1-4 candidates, possibly several providers) -&gt; <code>snap</code> (grid detection, mode downsample) -&gt; <code>quantize</code> (OKLab, scene palette, dithering off) -&gt; <code>clean</code> (orphans, AA noise) -&gt; <code>check</code> -&gt; Claude critique (pairwise vs previous best and references, region-tagged) -&gt; human review in the viewer -&gt; zone fixes (<code>regen-region</code> with a mask, or Claude's code edit, or human retouch in Aseprite) -&gt; <code>check</code> -&gt; <code>approve</code> -&gt; <code>export</code>.</li>
+<li><strong>Background from scratch</strong>: as 1, with Claude composing a value thumbnail (3-5 value groups, focal point, depth layers, <code>R-VAL-1</code>, <code>R-DEPTH-1</code>) as the img2img input instead of a sketch.</li>
+<li><strong>Image to background</strong>: a photo or painting as input; same as 1, with stronger snap/quantize and a style-transfer prompt.</li>
+<li><strong>Sprite or prop</strong>: native-size generation (pixel-native providers, <code>R-GEN-2</code>) or downscale of a painted image; then selout, silhouette and readability checks (<code>R-PIX-9</code>, <code>R-READ-1</code>).</li>
+<li><strong>Character animation</strong>: Claude writes the key-pose spec and timing chart (<code>R-ANIM-1</code>, <code>R-ANIM-2</code>); frames come from a part-based rig (layers with pivots, RotSprite rotation, mandatory cleanup: <code>R-ANIM-3</code>), from an AI animator driven by a skeleton/pose (<code>R-ANIM-7</code>), or from the artist's drawn bases; inbetweens follow; cross-frame checks gate the result (<code>R-ANIM-4</code>). Talking and blinking are overlay libraries on the head (<code>R-ANIM-5</code>). Templates: walk (side, front, back), talk, pick up / use, turn, idle.</li>
+<li><strong>Ambient effects</strong>: palette cycling ranges declared in the palette (<code>R-STYLE-3</code>); procedural effects (water ripples, fire, flicker, particles, sway) rendered and quantized to the palette; previewed as animated GIF/APNG.</li>
+<li><strong>Zone fix loop</strong>: any complaint (detector, Claude or human annotation) becomes a mask in native pixels with a rule id and a note; fixes run only inside the mask and the checks re-run (<code>R-CRIT-3</code>).</li>
+<li><strong>Style coherence</strong>: every new asset is checked against the style guide (palette families, ramp rules, outline policy, light conventions, approved reference assets); approved assets become references and, later, LoRA training data.</li>
+<li><strong>Character in scene</strong>: place a sprite or animation on a background at a position or along a path; checks for figure-ground contrast, silhouette readability, scale against the scene and style coherence (<code>R-COLOR-1</code>, <code>R-READ-1</code>); render a scene preview (character walking through the background, with parallax layers if declared).</li>
+<li><strong>Scene lighting</strong>: declare light zones on a background (mask + light color/intensity, or palette remap tables); a character crossing them is recolored through palette-mapped lighting (each sprite color maps to a darker/tinted color of its own ramp or the scene palette, never to off-palette colors), so it darkens in shadow and warms near a lamp while staying pixel art. Lit and unlit variants can be exported as palette swaps.</li>
+<li><strong>Effects</strong> (<code>R-STYLE-3</code>): palette cycling, procedural effects (water, fire, flicker, rain, fog, particles) and lighting changes rendered frame by frame and quantized to the scene palette; any output passes the <code>palette</code> and <code>grid</code> checks.</li>
+</ol></div>
+<div class="note" data-for="s-spec-2-2"><label class="note-head" for="n-s-spec-2-2"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.2</span></label><textarea class="note-ta" data-key="s-spec-2-2" id="n-s-spec-2-2" data-label="§2.2 Workflows" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-3" data-ref="SPEC §2.3" data-label="§2.3 Workspace layout" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.3</span><span class="sec-title">Workspace layout</span></h4>
+<div class="sec-body"><p>pixelwright works on a <strong>workspace</strong> that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (<code>R-FORM-2</code>).</p>
+<ul>
+<li><strong>Adapts to the game's structure</strong>: <code>pixelwright.toml</code> maps workspace roles to paths in the game repository (where the style guide lives, where asset folders live, and, per asset kind, where final exports go, for example <code>game/art/backgrounds/</code>, <code>game/art/characters/&lt;id&gt;/</code>). Defaults below apply when nothing is mapped.</li>
+<li><strong>Experiments vs finals</strong>: every image belongs to one stage: <code>experiment</code> (throwaway tries, provider tests), <code>draft</code> (candidate versions in the review loop), <code>approved</code> (accepted by the artist) and <code>final</code> (exported to the game path). The game repository chooses what to commit per stage (<code>commit = ["approved", "final", "draft"]</code>); pixelwright writes the matching <code>.gitignore</code> entries, so experiments can be kept locally, committed, or pruned with <code>pw prune</code>.</li>
+</ul>
+<pre><code class="language-text">workspace/
+  pixelwright.toml          # workspace config: canvas defaults, providers, budgets
+  style/                    # style guide (versioned)
+    style.yaml              # conventions: light, outline, density, dithering, presets
+    palettes/               # *.gpl, *.hex, ramps.yaml
+    references/             # approved and mood references
+    tests/                  # test assets made while defining the style
+  experiments/              # free tries not tied to an asset (provider tests, studies)
+  assets/
+    bg-harbour-night/       # one folder per asset id, chr-hero, fx-torch
+      asset.yaml            # asset spec (2.4)
+      inputs/               # sketch.png, refs/*.png, notes.md
+      drafts/               # quick iterations before a version is worth keeping
+      versions/
+        v0001/              # one folder per version (stage: draft | approved)
+          image.png         # native resolution, indexed to palette
+          image.aseprite    # when layers/frames exist
+          meta.yaml         # step, parameters, provider, cost, parent version, seed, hashes
+          report.json       # check results
+          critique.md       # Claude's pairwise critique with regions
+      masks/                # annotation and fix masks (PNG, native res) + masks.yaml
+      history.jsonl         # append-only log: steps, decisions (approve/reject), human notes
+      export/               # final files (or a link to the mapped game path)
+  cache/                    # provider responses keyed by request hash (not committed)
+</code></pre></div>
+<div class="note" data-for="s-spec-2-3"><label class="note-head" for="n-s-spec-2-3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.3</span></label><textarea class="note-ta" data-key="s-spec-2-3" id="n-s-spec-2-3" data-label="§2.3 Workspace layout" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-4" data-ref="SPEC §2.4" data-label="§2.4 Asset spec (asset.yaml)" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.4</span><span class="sec-title">Asset spec (<code>asset.yaml</code>)</span></h4>
+<div class="sec-body"><pre><code class="language-yaml">id: bg-harbour-night
+kind: background            # background | sprite | prop | animation | effect | tileset
+canvas: {width: 320, height: 180}
+palette: style/palettes/harbour-night.gpl   # or a budget for discovery: {discover: 48}
+light: {direction: [-0.6, -0.8], key: &quot;moonlight, cool&quot;, accents: [&quot;warm lamp at window&quot;]}
+depth_layers: [foreground, midground, background, sky]   # masks in masks/layers/*.png
+focal: {mask: masks/focal.png, note: &quot;the lit tavern door&quot;}
+materials:
+  wood: {ramp: [3, 7, 12, 18, 25]}          # palette indices, dark to light
+  water: {ramp: [40, 41, 42, 43], cycle: true}
+dithering: {allowed: false, zones: []}
+outline: {backgrounds: none, sprites: selout}
+references: [inputs/refs/mood-01.png]
+notes: &quot;Night, fog over the water, one warm accent.&quot;
+checks: {profile: background-default, overrides: {}}
+</code></pre></div>
+<div class="note" data-for="s-spec-2-4"><label class="note-head" for="n-s-spec-2-4"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.4</span></label><textarea class="note-ta" data-key="s-spec-2-4" id="n-s-spec-2-4" data-label="§2.4 Asset spec (asset.yaml)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-5" data-ref="SPEC §2.5" data-label="§2.5 Pipeline stages (core functions)" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.5</span><span class="sec-title">Pipeline stages (core functions)</span></h4>
+<div class="sec-body"><p>Each stage is a pure function with saved parameters (<code>R-POST-4</code>), callable from CLI and MCP, and can be limited to a mask.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+<th>Defaults and notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>generate</code></td>
+<td>Call a provider (txt2img, img2img, edit with references, inpaint with mask)</td>
+<td>Provider chosen per asset kind; request hashed and cached; cost logged</td>
+</tr>
+<tr>
+<td><code>snap</code></td>
+<td>Detect pseudo-pixel scale and offset; mode-per-cell downsample</td>
+<td>Edge-profile autocorrelation; reuse/benchmark unfake, proper-pixel-art, pixel-snapper (<code>R-POST-1</code>, <code>DA-Q006-1</code>)</td>
+</tr>
+<tr>
+<td><code>quantize</code></td>
+<td>Map to fixed palette or discover one</td>
+<td>OKLab distance; median cut / k-means in OKLab for discovery; dithering off, Bayer only in zones (<code>R-POST-2</code>, <code>R-POST-3</code>)</td>
+</tr>
+<tr>
+<td><code>clean</code></td>
+<td>Remove orphans and AA noise; repair line runs</td>
+<td>Driven by detector output; conservative by default</td>
+</tr>
+<tr>
+<td><code>ramp</code></td>
+<td>Build or repair hue-shifted ramps</td>
+<td>OKLCH: monotonic L, hue shift band, mid-tone saturation peak (<code>R-PIX-2</code>)</td>
+</tr>
+<tr>
+<td><code>rotate</code></td>
+<td>RotSprite rotation of a part</td>
+<td>Followed by <code>clean</code> and line repair (<code>R-ANIM-3</code>)</td>
+</tr>
+<tr>
+<td><code>compose</code></td>
+<td>Assemble layers, parts and overlays into frames</td>
+<td>Pivots and offsets from the rig file</td>
+</tr>
+<tr>
+<td><code>cycle</code> / <code>fx</code></td>
+<td>Palette cycling and procedural effects</td>
+<td>Render to frames or keep as palette ranges</td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>Previews: integer upscale, grayscale, value groups, silhouette, thumbnails, overlays, GIF/APNG</td>
+<td>Images Claude and the viewer read</td>
+</tr>
+<tr>
+<td><code>check</code></td>
+<td>Run the check catalog</td>
+<td>Writes <code>report.json</code></td>
+</tr>
+<tr>
+<td><code>export</code></td>
+<td>Final PNG, indexed PNG, sprite sheet + JSON, <code>.aseprite</code>, palette files</td>
+<td>Fails if <code>palette_compliance &lt; 1</code></td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-2-5"><label class="note-head" for="n-s-spec-2-5"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.5</span></label><textarea class="note-ta" data-key="s-spec-2-5" id="n-s-spec-2-5" data-label="§2.5 Pipeline stages (core functions)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-6" data-ref="SPEC §2.6" data-label="§2.6 Check catalog" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.6</span><span class="sec-title">Check catalog</span></h4>
+<div class="sec-body"><p>Every check returns <code>pass | warn | fail</code>, its measurement, and offending regions in native pixel coordinates. Thresholds start as defaults, then are calibrated from approved assets and logged rejections (<code>R-CRIT-5</code>, domain rule 2). Detectors own pixel facts; Claude interprets.</p>
+<table>
+<thead>
+<tr>
+<th>Check id</th>
+<th>Rule</th>
+<th>Measurement</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>palette</code></td>
+<td>R-PIX-1</td>
+<td>share of pixels in palette; distinct colors vs budget</td>
+<td>fail if <code>&lt; 1.0</code></td>
+</tr>
+<tr>
+<td><code>grid</code></td>
+<td>R-PIX-1</td>
+<td>uniform NxN blocks in upscaled exports</td>
+<td>fail if any</td>
+</tr>
+<tr>
+<td><code>value-groups</code></td>
+<td>R-VAL-1</td>
+<td>k-means on OKLab L, best k by silhouette; area shares</td>
+<td>warn if k &gt; 5</td>
+</tr>
+<tr>
+<td><code>focal-contrast</code></td>
+<td>R-VAL-1</td>
+<td>max local RMS contrast inside focal mask vs elsewhere</td>
+<td>warn if outside</td>
+</tr>
+<tr>
+<td><code>silhouette</code></td>
+<td>R-READ-1</td>
+<td>rendered silhouette + 25% grayscale thumbnail for critic and human</td>
+<td>judged</td>
+</tr>
+<tr>
+<td><code>depth-falloff</code></td>
+<td>R-DEPTH-1</td>
+<td>RMS contrast and distance-to-sky per depth layer, near to far</td>
+<td>warn if not monotonic</td>
+</tr>
+<tr>
+<td><code>figure-ground</code></td>
+<td>R-COLOR-1</td>
+<td>OKLab ΔL sprite vs local background</td>
+<td>warn below calibrated min</td>
+</tr>
+<tr>
+<td><code>ramps</code></td>
+<td>R-PIX-2</td>
+<td>L monotonic; adjacent hue delta 5-30 deg; no flat ramps</td>
+<td>warn</td>
+</tr>
+<tr>
+<td><code>orphans</code></td>
+<td>R-PIX-3</td>
+<td>orphan pixels and 1-2 px clusters per 16x16 tile</td>
+<td>warn above calibrated max</td>
+</tr>
+<tr>
+<td><code>line-runs</code></td>
+<td>R-PIX-4</td>
+<td>run-length sequences on 1-px lines; L-corners</td>
+<td>warn per segment</td>
+</tr>
+<tr>
+<td><code>banding</code></td>
+<td>R-PIX-5</td>
+<td>parallel boundaries of adjacent ramp colors</td>
+<td>warn above calibrated length</td>
+</tr>
+<tr>
+<td><code>pillow</code></td>
+<td>R-PIX-6</td>
+<td>correlation of L with light projection vs edge distance</td>
+<td>fail if edge distance dominates</td>
+</tr>
+<tr>
+<td><code>dither-zones</code></td>
+<td>R-PIX-7</td>
+<td>ordered-pattern density map outside declared zones</td>
+<td>warn</td>
+</tr>
+<tr>
+<td><code>aa</code></td>
+<td>R-PIX-8</td>
+<td>AA pixels on sprite alpha boundary; AA run length</td>
+<td>warn</td>
+</tr>
+<tr>
+<td><code>selout</code></td>
+<td>R-PIX-9</td>
+<td>outline L/hue vs inner neighbour; pure-black share</td>
+<td>report</td>
+</tr>
+<tr>
+<td><code>outline-share</code></td>
+<td>R-STYLE-4</td>
+<td>outline pixels on backgrounds</td>
+<td>report</td>
+</tr>
+<tr>
+<td><code>anim-consistency</code></td>
+<td>R-ANIM-4</td>
+<td>palette identity, mask volume tolerance, foot lock, per-frame silhouette</td>
+<td>fail on palette, warn otherwise</td>
+</tr>
+<tr>
+<td><code>style-match</code></td>
+<td>R-GEN-1, workflow 0</td>
+<td>OKLab distance of raw generator output to the style palette; share of pixels needing remap</td>
+<td>report, calibrated warn</td>
+</tr>
+<tr>
+<td><code>in-scene</code></td>
+<td>R-COLOR-1, R-READ-1</td>
+<td>figure-ground ΔL and silhouette for a sprite at each placement or path point; scale vs scene</td>
+<td>warn</td>
+</tr>
+<tr>
+<td><code>diagnostics</code></td>
+<td>DA-Q001-2</td>
+<td>saliency peak vs focal mask, spectrum slope</td>
+<td>report only</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-2-6"><label class="note-head" for="n-s-spec-2-6"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.6</span></label><textarea class="note-ta" data-key="s-spec-2-6" id="n-s-spec-2-6" data-label="§2.6 Check catalog" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-7" data-ref="SPEC §2.7" data-label="§2.7 Critique protocol" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.7</span><span class="sec-title">Critique protocol</span></h4>
+<div class="sec-body"><ol>
+<li><code>check</code> runs; <code>render</code> produces upscaled crops, grayscale, value-group map and overlays labelled in native coordinates.</li>
+<li>Claude compares pairwise (new vs previous best, new vs approved references), never gives a bare 1-10 score (<code>R-CRIT-2</code>, <code>DA-Q008-1</code>).</li>
+<li>Every complaint names a region (mask or box), the rule id and a proposed fix; Claude writes it to <code>critique.md</code> and <code>masks/</code>.</li>
+<li>The human reviews in the viewer: approve, reject, or draw new annotations. Every decision is logged with the measurements (<code>R-CRIT-4</code>).</li>
+<li>Fixes run only inside masks; checks re-run; the loop ends at human approval.</li>
+</ol></div>
+<div class="note" data-for="s-spec-2-7"><label class="note-head" for="n-s-spec-2-7"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.7</span></label><textarea class="note-ta" data-key="s-spec-2-7" id="n-s-spec-2-7" data-label="§2.7 Critique protocol" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-8" data-ref="SPEC §2.8" data-label="§2.8 Interfaces" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.8</span><span class="sec-title">Interfaces</span></h4>
+<div class="sec-body"><p><strong>CLI</strong> (<code>pw</code>, Typer-style, JSON output with <code>--json</code>):</p>
+<p><code>pw init</code>, <code>pw new &lt;id&gt; --kind --canvas --palette</code>, <code>pw attach &lt;id&gt; &lt;file&gt; [--as sketch|ref]</code>, <code>pw generate &lt;id&gt; --provider --mode --prompt-file [--mask] [--n]</code>, <code>pw snap</code>, <code>pw quantize</code>, <code>pw clean</code>, <code>pw ramp</code>, <code>pw rotate</code>, <code>pw compose</code>, <code>pw fx</code>, <code>pw check &lt;id&gt; [--version]</code>, <code>pw render &lt;id&gt; --view upscale|gray|values|silhouette|overlay|gif</code>, <code>pw diff &lt;id&gt; &lt;vA&gt; &lt;vB&gt;</code>, <code>pw style init|propose|test|bump</code>, <code>pw scene &lt;bg&gt; &lt;sprite&gt; --at|--path</code>, <code>pw light &lt;bg&gt; zones|apply</code>, <code>pw prune --stage experiment</code>, <code>pw mask &lt;id&gt; add|list|clear</code>, <code>pw approve|reject &lt;id&gt; &lt;version&gt; [--note]</code>, <code>pw export &lt;id&gt;</code>, <code>pw palette new|import|discover|edit</code>, <code>pw ase open|import|export</code>, <code>pw bench run|report</code>, <code>pw cost</code>, <code>pw view</code>, <code>pw mcp</code>.</p>
+<p><strong>MCP tools</strong> (same core functions; names mirror the CLI): <code>asset_new</code>, <code>asset_status</code>, <code>asset_attach</code>, <code>generate</code>, <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>ramp</code>, <code>rotate</code>, <code>compose</code>, <code>fx</code>, <code>check</code>, <code>render</code> (returns image content plus a file path), <code>diff</code>, <code>style_*</code>, <code>scene_render</code>, <code>light_apply</code>, <code>mask_add</code>, <code>mask_list</code>, <code>decision_log</code>, <code>export</code>, <code>palette_*</code>, <code>aseprite_*</code>, <code>bench_*</code>, <code>cost_report</code>. Tools act on assets, regions and palettes, never on single pixels (<code>R-TOOL-3</code>, <code>DA-Q007-2</code>), except a bounded <code>pixels_set</code> for small fixes inside a mask.</p>
+<p><strong>Viewer</strong> (<code>pw view</code>, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from <code>report.json</code>; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to <code>history.jsonl</code>; animation preview with per-frame timing; scene preview (character moving through a background); stage filter (experiments, drafts, approved, final). The viewer only writes masks and decisions; it never edits pixels (Aseprite does). A screens spec for the viewer is written during M2, before it is built.</p></div>
+<div class="note" data-for="s-spec-2-8"><label class="note-head" for="n-s-spec-2-8"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.8</span></label><textarea class="note-ta" data-key="s-spec-2-8" id="n-s-spec-2-8" data-label="§2.8 Interfaces" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-9" data-ref="SPEC §2.9" data-label="§2.9 Providers" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.9</span><span class="sec-title">Providers</span></h4>
+<div class="sec-body"><p>One adapter interface with capability flags: <code>img2img</code>, <code>references (n)</code>, <code>style_refs</code>, <code>mask_inpaint</code>, <code>palette_input</code>, <code>native_size (max)</code>, <code>animation</code>, <code>price_per_image</code>, <code>watermark</code>, <code>licence</code> (<code>R-GEN-1</code>). Initial adapters: Gemini image models (painter; reference images; no palette/mask), Retro Diffusion (palette input, img2img strength, references, mask edit), PixelLab (forced palette, inpainting, skeleton animation), GPT Image (to verify), local ComfyUI (Flux/SDXL + pixel-art LoRA; free; later the project style LoRA). API keys from environment variables or a git-ignored file; per-workspace monthly budget with a hard stop; every call logged with cost. Before any provider output enters the game, its output licence is recorded (<code>R-GEN-3</code>).</p></div>
+<div class="note" data-for="s-spec-2-9"><label class="note-head" for="n-s-spec-2-9"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.9</span></label><textarea class="note-ta" data-key="s-spec-2-9" id="n-s-spec-2-9" data-label="§2.9 Providers" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-10" data-ref="SPEC §2.10" data-label="§2.10 Aseprite bridge" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.10</span><span class="sec-title">Aseprite bridge</span></h4>
+<div class="sec-body"><ul>
+<li>Direct read/write of the documented <code>.aseprite</code> format from Python (layers, cels, frames, durations, tags, palette, slices) so no Aseprite process is needed for data exchange (<code>R-TOOL-1</code>).</li>
+<li>Optional headless Aseprite (<code>aseprite --batch --script</code>) for exports and Lua helpers: a small Lua script set that the artist can run inside Aseprite to "send to pixelwright" (save version + note) and "load version".</li>
+<li>LibreSprite and Pixelorama are not targets for v1; files stay standard PNG so they remain usable.</li>
+</ul></div>
+<div class="note" data-for="s-spec-2-10"><label class="note-head" for="n-s-spec-2-10"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.10</span></label><textarea class="note-ta" data-key="s-spec-2-10" id="n-s-spec-2-10" data-label="§2.10 Aseprite bridge" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-11" data-ref="SPEC §2.11" data-label="§2.11 Non-functional requirements" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.11</span><span class="sec-title">Non-functional requirements</span></h4>
+<div class="sec-body"><ul>
+<li>Ubuntu first (current LTS); Python 3.12+; installable with <code>uv</code> / <code>pip</code>; no GPU needed except for the local provider.</li>
+<li>Open-source dependencies preferred; licences of reused snapping/quantization code checked before vendoring.</li>
+<li>Deterministic, reproducible steps; provider responses cached by request hash.</li>
+<li>No Claude API calls anywhere; Claude only drives through MCP/CLI (domain rule 5).</li>
+<li>The repository contains no personal data and no references to other private projects; the game-specific workspace lives outside this repository.</li>
+<li>Images given to Claude via MCP stay small (crops and upscales sized for the vision model) to save tokens.</li>
+</ul></div>
+<div class="note" data-for="s-spec-2-11"><label class="note-head" for="n-s-spec-2-11"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.11</span></label><textarea class="note-ta" data-key="s-spec-2-11" id="n-s-spec-2-11" data-label="§2.11 Non-functional requirements" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-2-12" data-ref="SPEC §2.12" data-label="§2.12 Out of scope (v1)" data-part="Specification">
+<h4 class="sec-h"><span class="chip">§2.12</span><span class="sec-title">Out of scope (v1)</span></h4>
+<div class="sec-body"><p>A pixel editor of its own (<code>DA-Q007-1</code>); a desktop app (<code>DA-Q010-1</code>); training a model from scratch; using screenshots of commercial games as inputs or training data (<code>DA-Q003-1</code>); game-engine integration beyond export files.</p></div>
+<div class="note" data-for="s-spec-2-12"><label class="note-head" for="n-s-spec-2-12"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.12</span></label><textarea class="note-ta" data-key="s-spec-2-12" id="n-s-spec-2-12" data-label="§2.12 Out of scope (v1)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2 bare" id="s-spec-3" data-ref="SPEC §3" data-label="§3 Options" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§3</span><span class="sec-title">Options</span></h3>
+</article>
+<article class="sec l3" id="s-spec-option-a-cli-mcp-only-aseprite-a" data-ref="SPEC › Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)" data-label="Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: core, CLI and MCP server; review happens in Aseprite and in Claude's rendered previews; annotations are drawn as a layer in Aseprite and imported as masks.</li>
+<li><strong>Scope</strong>: core, CLI, MCP, Aseprite bridge, providers.</li>
+<li><strong>Effort</strong>: Medium</li>
+<li><strong>Tradeoffs</strong>: least code; but version comparison, overlays and decision logging are clumsy in Aseprite, and the human review loop (the main quality lever) is slower.</li>
+<li><strong>Compatibility</strong>: a later viewer can be added without format changes.</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-a-cli-mcp-only-aseprite-a"><label class="note-head" for="n-s-spec-option-a-cli-mcp-only-aseprite-a"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)</span></label><textarea class="note-ta" data-key="s-spec-option-a-cli-mcp-only-aseprite-a" id="n-s-spec-option-a-cli-mcp-only-aseprite-a" data-label="Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-option-b-layered-tool-core-cli-m" data-ref="SPEC › Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)" data-label="Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: everything in section 2, delivered in milestones; the viewer is a small local web app over the same files; the plugin carries the art-direction skills.</li>
+<li><strong>Scope</strong>: all components in section 2.</li>
+<li><strong>Effort</strong>: Large (split into milestones M0-M5 below)</li>
+<li><strong>Tradeoffs</strong>: more code to maintain; gives the fastest review loop and a clean place for annotations; every layer stays optional.</li>
+<li><strong>Compatibility</strong>: file formats are the contract; each layer can be replaced.</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-b-layered-tool-core-cli-m"><label class="note-head" for="n-s-spec-option-b-layered-tool-core-cli-m"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)</span></label><textarea class="note-ta" data-key="s-spec-option-b-layered-tool-core-cli-m" id="n-s-spec-option-b-layered-tool-core-cli-m" data-label="Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-option-c-desktop-application-wit" data-ref="SPEC › Option C: Desktop application with embedded editor" data-label="Option C: Desktop application with embedded editor" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option C: Desktop application with embedded editor</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: a native app (Qt/Electron) with its own canvas and the pipeline inside.</li>
+<li><strong>Scope</strong>: everything plus a UI toolkit and editor.</li>
+<li><strong>Effort</strong>: Large+</li>
+<li><strong>Tradeoffs</strong>: duplicates Aseprite; Claude still needs MCP/CLI because it cannot be embedded under Claude Max; rejected in research (<code>DA-Q010-1</code>, <code>DA-Q007-1</code>).</li>
+<li><strong>Compatibility</strong>: n/a</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-c-desktop-application-wit"><label class="note-head" for="n-s-spec-option-c-desktop-application-wit"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option C: Desktop application with embedded editor</span></label><textarea class="note-ta" data-key="s-spec-option-c-desktop-application-wit" id="n-s-spec-option-c-desktop-application-wit" data-label="Option C: Desktop application with embedded editor" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-comparison" data-ref="SPEC › Comparison" data-label="Comparison" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Comparison</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th></th>
+<th>Option A</th>
+<th>Option B</th>
+<th>Option C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Effort</td>
+<td>Medium</td>
+<td>Large (staged)</td>
+<td>Very large</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td>Low</td>
+<td>Medium</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>Partial review loop</td>
+<td>Full</td>
+<td>Full but redundant</td>
+</tr>
+<tr>
+<td>Compatibility</td>
+<td>Upgradable to B</td>
+<td>Formats are contract</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td>Maintenance</td>
+<td>Low</td>
+<td>Medium</td>
+<td>High</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-comparison"><label class="note-head" for="n-s-spec-comparison"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Comparison</span></label><textarea class="note-ta" data-key="s-spec-comparison" id="n-s-spec-comparison" data-label="Comparison" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-4" data-ref="SPEC §4" data-label="§4 Recommendation" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§4</span><span class="sec-title">Recommendation</span></h3>
+<div class="sec-body"><p><strong>Recommended option</strong>: Option B, built in milestones so that Option A is simply its first half. The research puts quality in post-processing, checks and the review loop; the viewer makes that loop fast, and the plugin turns the technique manual into Claude's working instructions.</p>
+<p><strong>Milestones</strong>:</p>
+<ul>
+<li><strong>M0 Foundations</strong>: package skeleton, workspace format, asset spec schema, palette I/O (GPL, HEX, ASE palette), OKLab utilities, renders, <code>.aseprite</code> read/write, test fixtures (synthetic pseudo-pixel set, labelled detector cases), privacy check in the host gate.</li>
+<li><strong>M1 MVP pipeline</strong>: style guide format and <code>pw style</code> (workflow 0), <code>snap</code>, <code>quantize</code>, <code>clean</code>, <code>check</code> (palette, grid, value-groups, orphans, line-runs, banding, pillow, ramps), CLI + MCP parity, Aseprite round-trip, Lua helper scripts.</li>
+<li><strong>M2 Viewer and critique loop</strong>: viewer screens spec first, then <code>pw view</code> with compare, overlays, masks, decisions; region-limited fixes; critique files; plugin v0 with art-direction skills.</li>
+<li><strong>M3 Providers and benchmark</strong>: Gemini, Retro Diffusion, PixelLab, GPT Image, local ComfyUI adapters with cost control; run the benchmark; choose default provider per asset kind.</li>
+<li><strong>M4 Animation, scenes and effects</strong>: rig format, RotSprite + cleanup, templates (walk, talk, pick up, turn, idle), overlays for mouths/eyes, cross-frame checks, palette cycling and effects, character-in-scene previews and palette-mapped scene lighting.</li>
+<li><strong>M5 Style LoRA</strong>: dataset export from 30-100 approved assets; local LoRA training recipe; style-coherence checks against it.</li>
+</ul>
+<p><strong>Immediate next action</strong>: after this spec is approved, run <code>design</code> to write sections 5-6 (contracts: workspace and <code>asset.yaml</code> schemas, <code>report.json</code>, provider interface, MCP tool schemas; risks) and the plan, then queue M0 tasks with gates.</p>
+<p><strong>Open questions</strong>:</p>
+<ul>
+<li>[ ] None blocking. The viewer's screens spec is due in M2.</li>
+</ul>
+<p><strong>Decisions log</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Decision</th>
+<th>Status</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D-1</td>
+<td>Hybrid approach: image models paint, fixed post-processing makes true pixel art, Claude art-directs and critiques, the human sketches, approves and retouches</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-2</td>
+<td>Claude drives the tool from Claude Code/Desktop under Claude Max; the tool never calls Claude</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-3</td>
+<td>Own standalone project, not skills inside claude-arsenal; managed with claude-arsenal</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-4</td>
+<td>Aseprite (or LibreSprite) is the editor; no custom editor</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-5</td>
+<td>Ubuntu first; free/open-source or buildable tools preferred</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-6</td>
+<td>Commercial game images are style references only, never copied or used as inputs</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-7</td>
+<td>No model trained from scratch; a style LoRA later from 30-100 approved assets</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-8</td>
+<td>Interchangeable image providers; API budget decided per milestone</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-9</td>
+<td>Form factor: Python core + CLI + local MCP server + local web viewer + thin Claude Code plugin (research Q-010)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-10</td>
+<td>Name: pixelwright; repository content in English; no personal data or references to other projects in the repository</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-11</td>
+<td>No screenshots review round for this spec (no own UI beyond the viewer)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-12</td>
+<td>Owner has an NVIDIA GPU: the local ComfyUI provider is in scope</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-13</td>
+<td>Default canvas 320x180, configurable per workspace and free per asset</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-14</td>
+<td>Licence: MIT</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-15</td>
+<td>Aseprite compiled from source for personal use</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-16</td>
+<td>First benchmark budget cap: 20 USD</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-17</td>
+<td>Claude Code plugin lives in this repository (<code>plugin/</code>)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-18</td>
+<td>Style definition is the first workflow of every project, done with AI help, and can change later (versioned)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-19</td>
+<td>Workspace adapts to the game repository's layout and separates experiments, drafts, approved and final assets</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-20</td>
+<td>No committed deny-list for the privacy check</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+<tr>
+<td>D-21</td>
+<td>Viewer screens spec deferred to M2 (D-11 holds for this spec)</td>
+<td>agreed</td>
+<td>2026-11-15</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-4"><label class="note-head" for="n-s-spec-4"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §4</span></label><textarea class="note-ta" data-key="s-spec-4" id="n-s-spec-4" data-label="§4 Recommendation" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-5" data-ref="SPEC §5" data-label="§5 Contracts" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§5</span><span class="sec-title">Contracts</span></h3>
+<div class="sec-body"><p>All file formats carry <code>schema: pixelwright/&lt;name&gt;@&lt;major&gt;</code>. Readers accept the current major and refuse a newer one with a clear error; a major bump ships a <code>pw migrate</code> step. Paths inside files are relative to the asset folder unless they start with a workspace role (<code>style:</code>, <code>game:</code>).</p></div>
+<div class="note" data-for="s-spec-5"><label class="note-head" for="n-s-spec-5"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5</span></label><textarea class="note-ta" data-key="s-spec-5" id="n-s-spec-5" data-label="§5 Contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-api-contracts" data-ref="SPEC › API contracts" data-label="API contracts" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">API contracts</span></h4>
+<div class="sec-body"><h4>CLI result envelope (<code>pw &lt;command&gt; --json</code>)</h4>
+<ul>
+<li><strong>Auth</strong>: none (local)</li>
+<li><strong>Request</strong>: command-line arguments; every command accepts <code>--workspace &lt;dir&gt;</code> (default: nearest parent with <code>pixelwright.toml</code>) and <code>--json</code>.</li>
+<li><strong>Response (exit 0)</strong>:
+  <code>json
+  {"ok": true, "command": "snap", "asset": "bg-harbour-night",
+   "version": "v0004", "stage": "draft",
+   "outputs": ["assets/bg-harbour-night/versions/v0004/image.png"],
+   "data": {"scale": 6, "offset": [2, 3], "confidence": 0.97},
+   "warnings": [], "duration_ms": 412}</code></li>
+<li><strong>Errors</strong>: exit 2 usage error, exit 3 validation error (bad spec/schema), exit 4 check failure on <code>export</code>, exit 5 provider error, exit 6 budget exceeded. Body: <code>{"ok": false, "error": {"code": "palette_mismatch", "message": "...", "details": {}}}</code>.</li>
+<li><strong>Backwards compatible</strong>: additive fields only within a schema major.</li>
+</ul>
+<h4>MCP tools (<code>pw mcp</code>, stdio, MCP spec)</h4>
+<ul>
+<li><strong>Auth</strong>: none (local stdio process started by Claude Code / Desktop)</li>
+<li><strong>Request</strong> (example <code>check</code>):
+  <code>json
+  {"asset": "bg-harbour-night", "version": "v0004", "checks": ["palette", "orphans", "line-runs"], "mask": null}</code></li>
+<li><strong>Response</strong>: the CLI envelope as structured content; <code>render</code> additionally returns image content (PNG, integer-upscaled, longest side &lt;= 1024 px) plus the file path.</li>
+<li><strong>Errors</strong>: MCP tool error with the envelope's <code>error</code> object.</li>
+<li><strong>Backwards compatible</strong>: tool names and parameters mirror CLI commands one to one; a parity test enforces it.</li>
+</ul>
+<h4>Provider interface (Python)</h4>
+<pre><code class="language-python">class Provider(Protocol):
+    name: str
+    capabilities: Capabilities   # img2img, n_references, style_refs, mask_inpaint,
+                                 # palette_input, max_size, animation, price_per_image,
+                                 # watermark, licence_note
+    def estimate(self, req: GenRequest) -&gt; Cost: ...
+    def generate(self, req: GenRequest) -&gt; GenResult: ...   # images + raw response + cost
+</code></pre>
+<p><code>GenRequest</code> = mode (<code>txt2img|img2img|edit|inpaint|animate</code>), prompt, init image, mask, references, palette, size, seed, provider params. Requests are hashed (canonical JSON + input image hashes) and cached in <code>cache/</code>; a cache hit costs 0 and is logged as such.</p></div>
+<div class="note" data-for="s-spec-api-contracts"><label class="note-head" for="n-s-spec-api-contracts"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › API contracts</span></label><textarea class="note-ta" data-key="s-spec-api-contracts" id="n-s-spec-api-contracts" data-label="API contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-inter-service-contracts" data-ref="SPEC › Inter-service contracts" data-label="Inter-service contracts" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Inter-service contracts</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Callee</th>
+<th>Protocol</th>
+<th>Contract</th>
+<th>Failure handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Claude Code / Desktop</td>
+<td><code>pw mcp</code></td>
+<td>MCP over stdio</td>
+<td>Tools mirror CLI; envelope above</td>
+<td>Tool error returned; no partial writes (write to temp, then rename)</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Provider APIs</td>
+<td>HTTPS</td>
+<td><code>Provider</code> protocol</td>
+<td>Retry 2x with backoff on 429/5xx; budget check before every call; exit 5/6</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Local ComfyUI</td>
+<td>HTTP on localhost</td>
+<td>ComfyUI workflow JSON per preset</td>
+<td>Clear error when not running</td>
+</tr>
+<tr>
+<td><code>pw</code> core</td>
+<td>Aseprite (optional)</td>
+<td>CLI <code>aseprite --batch --script</code></td>
+<td>Lua helpers in <code>plugin/aseprite/</code></td>
+<td>Feature disabled with a warning when Aseprite is absent</td>
+</tr>
+<tr>
+<td>Aseprite Lua helpers</td>
+<td>Workspace files</td>
+<td>File system</td>
+<td>"Send to pixelwright" writes <code>drafts/&lt;ts&gt;.aseprite</code> + note; "Load version" opens <code>versions/vNNNN/image.aseprite</code></td>
+<td>Helper shows the error in an Aseprite dialog</td>
+</tr>
+<tr>
+<td>Viewer (<code>pw view</code>)</td>
+<td>Workspace files</td>
+<td>HTTP on 127.0.0.1</td>
+<td>Reads versions and reports; writes only <code>masks/</code> and <code>history.jsonl</code> via core functions</td>
+<td>Refuses non-local connections</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-inter-service-contracts"><label class="note-head" for="n-s-spec-inter-service-contracts"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Inter-service contracts</span></label><textarea class="note-ta" data-key="s-spec-inter-service-contracts" id="n-s-spec-inter-service-contracts" data-label="Inter-service contracts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-spec-database-migrations" data-ref="SPEC › Database migrations" data-label="Database migrations" data-part="Specification">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Database migrations</span></h4>
+<div class="sec-body"><p>No database. File schemas (versioned as above):</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Database</th>
+<th>Change</th>
+<th>Reversible</th>
+<th>Forward-compatible</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>core</td>
+<td><code>pixelwright.toml</code></td>
+<td>create <code>@1</code>: roles to paths, defaults (canvas 320x180), stages to commit, providers, budgets</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>style/style.yaml</code></td>
+<td>create <code>@1</code>: version, palettes, ramps, light/outline/density/dither conventions, references, generation presets</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>asset.yaml</code></td>
+<td>create <code>@1</code> (section 2.4) plus <code>style_version</code> and <code>stage</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>versions/vNNNN/meta.yaml</code></td>
+<td>create <code>@1</code>: parent, step, params, provider, request hash, cost, seed, input and output SHA-256</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>report.json</code></td>
+<td>create <code>@1</code>: <code>[{"check","rule","status","value","threshold","regions":[{"box":[x,y,w,h]}|{"mask":"..."}]}]</code></td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>masks/masks.yaml</code></td>
+<td>create <code>@1</code>: id, file, rule, note, author (<code>human</code>/<code>claude</code>/<code>check</code>), created</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>core</td>
+<td><code>history.jsonl</code></td>
+<td>create <code>@1</code>: one JSON object per event (<code>step</code>, <code>decision</code>, <code>note</code>, <code>style_bump</code>); append-only</td>
+<td>yes</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-database-migrations"><label class="note-head" for="n-s-spec-database-migrations"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Database migrations</span></label><textarea class="note-ta" data-key="s-spec-database-migrations" id="n-s-spec-database-migrations" data-label="Database migrations" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-spec-6" data-ref="SPEC §6" data-label="§6 Risks &amp; Validation" data-part="Specification">
+<h3 class="sec-h"><span class="chip">§6</span><span class="sec-title">Risks &amp; Validation</span></h3>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grid snap fails on heavily blurred or non-uniform generator output</td>
+<td>Med</td>
+<td>High</td>
+<td>Edge-profile autocorrelation plus fallback to user-given scale; benchmark reused implementations; report confidence</td>
+<td>unit tests on synthetic fixtures; benchmark in M3</td>
+</tr>
+<tr>
+<td>Detector thresholds give many false warnings, so the report is ignored</td>
+<td>High</td>
+<td>Med</td>
+<td>Start with warn-only for uncalibrated checks; calibration from approved assets (<code>R-CRIT-5</code>); fixture precision/recall gates</td>
+<td>fixture tests; calibration report</td>
+</tr>
+<tr>
+<td><code>.aseprite</code> format details (compression, tilemaps, user data) break round-trip</td>
+<td>Med</td>
+<td>Med</td>
+<td>Implement the documented spec; unsupported chunks preserved raw; fixtures exported from a real Aseprite build</td>
+<td>round-trip tests</td>
+</tr>
+<tr>
+<td>Provider APIs, models or prices change</td>
+<td>High</td>
+<td>Med</td>
+<td>Provider adapters isolated; capability flags; cached responses; re-check before M3</td>
+<td>contract tests with recorded responses</td>
+</tr>
+<tr>
+<td>Provider output licence unsuitable for a published game</td>
+<td>Med</td>
+<td>High</td>
+<td>Record licence per provider before use (<code>R-GEN-3</code>); local ComfyUI route as fallback</td>
+<td>manual review checklist</td>
+</tr>
+<tr>
+<td>API spend overruns</td>
+<td>Low</td>
+<td>Med</td>
+<td>Per-workspace budget with hard stop; <code>estimate</code> before every call</td>
+<td>unit tests on budget guard</td>
+</tr>
+<tr>
+<td>Images sent to Claude via MCP too large (token cost)</td>
+<td>Med</td>
+<td>Med</td>
+<td>Crops, integer upscale caps (&lt;= 1024 px), grayscale/value maps instead of full renders</td>
+<td>MCP response size test</td>
+</tr>
+<tr>
+<td>Personal data or other-project references committed</td>
+<td>Low</td>
+<td>High</td>
+<td>gitleaks in host gate; pre-PR review checklist item; no deny-list in repo</td>
+<td>host gate</td>
+</tr>
+<tr>
+<td>Reused open-source snapper has an incompatible licence</td>
+<td>Med</td>
+<td>Low</td>
+<td>Licence check before vendoring; own implementation as default</td>
+<td>review</td>
+</tr>
+<tr>
+<td>Scope creep from animation/scene features into the MVP</td>
+<td>Med</td>
+<td>Med</td>
+<td>M0-M1 plan only; M2-M5 planned in later design rounds</td>
+<td>plan review</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-6"><label class="note-head" for="n-s-spec-6"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §6</span></label><textarea class="note-ta" data-key="s-spec-6" id="n-s-spec-6" data-label="§6 Risks &amp; Validation" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+</section>
+</div>
+
+<input type="file" id="file-import" class="hidden-input" accept=".md,.markdown,.json,text/markdown,application/json">
+
+<div class="modal" id="modal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title">Your notes</h3>
+    <p>Downloaded as a Markdown file. You can also copy the text below and paste it back.</p>
+    <textarea id="modal-ta" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="modal-copy">Copy</button>
+      <button class="btn" id="modal-dl">Download again</button>
+      <button class="btn" id="modal-close">Close</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>var SPEC_SEED_NOTES={};</script>
+<script>
+(function(){
+  var NS = 'pixelwright-spec-v2:';
+  // A reviewed copy (--bake) shows only the notes it was built with: nothing from
+  // this browser's storage, nothing editable.
+  var BAKED = false;
+  var tas = Array.prototype.slice.call(document.querySelectorAll('.note-ta'));
+
+  function autoGrow(t){t.style.height='auto';t.style.height=(t.scrollHeight)+'px';}
+  function setFilled(t){var box=t.closest('.note');if(box){box.classList.toggle('filled',t.value.trim()!=='');}}
+  function updateCount(){
+    var n=0;tas.forEach(function(t){if(t.value.trim()!=='')n++;});
+    var el=document.getElementById('count');if(el){el.textContent=n+' / '+tas.length+' notes';}
+    return n;
+  }
+  var lsOK=true,dirty=false;
+  try{localStorage.setItem('__vs__','1');localStorage.removeItem('__vs__');}catch(e){lsOK=false;}
+  var WARN='⚠ Not saving — tap Save / Export';
+  function nowStamp(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+  function setState(txt,cls){var el=document.getElementById('savestate');if(el){el.textContent=txt;el.className='savestate '+(cls||'');}}
+  // An edit still inside the 350 ms debounce is saved on the way out, so closing
+  // the page right after typing (no blur) no longer loses it (#541).
+  function flushSaves(){Object.keys(pending).forEach(function(k){clearTimeout(saveTimers[k]);save(pending[k]);});pending={};}
+  window.addEventListener('pagehide',flushSaves);
+  window.addEventListener('beforeunload',function(e){flushSaves();if(!lsOK&&dirty){e.preventDefault();e.returnValue='';}});
+
+  var saveTimers={},pending={};
+  function save(t){
+    if(!lsOK){dirty=true;setState(WARN,'warn');return;}
+    var k=NS+t.dataset.key;
+    try{
+      // An empty note is stored as "", not removed: a missing key means "never
+      // touched" and the loader falls back to the seed, so removing it brought a
+      // seeded note back after the reviewer had deliberately cleared it (#477).
+      localStorage.setItem(k,t.value.trim()===''?'':t.value);
+      // A block note keeps its quote beside it, so it still says what it was
+      // about after its paragraph changes (export and re-seed read `<key>~q`).
+      if(t.closest('.bnote')){localStorage.setItem(k+'~q',t.dataset.quote||'');}
+      dirty=true;setState('✓ Saved '+nowStamp(),'ok');
+    }catch(e){dirty=true;lsOK=false;document.getElementById('warnbar').style.display='block';setState(WARN,'warn');}
+  }
+  var SEED=(typeof SPEC_SEED_NOTES!=='undefined')?SPEC_SEED_NOTES:{};
+  function wire(t){
+    // Seed first, then let storage override it. With the read inside the same
+    // try as the seed, a throwing localStorage skipped the seed too and the
+    // reader came up empty exactly when it could save nothing (#477).
+    if(Object.prototype.hasOwnProperty.call(SEED,t.dataset.key)){
+      var sv=SEED[t.dataset.key];if(typeof sv==='string'){t.value=sv;}}
+    if(!BAKED){try{var v=localStorage.getItem(NS+t.dataset.key);if(v!=null){t.value=v;}}catch(e){}}
+    autoGrow(t);setFilled(t);
+    t.addEventListener('input',function(){
+      autoGrow(t);setFilled(t);updateCount();dirty=true;
+      var k=t.dataset.key;pending[k]=t;
+      clearTimeout(saveTimers[k]);
+      saveTimers[k]=setTimeout(function(){delete pending[k];save(t);},350);
+    });
+    t.addEventListener('blur',function(){
+      save(t);
+      // An emptied block note folds away again; its ✎ stays to reopen it.
+      var box=t.closest('.bnote');
+      if(box&&t.value.trim()===''){closeBlock(box);}
+    });
+  }
+  tas.forEach(wire);
+
+  // ---- Block notes: a ✎ beside every paragraph, list item and table. The key is
+  // the section id plus a hash of the block's text, so a note stays with its
+  // paragraph when others are added around it; `<key>~q` carries the quoted text.
+  function hash(s){var h=5381;for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}return (h>>>0).toString(36);}
+  function plain(el){var c=el.cloneNode(true);
+    Array.prototype.forEach.call(c.querySelectorAll('.bn-btn,.bnote,ul,ol'),function(x){x.remove();});
+    return c.textContent.replace(/\s+/g,' ').trim();}
+  function quoteOf(text){return text.length>90?text.slice(0,87)+'…':text;}
+  var hosts={},blockBtn={};
+  function hostsOf(body){
+    var out=[];
+    Array.prototype.forEach.call(body.children,function(el){
+      var tag=el.tagName;
+      if(tag==='UL'||tag==='OL'){Array.prototype.forEach.call(el.querySelectorAll('li'),function(li){out.push(li);});return;}
+      if(tag==='HR')return;
+      if(tag==='TABLE'||tag==='PRE'||tag==='FIGURE'){
+        // These scroll sideways; the ✎ goes on a wrapper so it does not scroll away.
+        var w=document.createElement('div');el.parentNode.insertBefore(w,el);w.appendChild(el);el=w;}
+      out.push(el);
+    });
+    return out;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('article.sec'),function(art){
+    var body=art.querySelector(':scope > .sec-body');if(!body)return;
+    var seen={};
+    hostsOf(body).forEach(function(el){
+      var text=plain(el);if(text==='')return;
+      var h=hash(text);seen[h]=(seen[h]||0)+1;
+      var key=art.id+'~'+h+(seen[h]>1?'-'+seen[h]:'');
+      el.classList.add('bn-host');el.dataset.bkey=key;el.dataset.quote=quoteOf(text);
+      var b=document.createElement('button');
+      b.type='button';b.className='bn-btn';b.textContent='✎';
+      b.title='Note on this';b.setAttribute('aria-label','Add a note on this point');
+      b.addEventListener('click',function(e){e.preventDefault();openBlock(key,true);});
+      el.appendChild(b);hosts[key]=el;blockBtn[key]=b;
+    });
+  });
+  // A key with no `~` is a section note whose section is gone; it goes to the
+  // unplaced area, never into whatever element happens to share its id (#541).
+  function openBlock(key,focus,quote){
+    var t=null;tas.forEach(function(x){if(x.dataset.key===key)t=x;});
+    if(!t){
+      var host=hosts[key],art=key.indexOf('~')<0?null:document.getElementById(key.split('~')[0]);
+      if(!host&&!art)art=unplaced();
+      var q=host?host.dataset.quote:(quote||'');
+      var box=document.createElement('div');box.className='note bnote';
+      var head=document.createElement('label');head.className='note-head';
+      var ico=document.createElement('span');ico.className='note-ico';ico.textContent='✎';
+      var lab=document.createElement('span');lab.className='note-label';lab.textContent='Your note';
+      var ref=document.createElement('span');ref.className='note-ref';
+      ref.textContent=host?'¶ '+q:(q?'¶ (text changed) '+q:'¶ text changed since this note');
+      head.appendChild(ico);head.appendChild(lab);head.appendChild(ref);
+      t=document.createElement('textarea');t.className='note-ta';t.rows=1;
+      t.placeholder='Note on this point…';t.dataset.key=key;t.dataset.quote=q;
+      if(art){t.dataset.label=art.dataset.label||'';t.dataset.part=art.dataset.part||'';t.dataset.ref=art.dataset.ref||'';}
+      box.appendChild(head);box.appendChild(t);
+      if(host&&host.tagName==='LI'){host.appendChild(box);}
+      else if(host){host.parentNode.insertBefore(box,host.nextSibling);}
+      else{var sn=art.querySelector(':scope > .note');art.insertBefore(box,sn);}
+      tas.push(t);wire(t);
+      if(blockBtn[key])blockBtn[key].classList.add('has');
+      updateCount();
+    }
+    if(focus)t.focus();
+    return t;
+  }
+  // Notes whose section no longer exists (a heading renamed or removed) are never
+  // dropped: they collect here, after the document, and still export.
+  function unplaced(){
+    var u=document.getElementById('bn-unplaced');
+    if(!u){u=document.createElement('article');u.id='bn-unplaced';u.className='sec l2';
+      u.dataset.label='Unplaced notes';u.dataset.ref='unplaced';u.dataset.part='Unplaced notes';
+      var h=document.createElement('h3');h.className='sec-h';h.textContent='Unplaced notes — their section changed';
+      u.appendChild(h);var parts=document.querySelectorAll('section.part');
+      var last=parts[parts.length-1];(last||document.body).appendChild(u);}
+    return u;
+  }
+  function closeBlock(box){
+    var t=box.querySelector('.note-ta');var i=tas.indexOf(t);if(i>=0)tas.splice(i,1);
+    if(blockBtn[t.dataset.key])blockBtn[t.dataset.key].classList.remove('has');
+    box.remove();updateCount();
+  }
+  // Reopen every block note that has text, from the seed or this browser —
+  // including one whose paragraph changed, which lands at the end of its section.
+  (function(){
+    var keys={};
+    Object.keys(SEED).forEach(function(k){keys[k]=1;});
+    if(!BAKED){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);
+      if(k&&k.indexOf(NS)===0)keys[k.slice(NS.length)]=1;}}catch(e){}}
+    Object.keys(keys).sort().forEach(function(k){
+      if(/~q$/.test(k))return;
+      var v=null;
+      if(!BAKED){try{v=localStorage.getItem(NS+k);}catch(e){}}
+      if(v==null&&typeof SEED[k]==='string')v=SEED[k];
+      var q=null;try{q=localStorage.getItem(NS+k+'~q');}catch(e){}
+      if(q==null&&typeof SEED[k+'~q']==='string')q=SEED[k+'~q'];
+      if(v&&v.trim()!=='')openBlock(k,false,q||'');
+    });
+  })();
+  // Reviewed copy: each note becomes its text at full length, and an empty field goes.
+  if(BAKED){
+    document.body.classList.add('baked');
+    tas.forEach(function(t){
+      var box=t.closest('.note');
+      if(t.value.trim()===''){box.remove();return;}
+      var d=document.createElement('div');d.className='note-text';d.textContent=t.value;
+      t.replaceWith(d);box.classList.add('filled');
+      var lab=box.querySelector('.note-label');if(lab)lab.textContent='Review note';
+    });
+    return;
+  }
+  updateCount();
+  if(lsOK){setState('✓ Auto-saving','ok');}else{document.getElementById('warnbar').style.display='block';setState(WARN,'warn');}
+
+  function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1900);}
+  function pad(n){return n<10?'0'+n:''+n;}
+  function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+  function stamp(){var d=new Date();return today()+'-'+pad(d.getHours())+pad(d.getMinutes());}
+  // Named like the reader, <repo>-<doc>-v<N>-<YYYY-MM-DD-HHMM>-notes.md, stamped at export.
+  function exportName(){return 'pixelwright-spec-v2-'+stamp()+'-notes.md';}
+
+  function buildExport(){
+    var byPart={},order=[],data={},n=0;
+    // Document order, so a block note sits beside its section's own note.
+    tas.slice().sort(function(a,b){return a.compareDocumentPosition(b)&4?-1:1;}).forEach(function(t){
+      var v=t.value.trim();if(v==='')return;n++;
+      data[t.dataset.key]=t.value;
+      if(t.closest('.bnote')){data[t.dataset.key+'~q']=t.dataset.quote||'';}
+      var part=t.dataset.part||'Other';
+      if(!byPart[part]){byPart[part]=[];order.push(part);}
+      byPart[part].push({label:t.dataset.label,ref:t.dataset.ref||keyFromDom(t.dataset.key,t),
+                         quote:t.closest('.bnote')?(t.dataset.quote||''):null,note:t.value});
+    });
+    var lines=['# Specification notes','','_Exported '+today()+' · '+n+' note'+(n===1?'':'s')+'._','',
+      '> Send this file back to continue the review. Notes are embedded as data at the bottom','> so importing this file restores them in the reader.',''];
+    order.forEach(function(part){
+      lines.push('## '+part,'');
+      byPart[part].forEach(function(it){
+        lines.push('**'+it.label+'**  `'+it.ref+'`');
+        if(it.quote!==null){lines.push(it.quote?'> ¶ _“'+it.quote+'”_':'> ¶ _(text changed since this note)_','>');}
+        it.note.split('\n').forEach(function(ln){lines.push('> '+ln);});
+        lines.push('');
+      });
+    });
+    // Which page wrote this, so an import into a different page can say so.
+    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v2 -->');
+    lines.push('<!-- SPEC-NOTES-DATA');
+    lines.push(JSON.stringify(data));
+    lines.push('-->');
+    return{text:lines.join('\n'),n:n};
+  }
+  function keyFromDom(domkey,t){var box=t.closest('.note');var r=box?box.querySelector('.note-ref'):null;return r?r.textContent:domkey;}
+
+  function download(name,text){
+    try{var blob=new Blob([text],{type:'text/markdown'});var url=URL.createObjectURL(blob);
+        var a=document.createElement('a');a.href=url;a.download=name;
+        document.body.appendChild(a);a.click();
+        setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);return true;}catch(e){return false;}
+  }
+
+  var modal=document.getElementById('modal');
+  var modalTa=document.getElementById('modal-ta');
+  // A real dialog: focus moves in and comes back, and the page behind is inert
+  // so Tab cannot wander off under the overlay (#541).
+  var modalReturn=null;
+  function setInert(on){Array.prototype.forEach.call(document.body.children,function(c){if(c!==modal)c.inert=on;});}
+  function openModal(text){modalTa.value=text;modalReturn=document.activeElement;
+    modal.classList.add('open');setInert(true);document.getElementById('modal-copy').focus();}
+  function closeModal(){if(!modal.classList.contains('open'))return;
+    modal.classList.remove('open');setInert(false);
+    if(modalReturn&&modalReturn.focus)modalReturn.focus();modalReturn=null;}
+
+  document.getElementById('btn-export').addEventListener('click',function(){
+    var r=buildExport();
+    if(r.n===0){toast('No notes yet — add some first.');return;}
+    var saved=download(exportName(),r.text);openModal(r.text);
+    // download() returning only means the download was REQUESTED; a browser can
+    // still block or drop it. So `dirty` — what arms the unload warning — is
+    // cleared only on a confirmed copy: the clipboard promise fulfilling.
+    var cp=null;
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){cp=navigator.clipboard.writeText(r.text);}}catch(e){cp=null;}
+    if(cp&&typeof cp.then==='function'){cp.then(function(){dirty=false;setState('✓ Copied to clipboard '+nowStamp(),'ok');},function(){});}
+    if(!saved){setState('⚠ Download blocked — copy the notes from this box','warn');
+               toast('Download blocked — copy the notes before leaving');return;}
+    setState('Download requested '+nowStamp(),'ok');
+    toast('Download requested — '+r.n+' note'+(r.n===1?'':'s'));
+  });
+
+  document.getElementById('modal-copy').addEventListener('click',function(){
+    // Success is reported only once a copy actually happened: the legacy
+    // execCommand returned true, or the clipboard promise fulfilled. Claiming it
+    // before writeText settled told the reviewer a rejected copy had worked (#477).
+    function report(ok){if(ok){dirty=false;setState('✓ Copied to clipboard '+nowStamp(),'ok');}
+                        toast(ok?'Copied to clipboard':'Select the text and copy');}
+    modalTa.select();var legacy=false;try{legacy=document.execCommand('copy')===true;}catch(e){}
+    if(legacy){report(true);return;}
+    var p=null;
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){p=navigator.clipboard.writeText(modalTa.value);}}catch(e){p=null;}
+    if(p&&typeof p.then==='function'){p.then(function(){report(true);},function(){report(false);});}
+    else{report(false);}
+  });
+  document.getElementById('modal-dl').addEventListener('click',function(){download(exportName(),modalTa.value);toast('Download requested');});
+  document.getElementById('modal-close').addEventListener('click',closeModal);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+  modal.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+
+  // buildExport only ever writes strings, but an import takes whatever the file
+  // holds: an object arrives as "[object Object]", an array joins on commas,
+  // null becomes "null" — each then persisted over notes the reviewer wrote.
+  // The realistic trigger is a hand-edited or truncated export, not an attack;
+  // it just fails in the least useful way, silently and destructively. Skip
+  // anything that is not a string and say how many were skipped.
+  function applyData(obj){
+    var applied=0,skipped=0;
+    // Every note gets a textarea first — including a section note whose section
+    // is gone, which lands under "Unplaced notes" instead of being dropped (#541).
+    Object.keys(obj).forEach(function(k){
+      if(!/~q$/.test(k)&&typeof obj[k]==='string'&&obj[k].trim()!==''){
+        openBlock(k,false,typeof obj[k+'~q']==='string'?obj[k+'~q']:'');}
+    });
+    tas.forEach(function(t){
+      if(!Object.prototype.hasOwnProperty.call(obj,t.dataset.key))return;
+      var v=obj[t.dataset.key];
+      if(typeof v!=='string'){skipped++;return;}
+      t.value=v;save(t);autoGrow(t);setFilled(t);applied++;
+    });
+    updateCount();return{applied:applied,skipped:skipped};
+  }
+  document.getElementById('file-import').addEventListener('change',function(e){
+    var f=e.target.files[0];if(!f)return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      var txt=String(rd.result||'');var obj=null;
+      // Last LINE-ANCHORED marker. A plain lastIndexOf lands inside the JSON
+      // string of a note that mentions the marker, and the import then reads as
+      // a corrupt file — the same defect the Python seeder had (#239).
+      var mk=/^[ \t]*<!--[ \t]*SPEC-NOTES-DATA/gm,mm=null,mx;
+      while((mx=mk.exec(txt))!==null){mm=mx;}
+      try{
+        if(mm){var after=txt.slice(mm.index+mm[0].length);var jstart=after.indexOf('{');var jend=after.lastIndexOf('}');
+                  if(jstart>=0&&jend>jstart){obj=JSON.parse(after.slice(jstart,jend+1));}}
+        else{obj=JSON.parse(txt);}
+      }catch(err){obj=null;}
+      if(!obj){toast('Could not read notes from that file');return;}
+      var dm=/^<!-- SPEC-NOTES-DOC (\S+) -->/m.exec(txt);
+      if(dm&&dm[1]!=='pixelwright-spec-v2'&&
+         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v2). Import anyway?'))return;
+      var r=applyData(obj);
+      toast('Imported '+r.applied+' note'+(r.applied===1?'':'s')+
+            (r.skipped?' ('+r.skipped+' skipped — not text)':''));
+    };
+    rd.readAsText(f);e.target.value='';
+  });
+  document.getElementById('btn-import').addEventListener('click',function(){document.getElementById('file-import').click();});
+})();
+
+// ---- Pictures and SVG diagrams zoom in place, never over the page. Tap or click one: it
+// widens to the window (a wide screen shows more of it), grows, and pushes the text below it down, so scrolling on reaches the note field
+// at its normal size. Pinch, Ctrl+wheel or a trackpad pinch on the picture zooms the
+// picture only; one finger (or a mouse drag) pans it. Tap again: back to fit.
+(function(){
+  var FIRST=2.5,MAX=12;
+  Array.prototype.forEach.call(document.querySelectorAll('.sec-body img,.sec-body svg'),function(img){
+    if(img.parentNode.closest('svg,button'))return;
+    var wrap=document.createElement('div');wrap.className='zwrap';
+    var bar=document.createElement('div');bar.className='zbar';
+    bar.innerHTML='<button type="button" data-z="out" aria-label="Zoom out">−</button>'+
+      '<span class="zpct"></span><button type="button" data-z="in" aria-label="Zoom in">+</button>'+
+      '<button type="button" data-z="fit">Fit</button>'+
+      '<span class="zhint">tap the picture to zoom out · pinch or Ctrl+wheel zooms it</span>';
+    var box=document.createElement('div');box.className='zbox';
+    img.parentNode.insertBefore(wrap,img);wrap.appendChild(bar);wrap.appendChild(box);box.appendChild(img);
+    img.tabIndex=0;img.title='Tap to zoom';
+    var s=1;
+    // s is relative to the column; zoomed, the frame spans the window less a 16px gutter.
+    function col(){return wrap.parentNode.clientWidth;}
+    function span(){var W=document.documentElement.clientWidth-32;
+      wrap.style.width=W+'px';wrap.style.marginLeft=(16-wrap.parentNode.getBoundingClientRect().left)+'px';}
+    // Scale to ns, keeping the point under (cx,cy) where it was on screen.
+    function set(ns,cx,cy){
+      ns=Math.max(1,Math.min(MAX,ns));
+      var r=img.getBoundingClientRect(),fx=(cx-r.left)/r.width,fy=(cy-r.top)/r.height;
+      s=ns;wrap.classList.toggle('on',s>1);
+      if(s>1)span();else{wrap.style.width='';wrap.style.marginLeft='';}
+      img.style.width=s>1?(col()*s)+'px':'';
+      var r2=img.getBoundingClientRect();
+      box.scrollLeft+=r2.left+fx*r2.width-cx;
+      window.scrollBy(0,r2.top+fy*r2.height-cy);
+      bar.querySelector('.zpct').textContent=Math.round(s*100)+'%';
+    }
+    function mid(){var r=box.getBoundingClientRect();
+      return[r.left+r.width/2,(Math.max(r.top,0)+Math.min(r.bottom,innerHeight))/2];}
+    // First tap: the window's full width on a wide screen; FIRST on a phone, where the column already is the window.
+    function toggle(cx,cy){var r=(document.documentElement.clientWidth-32)/col();set(s>1?1:(r>1.5?r:FIRST),cx,cy);}
+    var drag=null,moved=false;
+    img.addEventListener('click',function(e){if(moved){moved=false;return;}toggle(e.clientX,e.clientY);});
+    img.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();var m=mid();toggle(m[0],m[1]);}});
+    bar.addEventListener('click',function(e){var z=e.target.dataset&&e.target.dataset.z;if(!z)return;var m=mid();
+      set(z==='in'?s*1.5:z==='out'?s/1.5:1,m[0],m[1]);});
+    box.addEventListener('wheel',function(e){if(!e.ctrlKey)return;e.preventDefault();
+      set(s*Math.exp(-Math.max(-50,Math.min(50,e.deltaY))*0.01),e.clientX,e.clientY);},{passive:false});
+    // Two fingers on the picture zoom the picture; the page's own pinch is off here.
+    var pin=null;
+    function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+    box.addEventListener('touchstart',function(e){if(e.touches.length===2)pin={d:dist(e.touches),s:s};},{passive:true});
+    box.addEventListener('touchmove',function(e){if(!pin||e.touches.length!==2)return;e.preventDefault();
+      set(pin.s*dist(e.touches)/pin.d,(e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2);},{passive:false});
+    box.addEventListener('touchend',function(e){if(e.touches.length<2)pin=null;});
+    // A mouse drag pans a zoomed picture: sideways in its frame, up and down the page.
+    img.addEventListener('pointerdown',function(e){if(e.pointerType!=='mouse'||s===1)return;
+      e.preventDefault();drag=[e.clientX,e.clientY];moved=false;});
+    addEventListener('pointermove',function(e){if(!drag)return;var dx=e.clientX-drag[0],dy=e.clientY-drag[1];
+      if(Math.abs(dx)+Math.abs(dy)>4)moved=true;box.scrollLeft-=dx;window.scrollBy(0,-dy);drag=[e.clientX,e.clientY];});
+    addEventListener('pointerup',function(){drag=null;});
+    addEventListener('resize',function(){if(s>1){wrap.style.marginLeft='';span();img.style.width=(col()*s)+'px';}});
+  });
+})();
+</script>
+</body>
+</html>
