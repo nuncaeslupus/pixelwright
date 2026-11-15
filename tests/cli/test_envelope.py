@@ -103,6 +103,12 @@ def test_cli_json_envelope_on_every_command(
     run("style", "show")
     (ws / "experiments" / "try.png").write_bytes(b"x")
     assert run("prune")["data"]["removed"] == ["experiments/try.png"]
+    run("issue", "hero", "add", "--box", "0,0,2,2", "--rule", "R-PIX-3")
+    assert len(run("issue", "hero", "list")["data"]["issues"]) == 2
+    run("issue", "hero", "resolve", "--id", "r-pix-3-1")
+    assert run("status", "hero")["data"]["assets"][0]["open_issues"] == 1
+    assert run("history", "hero")["data"]["history"]
+    assert run("inbox")["data"]["count"] >= 0
     run("mask", "hero", "clear")
     assert seen == set(REGISTRY)
 
