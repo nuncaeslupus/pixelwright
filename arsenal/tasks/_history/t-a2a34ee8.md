@@ -5,6 +5,7 @@ label: "T8: Fixtures"
 priority: 5
 deps: [t-2fe7505d]
 tags: [m0-m1]
+status: merged
 ---
 
 Synthetic fixtures: pseudo-pixel generator (upscale x2..x12, blur, sub-cell jitter, JPEG, noise) and detector case format.
