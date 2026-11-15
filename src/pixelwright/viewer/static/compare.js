@@ -28,10 +28,11 @@ async function diffData(a, b) {
   return cmp.diff;
 }
 
-const url = (v) => `/api/assets/${state.asset.id}/${v}/image.png?view=${state.view}`;
+const url = (v) => `/api/assets/${state.asset.id}/${v}/image.png?view=${state.view === "thumb" ? "color" : state.view}`;
 
 modes.compare.available = () => Boolean(state.asset && state.asset.versions.length > 1);
 Object.assign(modes.compare, {
+  shortcuts: [["S O W D", "Side by side, Onion, Swipe, Difference"], ["[ ]", "Onion opacity or swipe position"], ["Shift+click", "Choose version A"]],
   canvas() {
     const a = versionA();
     const seg = VIEWS.map(([id, label, key]) => btn("cmp-view", label, key, label, cmp.view === id ? "on" : "", `data-view="${id}"`)).join("");

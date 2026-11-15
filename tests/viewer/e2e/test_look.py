@@ -94,3 +94,14 @@ def test_list_filters_theme_and_shortcuts(page: Any) -> None:
     assert page.evaluate("document.documentElement.dataset.theme") != before
     page.keyboard.press("?")
     expect(page.locator("#keys")).to_be_visible()
+
+
+def test_views_include_a_quarter_size_thumb(page: Any, viewer: Viewer) -> None:
+    page.goto(viewer.url + "#/hero/v0002")
+    expect(page.locator("#cv")).to_be_visible()
+    page.wait_for_timeout(300)
+    full = page.evaluate("document.getElementById('cv').width")
+    page.locator("#view").select_option("thumb")
+    page.wait_for_timeout(300)
+    small = page.evaluate("document.getElementById('cv').width")
+    assert small < full and small % 16 == 0
