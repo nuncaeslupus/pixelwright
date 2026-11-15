@@ -4,7 +4,7 @@
 **Specification**: `status/specification.md` (M2 in §4) and `status/viewer/screens.md` (r4, accepted 2026-11-15)
 **Author**: Claude (for the repository owner)
 **Revision**: 1
-**Status**: draft
+**Status**: approved (2026-11-15, revision 1) — without annotations
 **Revision log**:
 - r1 — first draft: M2 task split (T19-T33). The M0-M1 plan is in `status/archive/plan-m0-m1.md`.
 
