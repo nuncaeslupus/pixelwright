@@ -994,7 +994,7 @@ def cmd_history(root: Path, a: dict[str, Any]) -> Outcome:
 def _asset_status(asset: Asset) -> dict[str, Any]:
     versions = asset.versions()
     newest = versions[-1] if versions else None
-    decided = {h.get("version") for h in asset.history() if h["event"] == "decision"}
+    decided = {d["version"] for d in asset.decisions()}
     report = asset.versions_dir / newest / "report.json" if newest else None
     flagged = None
     if report is not None and report.exists():

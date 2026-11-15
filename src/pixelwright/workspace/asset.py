@@ -209,16 +209,35 @@ class Asset:
         self.meta(version)
         self._log({"event": "export", "version": version, "files": files})
 
-    def stage(self, version: str) -> str:
-        """Current stage: meta stage, then the last decision; an export makes it final."""
-        stage = str(self.meta(version)["stage"])
+    def decisions(self) -> list[dict[str, Any]]:
+        """Decision records still in force: each `decision_revert` cancels the latest one."""
+        live: list[dict[str, Any]] = []
         for rec in self.history():
-            if rec.get("version") != version:
-                continue
             if rec["event"] == "decision":
+                live.append(rec)
+            elif rec["event"] == "decision_revert" and live:
+                live.pop()
+        return live
+
+    def revert_decision(self, *, author: str = "human") -> dict[str, Any]:
+        """Undo the latest decision still in force; return the record it cancels."""
+        live = self.decisions()
+        if not live:
+            raise ValueError(f"{self.id} has no decision to revert")
+        last = live[-1]
+        record = {"event": "decision_revert", "version": last["version"]}
+        self._log({**record, "decision": last["decision"], "author": _check_author(author)})
+        return last
+
+    def stage(self, version: str) -> str:
+        """Current stage: meta stage, then the last decision in force; an export makes it
+        final."""
+        if any(r["event"] == "export" and r.get("version") == version for r in self.history()):
+            return "final"
+        stage = str(self.meta(version)["stage"])
+        for rec in self.decisions():
+            if rec["version"] == version:
                 stage = "approved" if rec["decision"] == "approve" else "draft"
-            elif rec["event"] == "export":
-                stage = "final"
         return stage
 
     def clear_masks(self) -> int:
