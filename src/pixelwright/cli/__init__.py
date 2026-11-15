@@ -12,6 +12,7 @@ from typing import Any, NoReturn
 
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
 from pixelwright.cli import gen_commands as _gen_commands  # noqa: F401  (generation commands)
+from pixelwright.cli import tour as _tour  # noqa: F401  (registers `tour`)
 from pixelwright.cli.registry import (
     EXIT_USAGE,
     EXIT_VALIDATION,
@@ -60,7 +61,11 @@ def build_parser() -> argparse.ArgumentParser:
     common = _Parser(add_help=False)
     common.add_argument("--workspace", type=Path, help="workspace folder (default: nearest)")
     common.add_argument("--json", action="store_true", help="print the JSON envelope")
-    parser = _Parser(prog="pw", description=__doc__)
+    parser = _Parser(
+        prog="pw",
+        description=__doc__,
+        epilog="New here? Run `pw tour`. Guide: docs/guide/how-it-works.md",
+    )
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
     for cmd in REGISTRY.values():
         child = sub.add_parser(cmd.name, help=cmd.help, description=cmd.help, parents=[common])

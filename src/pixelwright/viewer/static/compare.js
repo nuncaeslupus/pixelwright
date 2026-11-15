@@ -1,9 +1,25 @@
 // Compare: is the selected version (B) better than the previous best (A)? (`R-CRIT-2`)
 // A defaults to the newest approved version; shift-click a thumbnail to choose A.
-import { api, btn, drawGrid, esc, fitZoom, layer, loadImage, modes, paint, render, state } from "/static/app.js";
+import { api, btn, drawGrid, esc, fitZoom, layer, load, loadImage, modes, paint, render, state } from "/static/app.js";
 
 const VIEWS = [["side", "Side by side", "S"], ["onion", "Onion", "O"], ["swipe", "Swipe", "W"], ["diff", "Difference", "D"]];
-const cmp = { a: null, asset: null, view: "side", mix: 50, diff: null, diffKey: "" };
+const CAND = ["cand", "Candidates", "C"];
+const cmp = { a: null, asset: null, view: "side", mix: 50, diff: null, diffKey: "", touched: false };
+
+/** Candidates: B and its siblings from the same `pw generate` call (same request hash). */
+export function candidates() {
+  const own = state.asset.versions.find((v) => v.version === state.route.version);
+  if (!own || !own.request_hash) return [];
+  const same = state.asset.versions.filter((v) => v.request_hash === own.request_hash);
+  return same.length > 1 ? same : [];
+}
+
+function candidatesCanvas(cands) {
+  const figs = cands.map((c) => `<figure class="cmp"><canvas id="cv-c-${esc(c.version)}" aria-label="Candidate ${esc(c.version)}"></canvas>
+    <figcaption><span class="mono">${esc(c.version)}</span> · ${esc(c.stage)}
+    ${btn("cmp-pick", `Pick ${c.version}, reject the other candidates`, "", "Pick", "tb", `data-v="${esc(c.version)}"`)}</figcaption></figure>`).join("");
+  return `<div class="pair" id="pair">${figs}</div>`;
+}
 
 /** A: the chosen one, else the newest approved version other than B, else B's parent. */
 export function versionA() {
@@ -32,18 +48,32 @@ const url = (v) => `/api/assets/${state.asset.id}/${v}/image.png?view=${state.vi
 
 modes.compare.available = () => Boolean(state.asset && state.asset.versions.length > 1);
 Object.assign(modes.compare, {
-  shortcuts: [["S O W D", "Side by side, Onion, Swipe, Difference"], ["[ ]", "Onion opacity or swipe position"], ["Shift+click", "Choose version A"]],
+  shortcuts: [["C S O W D", "Candidates, Side by side, Onion, Swipe, Difference"], ["[ ]", "Onion opacity or swipe position"], ["Shift+click", "Choose version A"]],
   canvas() {
     const a = versionA();
-    const seg = VIEWS.map(([id, label, key]) => btn("cmp-view", label, key, label, cmp.view === id ? "on" : "", `data-view="${id}"`)).join("");
+    const cands = candidates();
+    if (cands.length && !cmp.touched) cmp.view = "cand";
+    if (!cands.length && cmp.view === "cand") cmp.view = "side";
+    const seg = (cands.length ? [CAND, ...VIEWS] : VIEWS).map(([id, label, key]) => btn("cmp-view", label, key, label, cmp.view === id ? "on" : "", `data-view="${id}"`)).join("");
     const pair = cmp.view === "side"
       ? `<figure class="cmp"><canvas id="cv-a" aria-label="A ${esc(a)}"></canvas><figcaption>A · <span class="mono">${esc(a)}</span></figcaption></figure>
          <figure class="cmp"><canvas id="cv" aria-label="B ${esc(state.route.version)}"></canvas><figcaption>B · <span class="mono">${esc(state.route.version)}</span></figcaption></figure>`
       : `<figure class="cmp"><canvas id="cv-mix" aria-label="${esc(a)} and ${esc(state.route.version)}"></canvas>
          <figcaption>A <span class="mono">${esc(a)}</span> · B <span class="mono">${esc(state.route.version)}</span></figcaption></figure>`;
+    if (cmp.view === "cand") return `<nav class="seg" aria-label="Compare view">${seg}</nav>${candidatesCanvas(cands)}`;
     return `<nav class="seg" aria-label="Compare view">${seg}</nav><div class="pair" id="pair">${pair}</div>`;
   },
   async draw() {
+    if (cmp.view === "cand") {
+      const cands = candidates();
+      const imgs = await Promise.all(cands.map((c) => loadImage(url(c.version))));
+      const z = fitZoom(imgs[0].width, imgs[0].height, cands.length);
+      cands.forEach((c, i) => {
+        const cv = document.getElementById(`cv-c-${c.version}`);
+        if (cv) { paint(cv, imgs[i], z); drawGrid(cv, imgs[i].width, imgs[i].height, z); }
+      });
+      return;
+    }
     const a = versionA();
     const b = state.route.version;
     if (!a) return;
@@ -103,16 +133,25 @@ Object.assign(modes.compare, {
       <div class="crow"><span>Area changed</span><span class="m">${area}</span></div>`;
   },
   actions: {
-    "cmp-view": (el) => { cmp.view = el.dataset.view; render(); },
+    "cmp-view": (el) => { cmp.view = el.dataset.view; cmp.touched = true; render(); },
+    "cmp-pick": async (el) => {
+      const pick = el.dataset.v;
+      for (const c of candidates()) {
+        if (c.version === pick) continue;
+        await api(`/api/assets/${state.asset.id}/${c.version}/decision`, { decision: "reject", note: `not picked: chose ${pick}` });
+      }
+      location.hash = `#/${state.asset.id}/${pick}/compare`;
+      await load();
+    },
   },
-  keys: { s: "side", o: "onion", w: "swipe", d: "diff" },
+  keys: { s: "side", o: "onion", w: "swipe", d: "diff", c: "cand" },
 });
 
 document.addEventListener("keydown", (ev) => {
   if (state.route.mode !== "compare" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
   if (["TEXTAREA", "INPUT", "SELECT"].includes(ev.target.tagName)) return;
   const view = modes.compare.keys[ev.key];
-  if (view) { ev.preventDefault(); cmp.view = view; render(); }
+  if (view && (view !== "cand" || candidates().length)) { ev.preventDefault(); cmp.view = view; cmp.touched = true; render(); }
   if (ev.key === "[" || ev.key === "]") {
     cmp.mix = Math.max(0, Math.min(100, cmp.mix + (ev.key === "]" ? 10 : -10)));
     render();

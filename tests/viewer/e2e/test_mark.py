@@ -15,12 +15,12 @@ def to_cell(page: Any, x: int, y: int) -> dict[str, float]:
 
 
 def drag(page: Any, a: tuple[int, int], b: tuple[int, int]) -> None:
+    # Hover by position on the canvas itself: Playwright reads its box at each step, so a
+    # re-render that moves the canvas (the 2 s poll) cannot shift the stroke.
     canvas = page.locator("#cv")
-    box = canvas.bounding_box()
-    pa, pb = to_cell(page, *a), to_cell(page, *b)
-    page.mouse.move(box["x"] + pa["x"], box["y"] + pa["y"])
+    canvas.hover(position=to_cell(page, *a))
     page.mouse.down()
-    page.mouse.move(box["x"] + pb["x"], box["y"] + pb["y"], steps=4)
+    canvas.hover(position=to_cell(page, *b))
     page.mouse.up()
 
 
