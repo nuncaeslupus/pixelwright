@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
+from pixelwright.cli import gen_commands as _gen_commands  # noqa: F401  (generation commands)
 from pixelwright.cli.registry import (
     EXIT_USAGE,
     EXIT_VALIDATION,
@@ -20,6 +21,7 @@ from pixelwright.cli.registry import (
     Param,
     PwError,
 )
+from pixelwright.core.providers.base import ProviderError
 from pixelwright.viewer import command as _view  # noqa: F401  (registers `view`)
 from pixelwright.workspace.config import CONFIG_NAME
 from pixelwright.workspace.schema import SchemaError
@@ -105,6 +107,8 @@ def envelope(name: str | None, started: float, outcome: Outcome | PwError) -> di
 def as_error(exc: Exception) -> PwError:
     if isinstance(exc, PwError):
         return exc
+    if isinstance(exc, ProviderError):
+        return PwError(exc.code, exc.message, exit_code=exc.exit_code, details=exc.details)
     for kind, code in (
         (SchemaError, "schema_error"),
         (FileNotFoundError, "not_found"),

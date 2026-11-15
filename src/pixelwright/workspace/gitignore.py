@@ -19,7 +19,7 @@ def managed_lines(config: WorkspaceConfig, approved: Iterable[str] = ()) -> list
     `approved`; they are re-included when drafts are ignored but approvals are kept.
     """
     assets = config.roles["assets"].rstrip("/")
-    lines = [f"/{config.roles['cache'].rstrip('/')}/"]
+    lines = [f"/{config.roles['cache'].rstrip('/')}/", "/.pixelwright/secrets.toml"]
     if "experiment" not in config.commit:
         lines += [f"/{config.roles['experiments'].rstrip('/')}/", f"/{assets}/*/drafts/"]
     if "draft" not in config.commit:

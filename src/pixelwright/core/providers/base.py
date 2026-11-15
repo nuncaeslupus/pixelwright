@@ -17,8 +17,11 @@ EXIT_PROVIDER = 5
 EXIT_BUDGET = 6
 
 
-class ProviderError(Exception):
-    """A provider failure with a stable `code`; the CLI turns it into the envelope."""
+class ProviderError(ValueError):
+    """A provider failure with a stable `code`; the CLI turns it into the envelope.
+
+    A `ValueError` so every existing error boundary (CLI, MCP, viewer) already catches it.
+    """
 
     def __init__(
         self,
