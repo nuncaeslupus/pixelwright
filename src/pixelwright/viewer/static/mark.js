@@ -142,6 +142,7 @@ async function save() {
 
 modes.mark.available = () => Boolean(state.route.version);
 Object.assign(modes.mark, {
+  shortcuts: [["B U F E", "Brush, Rectangle, Fill, Erase"], ["[ ]", "Brush size"], ["Ctrl+S", "Save as an issue"], ["Ctrl+Z", "Undo the last stroke"]],
   canvas() {
     ensureMask();
     const tools = TOOLS.map(([id, label, key, path]) =>

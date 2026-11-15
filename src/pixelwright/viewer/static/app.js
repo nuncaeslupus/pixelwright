@@ -206,7 +206,7 @@ function renderList() {
   const seen = store.get("seen-versions", {});
   const opt = (value, label, current) => `<option value="${esc(value)}" ${value === current ? "selected" : ""}>${esc(label)}</option>`;
   app.innerHTML = `
-    <header class="top"><div class="l">${btn("menu", "Menu: every command", "", icon("menu"))}<span class="name">pixelwright</span></div><div></div>
+    <header class="top"><div class="l">${btn("menu", "Menu: every command", "Ctrl+K", icon("menu"))}<span class="name">pixelwright</span></div><div></div>
       <div class="r">${rightTools()}</div></header>
     <div class="filters">
       <select id="f-stage" title="Stage" aria-label="Stage">${opt("", "All stages", f.stage)}${["draft", "approved", "final"].map((s) => opt(s, s, f.stage)).join("")}</select>
@@ -234,7 +234,7 @@ function topBar() {
   const modeButtons = Object.entries(modes).map(([id, m]) =>
     btn("mode", m.label, m.key, m.label, id === state.route.mode ? "on" : "", `data-mode="${id}" ${m.available() ? "" : "disabled"}`)).join("");
   return `<header class="top">
-    <div class="l">${btn("menu", "Menu: every command", "", icon("menu"))}${btn("home", "Back to all assets", "Esc", icon("back"))}
+    <div class="l">${btn("menu", "Menu: every command", "Ctrl+K", icon("menu"))}${btn("home", "Back to all assets", "Esc", icon("back"))}
       <span class="name">${esc(state.asset.id)}</span><span class="meta">${esc(state.asset.spec.kind)} · <span class="mono">${esc(state.route.version || "no versions")}</span> · ${esc(v ? v.stage : "")}</span></div>
     <nav class="modes" aria-label="Mode">${modeButtons}</nav>
     <div class="r">${btn("undo", "Undo the last decision", "Ctrl+Z", icon("undo"))}
@@ -302,7 +302,7 @@ function strip() {
 
 function statusBar() {
   const v = current();
-  const views = [["color", "Color"], ["gray", "Gray"], ["values", "Values"], ["silhouette", "Silhouette"]];
+  const views = [["color", "Color"], ["gray", "Gray"], ["values", "Values"], ["silhouette", "Silhouette"], ["thumb", "25% thumb"]];
   return `<footer class="bar">
     <span id="pixel" class="mono">${esc(state.notice)}</span>
     <span class="sp"></span>${modes[state.route.mode].bar ? modes[state.route.mode].bar() : ""}
@@ -398,7 +398,7 @@ export function drawGrid(cv, w, h, z) {
 export async function drawImage() {
   const { asset, version } = state.route;
   const base = `/api/assets/${asset}/${version}/image.png`;
-  const [shown, color] = await Promise.all([loadImage(`${base}?view=${state.view}`), loadImage(base)]);
+  const [shown, color] = await Promise.all([loadImage(state.view === "thumb" ? base : `${base}?view=${state.view}`), loadImage(base)]);
   const key = `${asset}/${version}`;
   if (pixels.key !== key) {
     const off = new OffscreenCanvas(color.width, color.height);
@@ -408,7 +408,9 @@ export async function drawImage() {
   }
   const cv = document.getElementById("cv");
   if (!cv) return;
-  const z = fitZoom(shown.width, shown.height);
+  // 25% thumb: the image at a quarter of the zoom, to judge how it reads small
+  const fit = fitZoom(shown.width, shown.height);
+  const z = state.view === "thumb" ? Math.max(1, Math.round(fit / 4)) : fit;
   const ctx = paint(cv, shown, z);
   drawGrid(cv, shown.width, shown.height, z);
   await outlineIssue(ctx, z, shown.width, shown.height);
@@ -545,16 +547,18 @@ app.addEventListener("change", (ev) => {
 
 // -- keyboard ---------------------------------------------------------------------------
 const SHORTCUTS = {
-  list: [["Enter", "Open the focused asset"], ["/", "Find by name"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
+  list: [["Ctrl+K", "Menu: every command"], ["Enter", "Open the focused asset"], ["/", "Find by name"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
   asset: [["A", "Approve"], ["R", "Reject"], ["Ctrl+Z", "Undo the last decision"], ["← →", "Previous or next version"],
     ["L C M P", "Look, Compare, Mark, Play"], ["1 2 3", "Issues, Checks, History"], ["Tab", "Show or hide the side panel"],
-    ["V", "Next view (Color, Gray, Values, Silhouette)"], ["G", "Pixel grid"], ["+ −", "Zoom"], ["Esc", "Close or go back"],
-    ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
+    ["V", "Next view (Color, Gray, Values, Silhouette, 25% thumb)"], ["G", "Pixel grid"], ["+ −", "Zoom"], ["Esc", "Close or go back"],
+    ["Ctrl+K", "Menu: every command"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
 };
 
 function showKeys() {
-  const rows = SHORTCUTS[state.route.asset ? "asset" : "list"];
-  keysDialog.innerHTML = `<h3>Keyboard shortcuts</h3><table>${rows.map(([k, d]) => `<tr><td>${esc(k)}</td><td>${esc(d)}</td></tr>`).join("")}</table>
+  const table = (rows) => `<table>${rows.map(([k, d]) => `<tr><td>${esc(k)}</td><td>${esc(d)}</td></tr>`).join("")}</table>`;
+  const mode = modes[state.route.mode];
+  const extra = state.route.asset && mode.shortcuts ? `<h4>${esc(mode.label)}</h4>${table(mode.shortcuts)}` : "";
+  keysDialog.innerHTML = `<h3>Keyboard shortcuts</h3>${extra}${state.route.asset && mode.shortcuts ? "<h4>Everywhere</h4>" : ""}${table(SHORTCUTS[state.route.asset ? "asset" : "list"])}
     <form method="dialog" style="text-align:right;margin-top:12px"><button class="btn" title="Close (Esc)">Close</button></form>`;
   keysDialog.showModal();
 }
@@ -571,6 +575,7 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); undo(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "k") { ev.preventDefault(); togglePop("menu"); return; }
   if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
   const k = ev.key;
   if (["?", "t", "i"].includes(k)) ev.preventDefault();
@@ -594,7 +599,7 @@ document.addEventListener("keydown", (ev) => {
     3: () => ACTIONS.tab({ dataset: { tab: "history" } }),
     g: ACTIONS.grid,
     v: () => {
-      const order = ["color", "gray", "values", "silhouette"];
+      const order = ["color", "gray", "values", "silhouette", "thumb"];
       state.view = order[(order.indexOf(state.view) + 1) % order.length];
       render();
     },

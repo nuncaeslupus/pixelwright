@@ -78,13 +78,14 @@ function stepBy(d) {
 
 modes.play.available = () => frames().frames > 1;
 Object.assign(modes.play, {
+  shortcuts: [["Space", "Play or pause"], [", .", "Previous or next frame"], ["O", "Loop"], ["N", "Onion skin"]],
   canvas() {
     sync();
     return '<canvas id="cv" aria-label="Animation frame"></canvas>';
   },
   async draw() {
     const f = frames();
-    const view = state.view === "color" ? "" : `&view=${state.view}`;
+    const view = ["color", "thumb"].includes(state.view) ? "" : `&view=${state.view}`;
     const img = await image(f.urls[pl.frame] + view);
     const cv = document.getElementById("cv");
     if (!cv) return;

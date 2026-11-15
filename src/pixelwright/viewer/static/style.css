@@ -114,3 +114,4 @@ canvas.marking { cursor:crosshair; touch-action:none; }
 .frames .th img { height:50px; }
 .prow { display:flex; align-items:center; gap:8px; justify-content:space-between; font-size:13px; }
 .prow select { background:var(--panel); }
+dialog h4 { margin:12px 0 4px; font-size:12px; color:var(--dim); }
