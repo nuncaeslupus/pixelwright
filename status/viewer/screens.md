@@ -1,115 +1,137 @@
 # pixelwright — viewer screens (M2)
 
-**Revision**: 1
+**Revision**: 2
 
-The screens of `pw view` (spec §2.8), drawn as a static mockup (`status/viewer/mockup.html`)
-before anything is built. The art in the shots is a placeholder scene drawn by the mockup.
+The screens of `pw view` (spec §2.8), drawn as a static mockup (`status/viewer/mockup.html`,
+`#s02` light, `#s02,dark` dark) before anything is built. The art is a placeholder scene.
 
 ## S00 · Ground rules for every screen
 
 What holds on all screens, so each screen below only says what is specific to it.
 
-- One local page served by `pw view` on 127.0.0.1 (stdlib HTTP server, plain HTML/CSS/JS
-  shipped in the package, no build step, no UI framework).
-- Tabs: Assets, Review, Compare, Annotate, Critique, Animation. The URL holds asset,
-  version and tab, so a link from Claude (`pw view --open bg-harbour-night/v0004`) opens
-  the right screen.
-- Neutral gray canvas background (no tint on judged colors); checkerboard behind
-  transparent pixels; integer zoom only; pixel grid from 4x.
-- Live: the page polls the workspace every 2 s, so a version Claude writes appears
-  without a reload ("updated 4 s ago" in the header).
-- The viewer writes only masks (`masks/`) and decisions/notes (`history.jsonl`), through
-  the same core functions as the CLI. It never edits pixels.
-- Security: refuses non-local clients and foreign `Host` headers; every write needs a
-  per-run token embedded in the page.
+- **The image is the centre.** Two places only: the asset list, and one asset. Inside an
+  asset, four modes on one centred switch: Look, Compare, Mark, Play (Play only when the
+  version has frames). Everything else sits at the edges and the side panel hides (Tab).
+- **Everything where expected.** Top: where you are (back to the list, asset name), the
+  mode, undo/redo, and the decision (Reject, Approve). Bottom: the versions, then a status
+  bar with the pixel under the cursor on the left and how you look at it on the right
+  (view, grid, zoom slider). Right: what is known about this version (Issues, Checks,
+  History).
+- **Every control is a visible control** (button, select, slider), never plain text that
+  happens to be clickable. Each shows its name and shortcut on hover; no key labels
+  printed on screen. All of it works from the keyboard.
+- **Nothing vanishes.** No toasts. A new version from Claude gets a dot on its thumbnail
+  until seen; a running step shows on the asset card; everything lands in History.
+- **One way to undo.** Ctrl+Z undoes the last mask stroke or saved issue, and a decision
+  (logged as a reversal, since the history is append-only). Same everywhere.
+- **Light and dark.** Follows the system; one button switches. The look is a drafting
+  table (paper, ink, red and blue pencil) and a lightbox in the dark: serif for names,
+  monospace for numbers and ids, square corners, no shadows, no gradients. Only system
+  fonts, so the viewer works offline.
+- **Colors are never judged on a tinted ground.** The canvas is neutral gray in both
+  themes; checkerboard behind transparent pixels; integer zoom; grid from 4x.
+- **Author colors are the same everywhere**: red pencil = you, blue pencil = Claude,
+  ochre outline = a check. Status uses a shape and a color (✓ ! ✕), not color alone.
+- Technical: one local page served by `pw view` on 127.0.0.1 (stdlib HTTP server, plain
+  HTML/CSS/JS in the package, no build step); polls the workspace every 2 s; writes only
+  masks and history through the core functions, never pixels; refuses non-local clients
+  and foreign `Host` headers; writes need a per-run token. The URL holds asset, version
+  and mode, so `pw view --open bg-harbour-night/v0004` lands on the right screen.
 
 ## S01 · Asset list
 
-The start screen: every asset in the workspace as a card with its latest version, stage,
-check summary and what it is waiting on.
+Every asset as a card: its newest version and the one thing it is waiting on.
 
 ![Asset list](shots/s01.png)
 
-- Filters: stage (draft, approved, final on by default; experiment off), kind, check
-  status (has fail, has warn, needs review), text search; sort by last change.
-- "Needs review" means: newest version has no human decision yet.
-- Click a card: opens Review on the newest version.
+- One status line per card, in words: waiting for you, new from Claude, 1 failing check,
+  Claude is working, approved, final.
+- Filters are plain selects: stage (drafts, approved, final by default), kind, status;
+  find by name; sort by last change. No panels: all the room is for cards.
+- Click a card: the asset opens in Look on its newest version.
 
-## S02 · Version review
+## S02 · Look
 
-The main working screen: one version at a time, its checks, and the approve/reject
-decision.
+One version, its issues and the decision.
 
-![Version review](shots/s02.png)
+![Look](shots/s02.png)
 
-1. Timeline of versions with thumbnail, stage badge and check summary; click to switch.
-2. Zoom (fit, 1x, 2x, 4x, 8x, 16x), grid toggle, render modes from `render`: color,
-   gray, values, silhouette, and a 25% thumbnail (readability).
-3. Checks panel from `report.json`: each check with status and measurement; ticking a
-   check draws its regions on the image.
-4. Status bar: native coordinates, palette index, hex and ramp under the cursor; size,
-   stage, parent and the steps that made the version.
-5. Decision: note plus Approve (A) or Reject (R). Reject needs a note. The decision is
-   logged with the check measurements (`R-CRIT-4`).
-6. Keyboard: arrows switch versions, 1-5 zoom, G grid, A/R decide.
+1. Issues panel: Claude's verdict for this version on top (one line from `critique.md`),
+   then every issue on this version, whoever raised it. Click an issue: its region is
+   outlined on the image and the note opens.
+2. Versions at the bottom: thumbnail, approved tick, a dot for unseen new ones. Arrows
+   move between them.
+3. Status bar: pixel under the cursor (position, swatch, palette index, hex, ramp), the
+   version's stage and parent; then view (Color, Gray, Values, Silhouette, 25% thumb),
+   grid and zoom.
+4. Approve and Reject sit top right; both are always one click away.
 
 ## S03 · Compare
 
-Two versions of the same asset, to judge whether a new version is better than the
-previous best (`R-CRIT-2`: pairwise, never a bare score).
+Two versions, to judge whether the new one is better than the previous best (`R-CRIT-2`).
 
 ![Compare](shots/s03.png)
 
-- Modes: side by side (pan and zoom synced), onion skin (opacity slider), swipe, diff
-  (changed pixels highlighted, everything else dimmed).
-- A defaults to the latest approved version, B to the selected one.
-- Right panel: check deltas A → B, changed pixel count and share, colors used,
-  bounding box of the change.
+- A is the latest approved version (dashed thumbnail), B the selected one; click a
+  thumbnail for B, shift-click for A.
+- Side by side (zoom and pan synced), Onion, Swipe, Difference, on a small switch over the
+  canvas.
+- The Checks tab shows each check A → B, then the difference: changed pixels, colors
+  used, area changed.
 
-## S04 · Annotate
+## S04 · Mark
 
-Drawing a complaint as a mask in native pixels, with a rule id and a note, so a fix can
-run inside it (`R-CRIT-3`).
+Marking a complaint on the image, in native pixels, so a fix can run only there
+(`R-CRIT-3`).
 
-![Annotate](shots/s04.png)
+![Mark](shots/s04.png)
 
-- Tools: brush (1-4 px), rectangle, fill (same palette index, contiguous), erase.
-- Layers shown: human masks, Claude masks, check regions (outline only); each toggles.
-- New mask: rule picker (check catalog rule ids plus "other"), note, Save. Saved masks go
-  to `masks/<id>.png` and `masks.yaml` via `Asset.add_mask`.
-- Mask list: id, author, rule, version it was drawn on, status open or fixed.
-- Contract change: mask entries gain `version` and `status` (`open` | `fixed`, with the
-  fixing version). The schema bumps; old entries read as `open`, version unknown.
+- A small tool column appears on the canvas only in this mode: brush, rectangle, fill
+  (same color, contiguous), erase, brush size.
+- The new issue form takes the top of the Issues panel: rule (check catalog rule ids, or
+  other), note, Save or Discard. Existing issues stay visible below.
+- An issue is one thing for everyone: a region (mask), a rule, a note, an author, and a
+  status (open, or fixed in a version). Claude's critique complaints and check regions
+  are issues too, so there is one list, not three.
+- Contract change: `masks.yaml` entries gain `version` and `status`; the schema bumps and
+  old entries read as open. `critique.md` gets front matter (`version`, `compared_to`,
+  `verdict`) and one `##` per complaint naming its mask.
 
-## S05 · Critique and history
+## S05 · Decide and History
 
-Claude's critique of a version beside the image, and the asset's log.
+Rejecting a version, and the asset's log (dark theme).
 
-![Critique and history](shots/s05.png)
+![Decide and History](shots/s05.png)
 
-- `critique.md` rendered; each numbered complaint links to its region (mask or box),
-  which is highlighted on the image when clicked.
-- Critique format (new in M2): front matter with `version`, `compared_to`, `verdict`;
-  one `##` per complaint with rule id, region (mask id or box), proposed fix.
-- History from `history.jsonl`, newest first: steps, check runs, decisions with their
-  measurements, notes; author colored (human, Claude, check).
+- Reject asks why (required); Approve takes an optional note. Both are logged with the
+  check measurements (`R-CRIT-4`). Esc cancels.
+- History, newest first: versions made, checks, critiques, decisions and notes, with the
+  author's color and the key numbers.
 
-## S06 · Animation preview
+## S06 · Play
 
-Playing the frames of a `.aseprite` version with its own timing. Built in M2 only as a
-player; rigs, templates and cross-frame checks are M4.
+Playing the frames of a `.aseprite` version with its own timing (dark theme). Rigs,
+templates and cross-frame checks are M4; in M2 this is a player.
 
-![Animation preview](shots/s06.png)
+![Play](shots/s06.png)
 
-- Tag picker (from the file's tags), play/pause, step, loop, speed (0.5x, 1x, 2x; default
-  the file timing).
-- Onion skin of the previous frame; frame strip with per-frame duration.
-- `anim-consistency` status appears once that check exists (M4).
+- Frames replace the versions strip; play, previous and next frame sit in the status bar.
+- The side panel shows tag, speed, loop and onion skin, and the issues on this version.
 
 ## S07 · Not in M2
 
-Screens the spec lists that wait for their milestone, so they are not drawn yet.
+Screens the spec lists that wait for their milestone.
 
-- Scene preview (character moving through a background, parallax): M4, with `pw scene`.
+- Scene preview (a character moving through a background, parallax): M4, with `pw scene`.
 - Light zones editor: M4, with `pw light`.
 - Provider and cost views: M3, with `generate`.
+
+## What changed in revision 2
+
+- Six tabs became two places (list, asset) and four modes; Critique merged into Issues and
+  History; mask list, critique complaints and check regions became one Issues list.
+- Approve and Reject moved to the top bar; versions moved to the bottom.
+- Light theme added and made the default when the system is light; own look instead of a
+  generic dark dashboard.
+- Printed shortcuts removed (hover shows them); clickable things look clickable; no
+  transient notices.

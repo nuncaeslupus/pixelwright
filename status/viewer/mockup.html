@@ -2,200 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pw view mockup</title>
+<title>pw view mockup r2</title>
 <style>
-:root { --bg:#1e1f22; --panel:#26282c; --line:#3a3d43; --text:#d8dade; --dim:#8c9099;
-  --pass:#5fb878; --warn:#e0b341; --fail:#e0605a; --acc:#6ea8fe; --claude:#c58af9; --human:#4fd1c5; }
+/* Drafting table (light) and lightbox (dark). Chrome only: the canvas is always neutral gray. */
+:root { --paper:#f2efe6; --sheet:#faf8f2; --ink:#1f1d1a; --dim:#7a756b; --rule:#d8d2c3; --hover:#e9e4d6;
+  --red:#c2381f; --blue:#2f5f9e; --ochre:#9a6a1c; --green:#2f6a3c; --canvas:#7b7b7b;
+  --serif:"Iowan Old Style","Charter","Bitstream Charter",Georgia,serif; --mono:ui-monospace,"DejaVu Sans Mono",Menlo,monospace; }
+[data-theme=dark] { --paper:#1b1a18; --sheet:#232220; --ink:#e8e3d6; --dim:#948e81; --rule:#3a3732; --hover:#2d2b28;
+  --red:#ef7a5f; --blue:#7fa8e6; --ochre:#d7a54f; --green:#79b884; --canvas:#5e5e5e; }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 system-ui, sans-serif; }
-header { height:40px; display:flex; align-items:center; gap:16px; padding:0 14px; border-bottom:1px solid var(--line); background:var(--panel); }
-header b { font-size:14px; } header .dim { color:var(--dim); }
-header .sp { flex:1; }
-.tabs { display:flex; gap:2px; }
-.tab { padding:5px 10px; border-radius:4px; color:var(--dim); }
-.tab.on { background:#33363c; color:var(--text); }
-main { display:flex; height:760px; }
-aside { width:250px; border-right:1px solid var(--line); background:var(--panel); padding:10px; overflow:hidden; }
-.right { width:300px; border-left:1px solid var(--line); border-right:0; }
-.center { flex:1; display:flex; flex-direction:column; min-width:0; }
-h3 { margin:4px 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--dim); }
-.chip { display:inline-block; padding:1px 7px; border-radius:9px; font-size:11px; border:1px solid var(--line); margin:0 3px 3px 0; color:var(--dim); }
-.chip.on { border-color:var(--acc); color:var(--acc); }
-.badge { font-size:10px; padding:1px 6px; border-radius:3px; text-transform:uppercase; font-weight:600; }
-.b-draft { background:#3b4250; color:#aac4ff; } .b-approved { background:#2c4a36; color:var(--pass); }
-.b-final { background:#4a3f22; color:var(--warn); } .b-experiment { background:#3a3a3a; color:#aaa; }
-.st { font-weight:600; } .pass { color:var(--pass); } .warn { color:var(--warn); } .fail { color:var(--fail); }
-.btn { display:inline-block; padding:5px 12px; border-radius:4px; border:1px solid var(--line); background:#30333a; }
-.btn.ok { background:#2f6b45; border-color:#3d8a59; } .btn.no { background:#7a3532; border-color:#94443f; }
-.btn.pri { background:#2d5aa0; border-color:#3b6fc0; }
-.toolbar { height:38px; display:flex; align-items:center; gap:8px; padding:0 10px; border-bottom:1px solid var(--line); }
-.toolbar .sep { width:1px; height:20px; background:var(--line); }
-.stage { flex:1; display:flex; align-items:center; justify-content:center; gap:14px; overflow:hidden; position:relative;
-  background-color:#2b2d31; }
-.stage canvas { image-rendering:pixelated; outline:1px solid #000; }
-.status { height:26px; display:flex; gap:18px; align-items:center; padding:0 10px; border-top:1px solid var(--line); color:var(--dim); font-size:12px; }
-.timeline { height:106px; display:flex; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); overflow:hidden; }
-.ver { width:116px; border:1px solid var(--line); border-radius:4px; padding:4px; font-size:11px; }
-.ver.sel { border-color:var(--acc); } .ver.cmp { border-color:var(--claude); }
-.ver canvas { width:106px; height:50px; image-rendering:pixelated; display:block; margin-bottom:2px; }
-.row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #31343a; }
-.row .m { color:var(--dim); font-size:11px; }
-.chk input { margin-right:6px; }
-.grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; padding:14px; }
-.card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:8px; }
-.card canvas { width:100%; image-rendering:pixelated; display:block; margin-bottom:6px; background:#2b2d31; }
-.card .t { display:flex; justify-content:space-between; align-items:center; }
-.card .m { color:var(--dim); font-size:11px; margin-top:3px; }
-textarea, select, input[type=text] { background:#1b1c1f; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:5px; width:100%; font:inherit; }
-.mask { padding:6px; border:1px solid var(--line); border-radius:4px; margin-bottom:6px; }
-.mask .w { display:flex; justify-content:space-between; }
-.who-claude { color:var(--claude); } .who-human { color:var(--human); } .who-check { color:var(--warn); }
-.md { background:#1b1c1f; border:1px solid var(--line); border-radius:4px; padding:10px; font-size:12px; }
-.md h4 { margin:8px 0 4px; } .md a { color:var(--acc); }
-.hist { font-size:12px; }
-.hist .e { padding:5px 0; border-bottom:1px solid #31343a; }
-.hist .e .d { color:var(--dim); font-size:11px; }
-.frames { display:flex; gap:6px; padding:8px 10px; border-top:1px solid var(--line); }
-.fr { border:1px solid var(--line); border-radius:3px; padding:3px; font-size:10px; text-align:center; color:var(--dim); }
-.fr.sel { border-color:var(--acc); color:var(--text); }
-.fr canvas { width:48px; height:48px; image-rendering:pixelated; display:block; }
-.kbd { font-family:monospace; font-size:11px; padding:0 4px; border:1px solid var(--line); border-radius:3px; color:var(--dim); }
+body { margin:0; background:var(--paper); color:var(--ink); font:13px/1.45 system-ui, sans-serif; }
+.app { height:800px; display:flex; flex-direction:column; }
+.top { height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 12px; border-bottom:1px solid var(--rule); }
+.top .l, .top .r { display:flex; align-items:center; gap:10px; } .top .r { justify-content:flex-end; }
+.name { font-family:var(--serif); font-size:17px; }
+.meta { color:var(--dim); font-family:var(--mono); font-size:11px; }
+.modes { display:flex; border:1px solid var(--rule); }
+.modes span { padding:4px 14px; color:var(--dim); border-right:1px solid var(--rule); }
+.modes span:last-child { border-right:0; } .modes .on { background:var(--ink); color:var(--paper); }
+.modes .off { opacity:.35; }
+.ib { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; color:var(--dim); font-size:15px; }
+.ib.b { border-color:var(--rule); }
+.stamp { font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:5px 10px; border:1.5px solid currentColor; }
+.stamp.ok { color:var(--green); } .stamp.no { color:var(--red); }
+.body { flex:1; display:flex; min-height:0; }
+.work { flex:1; display:flex; flex-direction:column; min-width:0; }
+.canvas { flex:1; background:var(--canvas); position:relative; display:flex; align-items:center; justify-content:center; gap:16px; overflow:hidden; }
+.canvas canvas { image-rendering:pixelated; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
+.tag { position:absolute; font-family:var(--mono); font-size:11px; background:var(--sheet); color:var(--ink); padding:2px 6px; border:1px solid var(--rule); }
+.side { width:310px; border-left:1px solid var(--rule); background:var(--sheet); display:flex; flex-direction:column; }
+.tabs { display:flex; border-bottom:1px solid var(--rule); }
+.tabs span { flex:1; text-align:center; padding:9px 0; color:var(--dim); border-bottom:2px solid transparent; }
+.tabs .on { color:var(--ink); border-bottom-color:var(--ink); }
+.tabs .n { font-family:var(--mono); font-size:10px; margin-left:4px; }
+.pane { padding:12px; overflow:hidden; flex:1; }
+.cap { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:2px 0 8px; }
+.verdict { border-left:2px solid var(--blue); padding:4px 0 4px 10px; margin-bottom:12px; }
+.issue { display:grid; grid-template-columns:14px 1fr auto; gap:8px; padding:8px 0; border-top:1px solid var(--rule); }
+.issue.sel { background:var(--hover); margin:0 -12px; padding:8px 12px; }
+.sw { width:10px; height:10px; margin-top:4px; }
+.you { background:var(--red); } .claude { background:var(--blue); } .check { border:2px solid var(--ochre); }
+.t-you { color:var(--red); } .t-claude { color:var(--blue); } .t-check { color:var(--ochre); }
+.rule { font-family:var(--mono); font-size:11px; color:var(--dim); }
+.st { font-family:var(--mono); font-size:11px; }
+.g { display:inline-block; width:15px; height:15px; line-height:13px; text-align:center; font-size:10px; font-weight:700; border:1.5px solid; margin-right:6px; }
+.pass { color:var(--green); } .warn { color:var(--ochre); } .fail { color:var(--red); }
+.crow { display:flex; align-items:center; padding:6px 0; border-top:1px solid var(--rule); }
+.crow .m { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--dim); }
+select, input, textarea { font:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--rule); padding:4px 6px; }
+textarea { width:100%; resize:none; }
+.strip { height:74px; display:flex; gap:6px; padding:6px 10px; border-top:1px solid var(--rule); background:var(--sheet); }
+.th { border:1px solid var(--rule); padding:2px; font-family:var(--mono); font-size:10px; color:var(--dim); position:relative; }
+.th canvas { width:80px; height:45px; image-rendering:pixelated; display:block; }
+.th.sel { border:2px solid var(--ink); color:var(--ink); } .th.b { border:2px dashed var(--blue); }
+.th .dot { position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:var(--blue); }
+.th .s { position:absolute; left:4px; top:4px; padding:0 3px; background:var(--sheet); }
+.bar { height:32px; display:flex; align-items:center; gap:14px; padding:0 10px; border-top:1px solid var(--rule); font-family:var(--mono); font-size:11px; color:var(--dim); }
+.bar .sp { flex:1; }
+.btn { border:1px solid var(--rule); padding:2px 8px; color:var(--ink); font-family:system-ui; font-size:12px; }
+.btn.on { background:var(--ink); color:var(--paper); }
+.slider { display:inline-flex; align-items:center; gap:6px; } .slider i { display:block; width:90px; height:2px; background:var(--rule); position:relative; }
+.slider i b { position:absolute; left:38%; top:-5px; width:6px; height:12px; background:var(--ink); }
+.swatch { display:inline-block; width:10px; height:10px; vertical-align:-1px; border:1px solid var(--rule); }
+.tools { position:absolute; left:12px; top:12px; background:var(--sheet); border:1px solid var(--rule); display:flex; flex-direction:column; }
+.tools span { width:34px; height:32px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--rule); color:var(--dim); font-size:15px; }
+.tools .on { background:var(--ink); color:var(--paper); }
+.seg { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; background:var(--sheet); border:1px solid var(--rule); }
+.seg span { padding:3px 12px; color:var(--dim); font-size:12px; } .seg .on { background:var(--ink); color:var(--paper); }
+.pop { position:absolute; right:12px; top:52px; width:290px; background:var(--sheet); border:1px solid var(--ink); padding:12px; z-index:2; }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:18px; }
+.card canvas { width:100%; image-rendering:pixelated; display:block; background:var(--canvas); }
+.card .n { font-family:var(--serif); font-size:15px; margin-top:6px; display:flex; justify-content:space-between; align-items:baseline; }
+.card .m { font-family:var(--mono); font-size:11px; color:var(--dim); }
+.wait { color:var(--blue); }
+.filters { display:flex; gap:8px; align-items:center; padding:12px 18px 0; }
+.hist .e { padding:7px 0; border-top:1px solid var(--rule); }
+.hist .d { font-family:var(--mono); font-size:10px; color:var(--dim); }
+.frames { height:76px; display:flex; gap:6px; padding:6px 10px; border-top:1px solid var(--rule); background:var(--sheet); }
+.fr { border:1px solid var(--rule); padding:2px; font-family:var(--mono); font-size:10px; color:var(--dim); text-align:center; }
+.fr.sel { border:2px solid var(--ink); color:var(--ink); }
+.fr canvas { width:46px; height:46px; image-rendering:pixelated; display:block; }
 .screen { display:none; } .screen.on { display:block; }
-.legend { position:absolute; left:12px; bottom:10px; font-size:11px; color:var(--dim); background:#1e1f22cc; padding:4px 8px; border-radius:4px; }
 </style>
 </head>
 <body>
-<!-- Static mockup of the M2 viewer. Pick a screen with #s01 .. #s06. Not production code. -->
-<header>
-  <b>pw view</b><span class="dim">~/game/art-workspace</span><span class="dim">style v3</span>
-  <div class="tabs" id="tabs"></div><div class="sp"></div>
-  <span class="dim">live · updated 4 s ago</span>
-</header>
-
-<!-- S01 asset list -->
-<section class="screen" id="s01"><main>
-  <aside>
-    <h3>Stage</h3>
-    <span class="chip on">draft</span><span class="chip on">approved</span><span class="chip on">final</span><span class="chip">experiment</span>
-    <h3 style="margin-top:14px">Kind</h3>
-    <span class="chip on">background</span><span class="chip on">sprite</span><span class="chip on">prop</span><span class="chip">animation</span><span class="chip">effect</span>
-    <h3 style="margin-top:14px">Checks</h3>
-    <span class="chip">has fail</span><span class="chip">has warn</span><span class="chip">needs review</span>
-    <h3 style="margin-top:14px">Search</h3><input type="text" value="harbour">
-    <h3 style="margin-top:14px">Sort</h3><select><option>last change</option></select>
-  </aside>
-  <div class="center"><div class="grid" id="cards"></div></div>
-</main></section>
-
-<!-- S02 version review -->
-<section class="screen" id="s02"><main>
-  <div class="center">
-    <div class="timeline" id="tl2"></div>
-    <div class="toolbar">
-      <span class="btn">Fit</span><span class="btn">1×</span><span class="btn pri">4×</span><span class="btn">8×</span>
-      <span class="sep"></span><label class="chk"><input type="checkbox" checked>grid</label>
-      <span class="sep"></span><span class="btn pri">color</span><span class="btn">gray</span><span class="btn">values</span><span class="btn">silhouette</span>
-      <span class="sep"></span><span class="btn">25% thumb</span>
-    </div>
-    <div class="stage"><canvas id="c2"></canvas><div class="legend">overlay: <span class="warn">orphans</span> (3 regions)</div></div>
-    <div class="status"><span>x 112 · y 41</span><span>index 9 · #3e5f8a · ramp water-2</span><span>320×180 native · 4×</span><span>v0004 · draft · parent v0003 · snap+quantize+clean</span></div>
-  </div>
-  <aside class="right">
-    <h3>Checks · report.json</h3>
-    <div id="checks"></div>
-    <h3 style="margin-top:14px">Decision</h3>
-    <textarea rows="3" placeholder="note (required to reject)">Water reads well; fix the orphans by the dock.</textarea>
-    <div style="display:flex; gap:8px; margin-top:8px"><span class="btn ok">Approve <span class="kbd">A</span></span><span class="btn no">Reject <span class="kbd">R</span></span></div>
-    <div class="m" style="color:var(--dim); font-size:11px; margin-top:6px">Logged to history.jsonl with the check measurements.</div>
-  </aside>
-</main></section>
-
-<!-- S03 compare -->
-<section class="screen" id="s03"><main>
-  <div class="center">
-    <div class="timeline" id="tl3"></div>
-    <div class="toolbar">
-      <span class="btn pri">side by side</span><span class="btn">onion</span><span class="btn">swipe</span><span class="btn">diff</span>
-      <span class="sep"></span><span class="dim">A</span><select style="width:90px"><option>v0003</option></select>
-      <span class="dim">B</span><select style="width:90px"><option>v0004</option></select>
-      <span class="sep"></span><label class="chk"><input type="checkbox" checked>sync zoom/pan</label><span class="btn">3×</span>
-    </div>
-    <div class="stage"><canvas id="c3a"></canvas><canvas id="c3b"></canvas><div class="legend">A v0003 (approved) · B v0004 (draft) · 214 px changed</div></div>
-    <div class="status"><span>x 70 · y 60</span><span>A index 4 · B index 9</span></div>
-  </div>
-  <aside class="right">
-    <h3>Check deltas · A → B</h3><div id="delta"></div>
-    <h3 style="margin-top:14px">Diff</h3>
-    <div class="row"><span>changed pixels</span><span>214 (0.37%)</span></div>
-    <div class="row"><span>colors used</span><span>23 → 24</span></div>
-    <div class="row"><span>bounding box</span><span>58,40 – 141,79</span></div>
-  </aside>
-</main></section>
-
-<!-- S04 annotate -->
-<section class="screen" id="s04"><main>
-  <div class="center">
-    <div class="toolbar">
-      <span class="btn pri">brush</span><span class="btn">rect</span><span class="btn">fill</span><span class="btn">erase</span>
-      <span class="dim">size</span><select style="width:56px"><option>2 px</option></select>
-      <span class="sep"></span><label class="chk"><input type="checkbox" checked>show Claude masks</label><label class="chk"><input type="checkbox" checked>show check regions</label>
-      <span class="sep"></span><span class="btn">4×</span>
-    </div>
-    <div class="stage"><canvas id="c4"></canvas><div class="legend"><span class="who-human">■ human</span> · <span class="who-claude">■ Claude</span> · <span class="who-check">□ check region</span></div></div>
-    <div class="status"><span>drawing in native pixels · 37 px selected</span><span>v0004</span></div>
-  </div>
-  <aside class="right">
-    <h3>New mask</h3>
-    <select><option>R-PIX-3 orphans</option><option>R-PIX-4 line-runs</option><option>R-VAL-1 value-groups</option><option>other</option></select>
-    <textarea rows="3" style="margin-top:6px">Lamp glow banding; merge into two steps.</textarea>
-    <div style="margin-top:6px"><span class="btn pri">Save mask</span> <span class="btn">Clear</span></div>
-    <h3 style="margin-top:14px">Masks · masks.yaml</h3>
-    <div class="mask"><div class="w"><b>lamp-banding</b><span class="who-human">human · open</span></div><div class="m">R-PIX-5 · v0004 · "Lamp glow banding…"</div></div>
-    <div class="mask"><div class="w"><b>dock-orphans</b><span class="who-claude">claude · open</span></div><div class="m">R-PIX-3 · v0004 · 3 regions from check</div></div>
-    <div class="mask"><div class="w"><b>sky-steps</b><span class="who-claude">claude · fixed v0004</span></div><div class="m">R-VAL-1 · v0003</div></div>
-  </aside>
-</main></section>
-
-<!-- S05 critique and history -->
-<section class="screen" id="s05"><main>
-  <div class="center">
-    <div class="stage"><canvas id="c5"></canvas><div class="legend">highlighted: region 2 of critique.md</div></div>
-  </div>
-  <aside class="right" style="width:420px">
-    <h3>critique.md · v0004 vs v0003</h3>
-    <div class="md">
-      <b>Verdict:</b> B better than A on value structure; worse on noise.
-      <h4>1. <a>Dock edge orphans</a> · R-PIX-3</h4>Three 1-px clusters on the pier edge. Fix: <code>clean --mask dock-orphans</code>.
-      <h4>2. <a>Lamp glow banding</a> · R-PIX-5</h4>Four concentric steps parallel to the lamp. Fix: merge to two, dither zone off.
-      <h4>3. <a>Moon focal contrast</a> · R-VAL-1</h4>Holds; focal contrast 2.1× elsewhere.
-    </div>
-    <h3 style="margin-top:14px">History · history.jsonl</h3>
-    <div class="hist">
-      <div class="e"><span class="who-check">check</span> v0004 report: 1 warn, 0 fail<div class="d">13:02 · orphans 0.8/tile</div></div>
-      <div class="e"><span class="who-claude">claude</span> v0004 created from v0003: clean --mask sky-steps<div class="d">13:01</div></div>
-      <div class="e"><span class="who-human">human</span> <span class="pass">approved</span> v0003 "good base, keep palette"<div class="d">12:40 · palette 1.00 · value-groups k=4</div></div>
-      <div class="e"><span class="who-human">human</span> <span class="fail">rejected</span> v0002 "sky too busy"<div class="d">12:31 · value-groups k=7</div></div>
-    </div>
-  </aside>
-</main></section>
-
-<!-- S06 animation preview -->
-<section class="screen" id="s06"><main>
-  <aside>
-    <h3>Tags</h3><span class="chip on">walk-side</span><span class="chip">idle</span><span class="chip">talk</span>
-    <h3 style="margin-top:14px">Playback</h3>
-    <span class="btn pri">▶ play</span> <span class="btn">⏸</span> <span class="btn">◀ step</span> <span class="btn">step ▶</span>
-    <div style="margin-top:8px"><label class="chk"><input type="checkbox" checked>loop</label></div>
-    <div><label class="chk"><input type="checkbox" checked>onion previous frame</label></div>
-    <div><label class="chk"><input type="checkbox">foot-lock guide</label></div>
-    <h3 style="margin-top:14px">Speed</h3><select><option>1× (file timing)</option></select>
-  </aside>
-  <div class="center">
-    <div class="stage"><canvas id="c6"></canvas><div class="legend">frame 3/6 · 100 ms · anim-consistency: <span class="pass">pass</span></div></div>
-    <div class="frames" id="frames"></div>
-  </div>
-</main></section>
-
+<!-- Static mockup of the M2 viewer, revision 2. Screens: #s01 .. #s06; add ,dark for the dark theme. Not production code. -->
 <script>
 // A small procedural night-harbour scene (native 160x90) used only to make the mockup look real.
 const PAL = ['#0b0e1f','#141a33','#1f2a4d','#2c3d6b','#3e5f8a','#5b86a8','#8fb5c9','#f2e6b5','#c9a24a','#5a3a2a','#3a2519','#22160f','#e86a3a','#ffd27a','#101418','#6b7f8c'];
@@ -266,43 +157,6 @@ function box(g, s, x, y, w, h, color, fill) {
   g.lineWidth = 2; g.strokeStyle = color; g.strokeRect(x * s, y * s, w * s, h * s);
   if (fill) { g.fillStyle = fill; g.fillRect(x * s, y * s, w * s, h * s); }
 }
-function paint(g, s, cells, color) { g.fillStyle = color; for (const [x, y] of cells) g.fillRect(x * s, y * s, s, s); }
-const ORPH = [[59, 51, 5, 4], [65, 50, 5, 4], [72, 51, 9, 6]];
-const VERS = [
-  ['v0001', 'experiment', 'fail'], ['v0002', 'draft', 'warn'], ['v0003', 'approved', 'pass'], ['v0004', 'draft', 'warn'], ['v0005', 'draft', '…']];
-function timeline(el, sel, cmp) {
-  el.innerHTML = VERS.map(([v, st, ck], i) =>
-    `<div class="ver ${i === sel ? 'sel' : ''} ${i === cmp ? 'cmp' : ''}"><canvas data-v="${i + 1}"></canvas>
-     <div style="display:flex;justify-content:space-between"><b>${v}</b><span class="badge b-${st}">${st}</span></div>
-     <span class="${ck}">${ck === '…' ? 'running checks' : 'checks ' + ck}</span></div>`).join('');
-  el.querySelectorAll('canvas').forEach(c => draw(c, scene(+c.dataset.v), 1));
-}
-const CHECKS = [['palette', 'pass', '1.00 in palette · 24/32 colors'], ['grid', 'pass', 'no mixed blocks'],
-  ['value-groups', 'pass', 'k=4 · 41/28/19/12%'], ['orphans', 'warn', '0.8 per tile (max 0.5) · 3 regions'],
-  ['line-runs', 'pass', '0 jaggy segments'], ['banding', 'warn', '1 boundary 18 px'], ['pillow', 'pass', 'light corr 0.71'],
-  ['ramps', 'pass', '4 ramps monotonic'], ['focal-contrast', 'pass', 'focal 2.1× elsewhere']];
-function checks() {
-  document.getElementById('checks').innerHTML = CHECKS.map(([n, s, m]) =>
-    `<div class="row"><label class="chk"><input type="checkbox" ${n === 'orphans' ? 'checked' : ''}>${n}<div class="m">${m}</div></label><span class="st ${s}">${s}</span></div>`).join('');
-  document.getElementById('delta').innerHTML = [['value-groups', 'k 4 → 4', 'pass', 'pass'], ['orphans', '0.2 → 0.8', 'pass', 'warn'],
-    ['banding', '0 → 18 px', 'pass', 'warn'], ['focal-contrast', '1.7× → 2.1×', 'pass', 'pass'], ['palette', '1.00 → 1.00', 'pass', 'pass']]
-    .map(([n, m, a, b]) => `<div class="row"><span>${n}<div class="m">${m}</div></span><span><span class="st ${a}">${a}</span> → <span class="st ${b}">${b}</span></span></div>`).join('');
-}
-function cards() {
-  const A = [['bg-harbour-night', 'background', 'draft', 'v0004', '1 warn', 'warn', 'needs review'], ['bg-tavern-inside', 'background', 'approved', 'v0007', 'pass', 'pass', 'approved 12:10'],
-    ['bg-lighthouse', 'background', 'draft', 'v0002', '2 fail', 'fail', 'rejected v0001'], ['bg-market-day', 'background', 'final', 'v0011', 'pass', 'pass', 'exported'],
-    ['chr-hero', 'sprite', 'draft', 'v0003', '1 warn', 'warn', 'needs review'], ['prop-lantern', 'prop', 'approved', 'v0002', 'pass', 'pass', 'approved'],
-    ['prop-crate', 'prop', 'draft', 'v0001', 'pass', 'pass', 'new'], ['bg-cliff-road', 'background', 'draft', 'v0005', '1 warn', 'warn', 'Claude critique ready']];
-  document.getElementById('cards').innerHTML = A.map(([id, k, st, v, ck, cs, last], i) =>
-    `<div class="card"><canvas data-v="${(i % 4) + 1}"></canvas><div class="t"><b>${id}</b><span class="badge b-${st}">${st}</span></div>
-     <div class="m">${k} · ${v} · <span class="${cs}">${ck}</span></div><div class="m">${last}</div></div>`).join('');
-  document.querySelectorAll('#cards canvas').forEach(c => draw(c, scene(+c.dataset.v), 1));
-}
-function frames() {
-  const el = document.getElementById('frames');
-  el.innerHTML = [100, 100, 100, 120, 100, 100].map((ms, i) => `<div class="fr ${i === 2 ? 'sel' : ''}"><canvas data-f="${i}"></canvas>${i + 1} · ${ms} ms</div>`).join('');
-  el.querySelectorAll('canvas').forEach(c => hero(c, +c.dataset.f, 2));
-}
 function hero(c, f, s, onion) {
   const w = 24, h = 24; c.width = w * s; c.height = h * s;
   const g = c.getContext('2d'); g.fillStyle = '#2c3d6b'; g.fillRect(0, 0, w * s, h * s);
@@ -314,25 +168,133 @@ function hero(c, f, s, onion) {
   g.fillStyle = '#0b0e1f'; g.fillRect(13 * s, (5 + body) * s, s, s);
   return parts;
 }
-function show(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
-  const names = { s01: 'Assets', s02: 'Review', s03: 'Compare', s04: 'Annotate', s05: 'Critique', s06: 'Animation' };
-  document.getElementById('tabs').innerHTML = Object.entries(names).map(([k, n]) => `<span class="tab ${k === id ? 'on' : ''}">${n}</span>`).join('');
-  if (id === 's01') cards();
-  if (id === 's02') { timeline(document.getElementById('tl2'), 3); checks(); const g = draw(document.getElementById('c2'), scene(4), 4, { grid: true }); for (const r of ORPH) box(g, 4, ...r, '#e0b341', 'rgba(224,179,65,0.15)'); }
-  if (id === 's03') { timeline(document.getElementById('tl3'), 3, 2); checks(); draw(document.getElementById('c3a'), scene(3), 3); draw(document.getElementById('c3b'), scene(4), 3); }
-  if (id === 's04') {
-    const g = draw(document.getElementById('c4'), scene(4), 4, { grid: true });
-    const lamp = []; for (let y = 26; y < 45; y++) for (let x = 75; x < 94; x++) if ((x - 84) ** 2 + (y - 35) ** 2 < 70 && (x - 84) ** 2 + (y - 35) ** 2 > 20) lamp.push([x, y]);
-    paint(g, 4, lamp, 'rgba(79,209,197,0.45)');
-    const dock = []; for (const [x, y, w, h] of ORPH) for (let yy = y + 1; yy < y + h - 1; yy++) for (let xx = x + 1; xx < x + w - 1; xx++) dock.push([xx, yy]);
-    paint(g, 4, dock, 'rgba(197,138,249,0.5)');
-    for (const r of ORPH) box(g, 4, ...r, '#e0b341');
-  }
-  if (id === 's05') { const g = draw(document.getElementById('c5'), scene(4), 4, { dim: true }); box(g, 4, 72, 24, 25, 23, '#6ea8fe', 'rgba(110,168,254,0.12)'); }
-  if (id === 's06') { frames(); const prev = hero(document.createElement('canvas'), 1, 1); hero(document.getElementById('c6'), 2, 16, prev); }
+
+function paint(g, s, cells, color) { g.fillStyle = color; for (const [x, y] of cells) g.fillRect(x * s, y * s, s, s); }
+const ORPH = [[59, 51, 5, 4], [65, 50, 5, 4], [72, 51, 9, 6]];
+const VERS = [['v0001', 'exp', 1], ['v0002', 'draft', 2], ['v0003', 'approved', 3], ['v0004', 'draft', 4], ['v0005', 'draft', 4]];
+const $ = id => document.getElementById(id);
+
+function topBar(mode, opts = {}) {
+  const modes = ['Look', 'Compare', 'Mark', 'Play'].map(m =>
+    `<span class="${m === mode ? 'on' : ''} ${m === 'Play' && !opts.anim ? 'off' : ''}">${m}</span>`).join('');
+  return `<div class="top"><div class="l"><span class="ib b" title="All assets (Esc)">←</span>
+    <span class="name">${opts.name || 'bg-harbour-night'}</span><span class="meta">${opts.meta || 'background · 320×180 · palette harbour-32'}</span></div>
+    <div class="modes">${modes}</div>
+    <div class="r"><span class="ib" title="Undo (Ctrl+Z)">↶</span><span class="ib" title="Redo">↷</span>
+    <span class="stamp no" title="Reject (R)">Reject</span><span class="stamp ok" title="Approve (A)">Approve</span>
+    <span class="ib" title="Theme: follows the system">◐</span></div></div>`;
 }
-show((location.hash || '#s01').slice(1));
+function strip(sel, b) {
+  return `<div class="strip">${VERS.map(([v, st, n], i) => `<div class="th ${i === sel ? 'sel' : ''} ${i === b ? 'b' : ''}" title="${v} · ${st}">
+    <canvas data-v="${n}"></canvas>${v}${i === 4 ? '<span class="dot" title="New from Claude, not seen yet"></span>' : ''}
+    ${st === 'approved' ? '<span class="s pass">✓</span>' : ''}</div>`).join('')}</div>`;
+}
+function bar(left, opts = {}) {
+  return `<div class="bar">${left}<span class="sp"></span>
+    <select title="View (V)"><option>${opts.view || 'Color'}</option></select>
+    <span class="btn ${opts.grid === false ? '' : 'on'}" title="Pixel grid (G)">Grid</span>
+    <span class="slider" title="Zoom (1-6, Ctrl+wheel)">−<i><b></b></i>+ ${opts.zoom || '4×'}</span>
+    <span class="ib" title="Hide the panel (Tab)">▤</span></div>`;
+}
+const ISSUES = [
+  ['claude', 'Dock edge orphans', 'R-PIX-3 orphans', 'open', 'Three 1-px clusters on the pier edge. Fix: clean inside the mask.'],
+  ['you', 'Lamp glow banding', 'R-PIX-5 banding', 'open', 'Merge the four steps into two.'],
+  ['check', 'orphans · 3 regions', 'R-PIX-3', 'open', '0.8 per tile, max 0.5'],
+  ['claude', 'Sky value steps', 'R-VAL-1', 'fixed in v0004', '']];
+function issues(sel, form) {
+  return `<div class="tabs"><span class="on">Issues<span class="n">3</span></span><span>Checks<span class="n">2!</span></span><span>History</span></div>
+  <div class="pane">${form || `<div class="verdict"><div class="cap t-claude">Claude · v0004 vs v0003</div>Better value structure; more noise on the dock and around the lamp.</div>`}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="cap" style="margin:0">On this version</span><select><option>All</option></select></div>
+  ${ISSUES.map(([who, t, r, s, n], i) => `<div class="issue ${i === sel ? 'sel' : ''}"><span class="sw ${who}"></span>
+    <div><div>${t}</div><div class="rule">${r}${n && i === sel ? '' : ''}</div>${n && i === sel ? `<div style="margin-top:4px">${n}</div>` : ''}</div>
+    <span class="st ${s === 'open' ? '' : 'pass'}">${s === 'open' ? '' : '✓ ' + s.replace('fixed in ', '')}</span></div>`).join('')}
+  </div>`;
+}
+const CHECKS = [['palette', 'pass', '1.00 · 24/32'], ['grid', 'pass', 'clean'], ['value-groups', 'pass', 'k=4'], ['orphans', 'warn', '0.8/tile'],
+  ['line-runs', 'pass', '0'], ['banding', 'warn', '18 px'], ['pillow', 'pass', '0.71'], ['ramps', 'pass', '4 ok'], ['focal-contrast', 'pass', '2.1×']];
+const GL = { pass: '✓', warn: '!', fail: '✕' };
+function checks(delta) {
+  const D = { 'orphans': ['0.2', 'pass'], 'banding': ['0', 'pass'], 'focal-contrast': ['1.7×', 'pass'] };
+  return `<div class="tabs"><span>Issues<span class="n">3</span></span><span class="on">Checks<span class="n">2!</span></span><span>History</span></div>
+  <div class="pane">${delta ? '<div class="cap">A v0003 → B v0004</div>' : '<div class="cap">report.json · v0004</div>'}
+  ${CHECKS.map(([n, s, m]) => `<div class="crow"><span class="g ${s}">${GL[s]}</span>${n}<span class="m">${delta && D[n] ? `${D[n][0]} → ` : ''}${m}</span></div>`).join('')}
+  ${delta ? `<div class="cap" style="margin-top:14px">Difference</div>
+  <div class="crow">changed pixels<span class="m">214 · 0.37%</span></div><div class="crow">colors used<span class="m">23 → 24</span></div>
+  <div class="crow">area<span class="m">58,40 – 141,79</span></div>` : ''}</div>`;
+}
+function history() {
+  return `<div class="tabs"><span>Issues<span class="n">3</span></span><span>Checks<span class="n">2!</span></span><span class="on">History</span></div>
+  <div class="pane hist"><div class="cap">bg-harbour-night · newest first</div>
+  <div class="e"><span class="t-claude">Claude</span> made v0005 from v0004: clean inside “dock-orphans”<div class="d">13:12 · not reviewed</div></div>
+  <div class="e"><span class="t-check">check</span> v0004: 2 warnings<div class="d">13:02 · orphans 0.8/tile · banding 18 px</div></div>
+  <div class="e"><span class="t-claude">Claude</span> critique of v0004 vs v0003<div class="d">13:02 · 2 issues</div></div>
+  <div class="e"><span class="t-you">You</span> <span class="pass">approved</span> v0003 “good base, keep palette”<div class="d">12:40 · palette 1.00 · k=4</div></div>
+  <div class="e"><span class="t-you">You</span> <span class="fail">rejected</span> v0002 “sky too busy”<div class="d">12:31 · k=7</div></div>
+  <div class="e"><span class="t-claude">Claude</span> made v0001 (experiment)<div class="d">12:05 · snap + quantize</div></div></div>`;
+}
+function asset(mode, centre, side, foot, opts = {}) {
+  return `<div class="app">${topBar(mode, opts)}<div class="body"><div class="work">
+    <div class="canvas">${centre}</div>${foot}</div><div class="side">${side}</div></div></div>`;
+}
+const PIX = '<span>x 112 y 41</span><span><span class="swatch" style="background:#3e5f8a"></span> 9 #3e5f8a water-2</span><span>v0004 · draft · from v0003</span>';
+
+const SCREENS = {
+  s01() {
+    const A = [['bg-harbour-night', 'background', 'v0005', 'new from Claude', 1], ['bg-tavern-inside', 'background', 'v0007', 'approved', 3],
+      ['bg-lighthouse', 'background', 'v0002', '1 failing check', 2], ['bg-market-day', 'background', 'v0011', 'final', 4],
+      ['chr-hero', 'sprite', 'v0003', 'waiting for you', 4], ['prop-lantern', 'prop', 'v0002', 'approved', 3],
+      ['prop-crate', 'prop', 'v0001', 'waiting for you', 2], ['bg-cliff-road', 'background', 'v0005', 'Claude is working', 1]];
+    return `<div class="app"><div class="top"><div class="l"><span class="name">art-workspace</span><span class="meta">style v3 · 8 assets</span></div><div></div>
+      <div class="r"><span class="ib" title="Live: updated 4 s ago">●</span><span class="ib" title="Theme">◐</span></div></div>
+      <div class="filters"><input placeholder="Find an asset" style="width:220px"><select><option>Drafts, approved, final</option></select>
+      <select><option>All kinds</option></select><select><option>Any status</option></select><span style="flex:1"></span><span class="meta">sorted by</span><select><option>Last change</option></select></div>
+      <div class="grid">${A.map(([id, k, v, s, n]) => `<div class="card"><canvas data-v="${n}"></canvas>
+        <div class="n"><span>${id}</span><span class="meta">${v}</span></div>
+        <div class="m">${k} · <span class="${/waiting|new/.test(s) ? 'wait' : /fail/.test(s) ? 'fail' : /approved|final/.test(s) ? 'pass' : ''}">${s}</span></div></div>`).join('')}</div></div>`;
+  },
+  s02: () => asset('Look', '<canvas id="c"></canvas>', issues(0), strip(3) + bar(PIX)),
+  s03: () => asset('Compare', `<div class="seg"><span class="on">Side by side</span><span>Onion</span><span>Swipe</span><span>Difference</span></div>
+      <canvas id="ca"></canvas><canvas id="cb"></canvas><span class="tag" style="left:12px;bottom:12px">A v0003 approved</span><span class="tag" style="right:12px;bottom:12px">B v0004</span>`,
+    checks(true), strip(3, 2) + bar('<span>x 70 y 60</span><span>A 4 · B 9</span><span title="Click a version for B, shift-click for A">A v0003 · B v0004</span>', { zoom: '2×', grid: false })),
+  s04: () => asset('Mark', `<div class="tools"><span class="on" title="Brush (B)">✎</span><span title="Rectangle (M)">▭</span><span title="Fill same color (F)">◧</span><span title="Erase (E)">⌫</span><span style="font-size:11px;font-family:var(--mono)" title="Brush size ([ ])">2px</span></div><canvas id="c"></canvas>`,
+    issues(1, `<div class="cap t-you">New issue · 37 px marked</div><select style="width:100%"><option>R-PIX-5 banding</option></select>
+      <textarea rows="2" style="margin-top:6px">Lamp glow banding; merge into two steps.</textarea>
+      <div style="display:flex;gap:8px;margin:6px 0 14px"><span class="btn on">Save issue</span><span class="btn">Discard</span></div>`),
+    strip(3) + bar('<span>x 84 y 35</span><span>marking on v0004</span>')),
+  s05: () => asset('Look', '<canvas id="c"></canvas>' + `<div class="pop"><div class="cap t-you" style="color:var(--red)">Reject v0004</div>
+      <textarea rows="3" placeholder="Why? (needed)">Dock reads noisy at 1×; keep v0003 sky.</textarea>
+      <div class="meta" style="margin:6px 0 10px">Saved to the history with the check results.</div>
+      <div style="display:flex;gap:8px"><span class="stamp no">Reject</span><span class="btn">Cancel</span></div></div>`,
+    history(), strip(3) + bar(PIX)),
+  s06: () => asset('Play', '<canvas id="hero"></canvas><span class="tag" style="left:12px;bottom:12px">frame 3/6 · 100 ms</span>',
+    `<div class="tabs"><span class="on">Issues<span class="n">0</span></span><span>Checks</span><span>History</span></div><div class="pane"><div class="cap">Animation</div>
+      <div class="crow">tag<span class="m"><select><option>walk-side</option></select></span></div>
+      <div class="crow">speed<span class="m"><select><option>file timing</option></select></span></div>
+      <div class="crow">loop<span class="m">on</span></div><div class="crow">onion skin<span class="m">previous frame</span></div>
+      <div class="cap" style="margin-top:14px">Issues on this version</div><div class="meta">None open.</div></div>`,
+    `<div class="frames">${[100, 100, 100, 120, 100, 100].map((ms, i) => `<div class="fr ${i === 2 ? 'sel' : ''}"><canvas data-f="${i}"></canvas>${ms}</div>`).join('')}</div>`
+    + bar('<span class="btn on" title="Play (Space)">▶</span><span class="btn" title="Previous frame (,)">◀</span><span class="btn" title="Next frame (.)">▶|</span>', { zoom: '16×', grid: false }),
+    { name: 'chr-hero', meta: 'sprite · 24×24 · 6 frames', anim: true }),
+};
+
+function render() {
+  const [id, theme] = (location.hash.slice(1) || 's01').split(',');
+  document.documentElement.dataset.theme = theme || 'light';
+  document.body.innerHTML = SCREENS[id]();
+  document.querySelectorAll('canvas[data-v]').forEach(c => draw(c, scene(+c.dataset.v), 1));
+  document.querySelectorAll('canvas[data-f]').forEach(c => hero(c, +c.dataset.f, 2));
+  if ($('c')) {
+    const g = draw($('c'), scene(4), 4, { grid: true });
+    if (id === 's02') { for (const r of ORPH) box(g, 4, ...r, '#2f5f9e', 'rgba(47,95,158,0.18)'); }
+    if (id === 's04') {
+      const lamp = []; for (let y = 26; y < 45; y++) for (let x = 75; x < 94; x++) { const d = (x - 84) ** 2 + (y - 35) ** 2; if (d < 70 && d > 20) lamp.push([x, y]); }
+      paint(g, 4, lamp, 'rgba(194,56,31,0.5)'); for (const r of ORPH) box(g, 4, ...r, 'rgba(47,95,158,0.9)');
+    }
+  }
+  if ($('ca')) { draw($('ca'), scene(3), 2); draw($('cb'), scene(4), 2); }
+  if ($('hero')) { const prev = hero(document.createElement('canvas'), 1, 1); hero($('hero'), 2, 16, prev); }
+}
+render();
 </script>
 </body>
 </html>
