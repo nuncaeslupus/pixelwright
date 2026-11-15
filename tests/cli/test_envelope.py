@@ -112,6 +112,7 @@ def test_cli_json_envelope_on_every_command(
     assert run("cost")["data"]["spent_usd"] == 0.0
     gen = run("generate", "hero", "--provider", "replay", "--prompt", "x", "--dry-run")
     assert gen["data"]["estimate_usd"] == 0.0
+    assert "rows" in run("doctor", "--offline")["data"]
     assert run("inbox")["data"]["count"] >= 0
     crit = files / "critique.md"
     crit.write_text(
