@@ -12,6 +12,7 @@ from typing import Any, NoReturn
 
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
 from pixelwright.cli import gen_commands as _gen_commands  # noqa: F401  (generation commands)
+from pixelwright.cli import tour as _tour  # noqa: F401  (registers `tour`)
 from pixelwright.cli.registry import (
     EXIT_USAGE,
     EXIT_VALIDATION,
