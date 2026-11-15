@@ -1,0 +1,15 @@
+{
+  "skill": "review-loop",
+  "canary": "review-loop-loaded-2026-11-15-a5b9bd88-a48e6749a27be023",
+  "negative_control": "review-loop approves and rejects versions itself once the checks are green.",
+  "load_prompts": [
+    "Let's work on the pixelwright assets",
+    "I retouched the hero in Aseprite, what's next?",
+    "Go through the board and move everything one step"
+  ],
+  "no_load_prompts": [
+    "Add a new endpoint to the API service",
+    "Rename this Python module",
+    "Compile Aseprite from source"
+  ]
+}

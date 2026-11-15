@@ -1,0 +1,15 @@
+{
+  "skill": "style-definition",
+  "canary": "style-definition-loaded-2026-11-15-a5b9bd88-a4a6b853676da01f",
+  "negative_control": "style-definition copies the palette out of a reference image of another game and ships its pixels.",
+  "load_prompts": [
+    "Set up the style guide for this project",
+    "The artist wants a warmer look, let's change the ramps",
+    "Propose a palette from these references"
+  ],
+  "no_load_prompts": [
+    "Add a new endpoint to the API service",
+    "Critique this version of the hero",
+    "Fix the noise inside this issue's region"
+  ]
+}

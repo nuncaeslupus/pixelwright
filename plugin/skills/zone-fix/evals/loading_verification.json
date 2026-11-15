@@ -1,0 +1,15 @@
+{
+  "skill": "zone-fix",
+  "canary": "zone-fix-loaded-2026-11-15-a5b9bd88-ab5a97e7e3ab0182",
+  "negative_control": "zone-fix repaints the whole image when a fix needs more room than the issue's region.",
+  "load_prompts": [
+    "Fix the open issues on the hero sprite",
+    "The artist drew a box over the door and said it is muddy, deal with it",
+    "Clean the stray pixels inside issue r-pix-3-2"
+  ],
+  "no_load_prompts": [
+    "Add a new endpoint to the API service",
+    "Set up the style guide",
+    "Write the critique for this version"
+  ]
+}
