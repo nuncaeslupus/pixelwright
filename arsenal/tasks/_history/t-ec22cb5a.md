@@ -5,6 +5,7 @@ label: "T41: Guide"
 priority: 10
 deps: [t-efb3204f]
 tags: [m3]
+status: merged
 ---
 
 `docs/guide/how-it-works.md` (one drawspec diagram of the loop, glossary, "your first real asset"); README and `pw --help` link it; plugin skill `first-run`.
