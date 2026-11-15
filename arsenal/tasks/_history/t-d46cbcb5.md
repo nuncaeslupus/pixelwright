@@ -5,6 +5,7 @@ label: "T39: doctor"
 priority: 10
 deps: [t-db735791]
 tags: [m3]
+status: merged
 ---
 
 table output plus `--json`; each failing row says how to fix it.
