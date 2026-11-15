@@ -17,6 +17,7 @@ CURRENT: dict[str, int] = {
     "ramps": 1,
     "style": 1,
     "case": 1,
+    "report": 1,
 }
 
 # Required top-level keys and their types, per format.
@@ -38,6 +39,7 @@ _REQUIRED: dict[str, dict[str, type | tuple[type, ...]]] = {
     "ramps": {"ramps": dict},
     "style": {"version": int, "palettes": list},
     "case": {"id": str, "check": str, "expect": str, "regions": list},
+    "report": {"results": list},
 }
 
 
