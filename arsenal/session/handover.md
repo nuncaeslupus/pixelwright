@@ -2,39 +2,29 @@
 
 ## Last task
 
-- **ID**: t-7fcd9d98
-- **Title**: T32: Viewer polish
-- **Status at handover**: PR #73 (last of the M2 plan)
+- **ID**: t-9c8e8ad0
+- **Title**: T51: Ranking
+- **Status at handover**: merged (PR #113), the last of the M3 plan
 
 ## What was done this session
 
-The whole M2 plan (T19-T33) was implemented through PRs #59-#73:
-- issues model (`masks@2`) and the `issue`, `history`, `status` and `inbox` commands;
-- `critique.md` and `pw critique`;
-- masked `quantize`/`clean` with `--resolve`;
-- diff deltas;
-- GIF/APNG renders and the `grid` check from the CLI;
-- `init <path>`, plus `palette discover --asset` setting the asset palette;
-- the Aseprite bridge on the codec (`attach --aseprite`, `load_version.lua` opens `image.aseprite`);
-- `style propose|test` and `palette edit`;
-- `pw view`, a local viewer server with 13 endpoints, a host check and a write token;
-- the viewer UI (asset list, Look, Compare, Mark, Play, polish) with Playwright e2e tests (CI installs Chromium);
-- the plugin v0 skills (review-loop, critique, zone-fix, style-definition).
-
-Decisions now log their check measurements, and `decision_revert` undoes a decision.
+M3 spec r1 and plan r1 approved; the whole plan (T34-T51) merged through PRs #95-#113:
+- provider framework (`core/providers/`: protocol, request hash, cache, retry, registry),
+  budget guard, `cost.jsonl` ledger, keys from env or `.pixelwright/secrets.toml`;
+- adapters: `replay` (offline), `comfyui` (+ Flux schnell and SDXL presets), Gemini,
+  Retro Diffusion, PixelLab, GPT Image; all tested against recorded responses only;
+- `pw generate`, `regen-region`, `cost`, `doctor`, `next`, `tour` (code-drawn sample, ~2 s);
+- viewer: the "what next" hint, candidates side by side in Compare, the blind pairwise page;
+- `pw bench run|pair|vote|rank|report|apply`, `benchmarks/matrix.yaml`;
+- docs: `docs/guide/how-it-works.md`, `comfyui.md`, `benchmark.md`; plugin skill `first-run`.
+- Fixed a racy mark e2e test (#109) that turned CI red on slow runners.
 
 ## What remains
 
-- No tasks left in the queue. Next milestone is M3 (generation providers): run `design`.
-- The real-Aseprite tests skip without a binary. The bridge changes (`--aseprite`, `data.open`)
-  have not yet been run against a real Aseprite.
-- `pw view` was never opened in a real browser by the artist. Ask for feedback on the UI first.
-
-## How to continue
-
-1. Read `claude-arsenal/references/worker-loop.md` for the worker loop algorithm.
-2. With an empty queue, plan M3 (`design`), after the artist has tried `pw view`.
-
-## Queue snapshot at handover
-
-33/33 tasks done or in their final PR (M0-M1: 18, M2: 15).
+- The owner runs `status/m3/local-test-prompt.md` locally: ComfyUI on the GPU plus one real
+  call per paid provider. PixelLab request field names are unconfirmed until then.
+- Then the real benchmark: `pw bench run --matrix benchmarks/matrix.yaml` (estimate first),
+  blind votes, `pw bench apply`.
+- Waiting on the owner's feedback on `pw tour`.
+- A stray ref `arsenal/claims/t-e0b2016c-unused` was created by mistake; this surface cannot
+  delete refs, so delete it from GitHub when convenient.
