@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="pw-token" content="{{TOKEN}}">
+<title>Which is better?</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="blind" id="blind" aria-live="polite">
+  <h1>Which is better?</h1>
+  <p class="muted">Two results for the same brief. Names are hidden on purpose. Pick the one you would rather ship.</p>
+  <div class="pair" id="pair"></div>
+  <div class="votes">
+    <button type="button" class="btn" data-w="a" title="Left is better (1)">Left is better</button>
+    <button type="button" class="btn" data-w="tie" title="About the same (0)">About the same</button>
+    <button type="button" class="btn" data-w="b" title="Right is better (2)">Right is better</button>
+  </div>
+  <p class="muted" id="left"></p>
+</main>
+<script type="module" src="/static/blind.js"></script>
+</body>
+</html>

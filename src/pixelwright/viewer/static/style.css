@@ -123,3 +123,10 @@ canvas.marking { cursor:crosshair; touch-action:none; }
 .prow { display:flex; align-items:center; gap:8px; justify-content:space-between; font-size:13px; }
 .prow select { background:var(--panel); }
 dialog h4 { margin:12px 0 4px; font-size:12px; color:var(--dim); }
+.blind { max-width:1100px; margin:0 auto; padding:24px 16px; }
+.blind h1 { font-size:20px; margin:0 0 4px; }
+.blind .pair { display:flex; flex-wrap:wrap; gap:16px; margin:18px 0; }
+.blind .pair figure { flex:1 1 320px; margin:0; }
+.blind img.px { width:100%; image-rendering:pixelated; border-radius:8px; background:var(--soft); }
+.blind .votes { display:flex; gap:10px; flex-wrap:wrap; }
+.blind .muted { color:var(--dim); }

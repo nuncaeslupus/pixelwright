@@ -222,5 +222,20 @@ def test_post_revert(viewer: Viewer) -> None:
     assert history[-1]["event"] == "decision_revert"
 
 
+def test_blind_bench_endpoints(viewer: Viewer) -> None:
+    from pixelwright.fixtures.bench import bench_workspace
+
+    out = bench_workspace(viewer.root)
+    assert call(viewer, "GET", "/api/bench/ghost/pair")[0] == 404
+    status, body = call(viewer, "GET", "/api/bench/try/pair")
+    pair = body["pair"]
+    assert status == 200 and set(pair) == {"a", "b", "left"}  # tokens only, no file names
+    status, _ = call(viewer, "GET", f"/api/bench/try/img/{pair['a']}")
+    assert status == 200 and call(viewer, "GET", "/api/bench/try/img/000000000000")[0] == 404
+    status, body = call(viewer, "POST", "/api/bench/try/vote", {**pair, "winner": "tie"})
+    assert status == 200 and body["pair"]["left"] == pair["left"] - 1
+    assert (out / "human_pairs.jsonl").read_text().count("tie") == 1
+
+
 def test_every_endpoint_is_covered() -> None:
-    assert len(ROUTES) == 13
+    assert len(ROUTES) == 16
