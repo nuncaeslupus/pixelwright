@@ -4,6 +4,7 @@ title: "T26: Style and palette edit"
 label: "T26: Style and palette edit"
 priority: 5
 tags: [m2]
+status: merged
 ---
 
 `style propose` (palette families and ramps from references), `style test` (checks on the style's test assets), `palette edit` (set, add, remove, reorder colors; ramps re-checked).
