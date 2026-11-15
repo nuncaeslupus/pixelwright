@@ -115,6 +115,7 @@ def test_get_asset(viewer: Viewer) -> None:
         ("v0002", "quantize", "v0001"),
     ]
     assert isinstance(body["inbox"], int)
+    assert body["next"]["step"] == "clean" and body["next"]["command"] == "pw clean hero"
     assert call(viewer, "GET", "/api/assets/ghost")[0] == 404
 
 

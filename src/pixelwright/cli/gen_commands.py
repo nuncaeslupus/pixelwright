@@ -24,6 +24,7 @@ from pixelwright.io.png import encode_png
 from pixelwright.workspace import Asset, Workspace
 from pixelwright.workspace.budget import Ledger, api_key, budget_guard, monthly_limit
 from pixelwright.workspace.files import sha256_file
+from pixelwright.workspace.next_step import next_step
 from pixelwright.workspace.style import load_style
 
 IMAGE = "image.png"
@@ -294,3 +295,25 @@ def cmd_doctor(root: Path, a: dict[str, Any]) -> Outcome:
         "" if not failing else f"\n{failing} to fix; the rest of pixelwright works without them."
     )
     return Outcome(data={"rows": rows, "failing": failing}, text="\n".join(lines).rstrip())
+
+
+@command(
+    "next",
+    "what to do next with an asset, and why (or with each asset when none is given)",
+    Param("asset", help="asset id (default: every asset)", positional=True),
+)
+def cmd_next(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    assets = [ws.asset(a["asset"])] if a["asset"] else [ws.asset(i) for i in ws.assets()]
+    steps = [{"asset": x.id, **next_step(x).to_dict()} for x in assets]
+    if not steps:
+        text = "No assets yet. Start one:\n  pw new <id> --kind background --canvas 320x180"
+        return Outcome(data={"steps": []}, text=text)
+    text = "\n\n".join(f"{s['asset']}: {s['step']}\n  {s['command']}\n  {s['why']}" for s in steps)
+    first = steps[0]
+    return Outcome(
+        first["asset"] if a["asset"] else None,
+        first["version"],
+        data={"steps": steps, **(first if a["asset"] else {})},
+        text=text,
+    )

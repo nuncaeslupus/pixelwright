@@ -52,6 +52,7 @@ def test_ctrl_z_undoes_the_last_decision(page: Any, viewer: Viewer) -> None:
 
 def test_issues_checks_and_versions(page: Any, viewer: Viewer) -> None:
     open_hero(page)
+    expect(page.get_by_test_id("next-hint")).to_contain_text("Next:")
     issue = page.get_by_role("button", name="Show r-pix-3-1 on the image")
     expect(issue).to_contain_text("stray pixels")
     issue.click()
