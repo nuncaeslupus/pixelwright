@@ -8,6 +8,8 @@ license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.5.4",
+    "pyyaml>=6.0.3",
+    "tomli-w>=1.2.0",
 ]
 
 [dependency-groups]
@@ -15,6 +17,7 @@ dev = [
     "mypy>=1.13",
     "pytest>=8.3",
     "ruff>=0.8",
+    "types-pyyaml>=6.0.12.20261113",
 ]
 
 [build-system]
@@ -40,4 +43,4 @@ files = ["src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --import-mode=importlib"
