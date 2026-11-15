@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from pixelwright.core.image import IndexedImage, RGBImage
+from pixelwright.core.palette import Color, Palette
 from pixelwright.core.quantize import quantize_fixed
 from pixelwright.core.snap import snap
 from pixelwright.fixtures.synth import Degradation, degrade, make_art, snap_cases
@@ -56,3 +57,16 @@ def test_tiny_or_flat_images_fall_back_to_scale_one() -> None:
     assert snap(flat).scale == 1
     tiny = RGBImage.from_array(np.zeros((5, 5, 3), dtype=np.uint8))
     assert snap(tiny).scale == 1
+
+
+def test_noisy_low_contrast_dither_keeps_the_large_scale() -> None:
+    """A dithered gradient in close colors plus noise puts many peaks off the grid; chance
+    normalization alone then prefers a divisor of the true scale (seen on real CC0 art)."""
+    hits = 0
+    for seed in range(30):
+        rng = np.random.default_rng(seed)
+        idx = np.arange(48)[None, :] // 2 + rng.integers(0, 2, (32, 48))
+        pal = Palette([Color(40 + 4 * i, 30 + 4 * i, 80 + 4 * i) for i in range(idx.max() + 1)])
+        art = IndexedImage.from_array(idx, pal)
+        hits += snap(degrade(art, Degradation(12, (3, 5), noise=5.0), rng)).scale == 12
+    assert hits >= 10
