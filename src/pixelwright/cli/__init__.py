@@ -122,8 +122,18 @@ def _jsonable(value: object) -> object:
     raise TypeError(f"not JSON serialisable: {type(value).__name__}")
 
 
+def _mcp(argv: list[str]) -> int:
+    from pixelwright.mcp import serve
+
+    parser = argparse.ArgumentParser(prog="pw mcp", description="MCP server over stdio")
+    parser.add_argument("--workspace", type=Path, help="default workspace folder")
+    return serve(workspace=parser.parse_args(argv).workspace)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["mcp"]:
+        return _mcp(argv[1:])
     started = time.perf_counter()
     as_json = "--json" in argv
     name = next((a for a in argv if a in REGISTRY), None)
