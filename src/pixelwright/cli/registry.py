@@ -62,6 +62,8 @@ class Outcome:
     outputs: list[str] = field(default_factory=list)
     data: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    # Plain words for people: printed instead of the JSON summary when not --json.
+    text: str = ""
 
 
 Handler = Callable[[Path, dict[str, Any]], Outcome]

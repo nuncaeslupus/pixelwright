@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import io
+import json
+import platform
+import sys
+import urllib.request
 from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +18,7 @@ from PIL import Image as PILImage
 from pixelwright.cli.registry import EXIT_USAGE, Outcome, Param, PwError, command
 from pixelwright.core import providers as pv
 from pixelwright.core.image import RGBImage
+from pixelwright.io.aseprite_cli import find_aseprite
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import encode_png
 from pixelwright.workspace import Asset, Workspace
@@ -212,3 +217,80 @@ def cmd_generate(root: Path, a: dict[str, Any]) -> Outcome:
             "cache_hit": result.cache_hit,
         },
     )
+
+
+def _check(name: str, ok: bool, detail: str, fix: str = "") -> dict[str, Any]:
+    return {"check": name, "ok": ok, "detail": detail, "fix": "" if ok else fix}
+
+
+def _comfyui_row(ws: Workspace) -> dict[str, Any]:
+    cfg = ws.config.extra.get("providers", {}).get("comfyui", {})
+    url = str(cfg.get("base_url", "http://127.0.0.1:8188")).rstrip("/")
+    try:
+        with urllib.request.urlopen(url + "/system_stats", timeout=2) as resp:
+            stats = json.loads(resp.read() or b"{}")
+        gpus = [d.get("name", "?") for d in stats.get("devices", [])]
+        return _check("comfyui", True, f"running at {url}; devices: {', '.join(gpus) or '-'}")
+    except (OSError, ValueError):
+        return _check(
+            "comfyui",
+            False,
+            f"not answering at {url}",
+            "start ComfyUI (python main.py in its folder) or set [providers.comfyui] base_url; "
+            "see docs/guide/comfyui.md",
+        )
+
+
+@command(
+    "doctor",
+    "check what pixelwright needs: Python, Aseprite, providers and their keys, budget",
+    Param("offline", "bool", help="skip the checks that use the network (ComfyUI)"),
+)
+def cmd_doctor(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    rows = [
+        _check(
+            "python", sys.version_info >= (3, 12), platform.python_version(), "use Python 3.12+"
+        ),
+    ]
+    ase = find_aseprite()
+    rows.append(
+        _check(
+            "aseprite",
+            ase is not None,
+            str(ase or "not found"),
+            "install Aseprite or set PW_ASEPRITE to its binary (only for `pw ase`)",
+        )
+    )
+    for name in pv.names():
+        if name == "comfyui":
+            if not a["offline"]:
+                rows.append(_comfyui_row(ws))
+            continue
+        if pv.needs_key(name):
+            try:
+                api_key(ws.root, name)
+                rows.append(_check(name, True, "key found"))
+            except pv.ProviderError as err:
+                rows.append(_check(name, False, "no key", err.message))
+    month = datetime.now(UTC).strftime("%Y-%m")
+    spent, limit = Ledger(ws.root).spent(month), monthly_limit(ws.config)
+    rows.append(
+        _check(
+            "budget",
+            spent < limit,
+            f"{spent:.2f} of {limit:.2f} USD spent in {month}",
+            "raise [budget] monthly_usd in pixelwright.toml, or wait for next month",
+        )
+    )
+    lines = []
+    for r in rows:
+        mark = "ok  " if r["ok"] else "fix "
+        lines.append(f"{mark}{r['check']:<16} {r['detail']}")
+        if r["fix"]:
+            lines.append(f"     {'':<16} -> {r['fix']}")
+    failing = sum(1 for r in rows if not r["ok"])
+    lines.append(
+        "" if not failing else f"\n{failing} to fix; the rest of pixelwright works without them."
+    )
+    return Outcome(data={"rows": rows, "failing": failing}, text="\n".join(lines).rstrip())

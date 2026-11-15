@@ -156,6 +156,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(env, default=_jsonable))
     elif isinstance(outcome, PwError):
         print(f"pw {name or ''}: {outcome.code}: {outcome.message}", file=sys.stderr)
+    elif outcome.text:
+        print(outcome.text)
     else:
         print(
             json.dumps(
