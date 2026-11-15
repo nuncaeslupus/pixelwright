@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="602a5d9f43ad8443fbcb4ade34a10f084999265cc958c2110e4fe8d15b5096a0">
+<meta name="arsenal-source-sha256" content="1726b463b88359829047c053463fbf584916e065a615d96bc5876642ce7c6371">
 <title>pixelwright — Screens (annotatable)</title>
 <style>
 :root{
@@ -199,7 +199,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
     <button class="btn primary" id="btn-export">Save / Export</button>
   </div>
 </div>
-<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 11 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 12 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
 <div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
 
 <div class="wrap">
@@ -227,6 +227,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <li><a href="#s-screens-s04-mark">S04 · Mark</a></li>
 <li><a href="#s-screens-s05-decide-and-history">S05 · Decide and History</a></li>
 <li><a href="#s-screens-s06-play">S06 · Play</a></li>
+<li><a href="#s-screens-s08-claude-s-side-of-every-flow">S08 · Claude's side of every flow</a></li>
 <li><a href="#s-screens-s07-not-in-m2">S07 · Not in M2</a></li>
 <li><a href="#s-screens-what-changed-in-revision-3">What changed in revision 3</a></li>
 <li><a href="#s-screens-what-changed-in-revision-2">What changed in revision 2</a></li>
@@ -235,7 +236,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
   <section class="part">
 <article class="sec l2" id="s-screens-intro" data-ref="SCREENS · intro" data-label="Preamble &amp; scope" data-part="Screens">
 <h3 class="sec-h"><span class="chip">overview</span><span class="sec-title">Preamble &amp; scope</span></h3>
-<div class="sec-body"><p><strong>Revision</strong>: 3</p>
+<div class="sec-body"><p><strong>Revision</strong>: 4</p>
 <p>The screens of <code>pw view</code> (spec §2.8), drawn as a static mockup (<code>status/viewer/mockup.html</code>,
 <code>#s02</code> light, <code>#s02,dark</code> dark) before anything is built. The art is a placeholder scene.</p></div>
 <div class="note" data-for="s-screens-intro"><label class="note-head" for="n-s-screens-intro"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SCREENS · intro</span></label><textarea class="note-ta" data-key="s-screens-intro" id="n-s-screens-intro" data-label="Preamble &amp; scope" data-part="Screens" rows="1" placeholder="Add a note on this section…"></textarea></div>
@@ -365,6 +366,84 @@ templates and cross-frame checks are M4; in M2 this is a player.</p>
 </ul></div>
 <div class="note" data-for="s-screens-s06-play"><label class="note-head" for="n-s-screens-s06-play"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SCREENS › S06 · Play</span></label><textarea class="note-ta" data-key="s-screens-s06-play" id="n-s-screens-s06-play" data-label="S06 · Play" data-part="Screens" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
+<article class="sec l2" id="s-screens-s08-claude-s-side-of-every-flow" data-ref="SCREENS › S08 · Claude's side of every flow" data-label="S08 · Claude's side of every flow" data-part="Screens">
+<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">S08 · Claude's side of every flow</span></h3>
+<div class="sec-body"><p>The viewer is for people; Claude does the same things through <code>pw</code> and <code>pw mcp</code>, on the
+same files, so nothing the viewer shows is out of Claude's reach. New in M2 are marked *.</p>
+<table>
+<thead>
+<tr>
+<th>Flow</th>
+<th>In the viewer</th>
+<th>Claude (CLI / MCP)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>See what changed since last look</td>
+<td>Inbox bell, dots on versions</td>
+<td><code>pw inbox [--since]</code> * (new versions, decisions, issues, notes)</td>
+</tr>
+<tr>
+<td>Look at a version</td>
+<td>Look mode</td>
+<td><code>pw render</code> (image content via MCP), <code>pw check</code>, <code>pw status &lt;id&gt;</code> *</td>
+</tr>
+<tr>
+<td>Compare two versions</td>
+<td>Compare mode</td>
+<td><code>pw diff &lt;id&gt; &lt;vA&gt; &lt;vB&gt;</code> (adds check deltas *)</td>
+</tr>
+<tr>
+<td>Raise an issue on a region</td>
+<td>Mark mode, Save issue</td>
+<td><code>pw issue add &lt;id&gt; --mask png\|--box x,y,w,h --rule --note</code> *</td>
+</tr>
+<tr>
+<td>Raise an issue on the whole image</td>
+<td>Issues panel, "+ Issue" (no mark)</td>
+<td><code>pw issue add &lt;id&gt; --rule --note</code> *</td>
+</tr>
+<tr>
+<td>Write the critique</td>
+<td>(read only)</td>
+<td><code>pw critique write &lt;id&gt; &lt;version&gt; &lt;file&gt;</code> *</td>
+</tr>
+<tr>
+<td>List and resolve issues</td>
+<td>Issues list, filter</td>
+<td><code>pw issue list [--open]</code>, <code>pw issue resolve &lt;issue&gt; --version</code> *</td>
+</tr>
+<tr>
+<td>Fix inside an issue</td>
+<td>(not in viewer)</td>
+<td><code>pw clean\|quantize --mask &lt;issue&gt;</code> * (region-limited stages)</td>
+</tr>
+<tr>
+<td>Decide</td>
+<td>Approve, Reject</td>
+<td><code>pw approve\|reject</code> (exists; Claude never approves on its own)</td>
+</tr>
+<tr>
+<td>Show a screen to the person</td>
+<td>Opens on the link</td>
+<td><code>pw view --open &lt;id&gt;/&lt;version&gt;[?mode=compare&amp;b=v0003]</code> * prints the URL</td>
+</tr>
+<tr>
+<td>Read the log</td>
+<td>History tab</td>
+<td><code>pw history &lt;id&gt;</code> *</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>pw mask</code> stays as the low-level command; <code>pw issue</code> is the everyday one (an issue is a
+  mask entry with rule, note, author, version and status).</li>
+<li>Claude never sees the person's screen; it sees the same data. After a review session the
+  person says "look at it" and Claude starts with <code>pw inbox</code>.</li>
+</ul></div>
+<div class="note" data-for="s-screens-s08-claude-s-side-of-every-flow"><label class="note-head" for="n-s-screens-s08-claude-s-side-of-every-flow"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SCREENS › S08 · Claude's side of every flow</span></label><textarea class="note-ta" data-key="s-screens-s08-claude-s-side-of-every-flow" id="n-s-screens-s08-claude-s-side-of-every-flow" data-label="S08 · Claude's side of every flow" data-part="Screens" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
 <article class="sec l2" id="s-screens-s07-not-in-m2" data-ref="SCREENS › S07 · Not in M2" data-label="S07 · Not in M2" data-part="Screens">
 <h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">S07 · Not in M2</span></h3>
 <div class="sec-body"><p>Screens the spec lists that wait for their milestone.</p>
@@ -419,7 +498,7 @@ templates and cross-frame checks are M4; in M2 this is a player.</p>
 <script>var SPEC_SEED_NOTES={};</script>
 <script>
 (function(){
-  var NS = 'pixelwright-viewer-screens-v3:';
+  var NS = 'pixelwright-viewer-screens-v4:';
   // A reviewed copy (--bake) shows only the notes it was built with: nothing from
   // this browser's storage, nothing editable.
   var BAKED = false;
@@ -601,7 +680,7 @@ templates and cross-frame checks are M4; in M2 this is a player.</p>
   function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
   function stamp(){var d=new Date();return today()+'-'+pad(d.getHours())+pad(d.getMinutes());}
   // Named like the reader, <repo>-<doc>-v<N>-<YYYY-MM-DD-HHMM>-notes.md, stamped at export.
-  function exportName(){return 'pixelwright-screens-v3-'+stamp()+'-notes.md';}
+  function exportName(){return 'pixelwright-screens-v4-'+stamp()+'-notes.md';}
 
   function buildExport(){
     var byPart={},order=[],data={},n=0;
@@ -627,7 +706,7 @@ templates and cross-frame checks are M4; in M2 this is a player.</p>
       });
     });
     // Which page wrote this, so an import into a different page can say so.
-    lines.push('<!-- SPEC-NOTES-DOC pixelwright-screens-v3 -->');
+    lines.push('<!-- SPEC-NOTES-DOC pixelwright-screens-v4 -->');
     lines.push('<!-- SPEC-NOTES-DATA');
     lines.push(JSON.stringify(data));
     lines.push('-->');
@@ -727,8 +806,8 @@ templates and cross-frame checks are M4; in M2 this is a player.</p>
       }catch(err){obj=null;}
       if(!obj){toast('Could not read notes from that file');return;}
       var dm=/^<!-- SPEC-NOTES-DOC (\S+) -->/m.exec(txt);
-      if(dm&&dm[1]!=='pixelwright-screens-v3'&&
-         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-screens-v3). Import anyway?'))return;
+      if(dm&&dm[1]!=='pixelwright-screens-v4'&&
+         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-screens-v4). Import anyway?'))return;
       var r=applyData(obj);
       toast('Imported '+r.applied+' note'+(r.applied===1?'':'s')+
             (r.skipped?' ('+r.skipped+' skipped — not text)':''));

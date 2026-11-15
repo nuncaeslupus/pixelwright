@@ -8,7 +8,7 @@
 
 ## Preamble & scope
 
-**Revision**: 3
+**Revision**: 4
 
 The screens of `pw view` (spec §2.8), drawn as a static mockup (`status/viewer/mockup.html`,
 `#s02` light, `#s02,dark` dark) before anything is built. The art is a placeholder scene.
@@ -168,6 +168,35 @@ templates and cross-frame checks are M4; in M2 this is a player.
 <!-- -->
 
 > **✎ Notes** · `SCREENS › S06 · Play`
+> _(your notes here — replace this line)_
+
+## S08 · Claude's side of every flow
+
+The viewer is for people; Claude does the same things through `pw` and `pw mcp`, on the
+same files, so nothing the viewer shows is out of Claude's reach. New in M2 are marked *.
+
+| Flow | In the viewer | Claude (CLI / MCP) |
+|---|---|---|
+| See what changed since last look | Inbox bell, dots on versions | `pw inbox [--since]` * (new versions, decisions, issues, notes) |
+| Look at a version | Look mode | `pw render` (image content via MCP), `pw check`, `pw status <id>` * |
+| Compare two versions | Compare mode | `pw diff <id> <vA> <vB>` (adds check deltas *) |
+| Raise an issue on a region | Mark mode, Save issue | `pw issue add <id> --mask png\|--box x,y,w,h --rule --note` * |
+| Raise an issue on the whole image | Issues panel, "+ Issue" (no mark) | `pw issue add <id> --rule --note` * |
+| Write the critique | (read only) | `pw critique write <id> <version> <file>` * |
+| List and resolve issues | Issues list, filter | `pw issue list [--open]`, `pw issue resolve <issue> --version` * |
+| Fix inside an issue | (not in viewer) | `pw clean\|quantize --mask <issue>` * (region-limited stages) |
+| Decide | Approve, Reject | `pw approve\|reject` (exists; Claude never approves on its own) |
+| Show a screen to the person | Opens on the link | `pw view --open <id>/<version>[?mode=compare&b=v0003]` * prints the URL |
+| Read the log | History tab | `pw history <id>` * |
+
+- `pw mask` stays as the low-level command; `pw issue` is the everyday one (an issue is a
+  mask entry with rule, note, author, version and status).
+- Claude never sees the person's screen; it sees the same data. After a review session the
+  person says "look at it" and Claude starts with `pw inbox`.
+
+<!-- -->
+
+> **✎ Notes** · `SCREENS › S08 · Claude's side of every flow`
 > _(your notes here — replace this line)_
 
 ## S07 · Not in M2
