@@ -2,91 +2,109 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>pw view mockup r2</title>
+<title>pw view mockup r3</title>
+<!-- The real viewer ships these OFL fonts inside the package (works offline); the mockup loads them from Google Fonts. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap">
 <style>
-/* Drafting table (light) and lightbox (dark). Chrome only: the canvas is always neutral gray. */
-:root { --paper:#f2efe6; --sheet:#faf8f2; --ink:#1f1d1a; --dim:#7a756b; --rule:#d8d2c3; --hover:#e9e4d6;
-  --red:#c2381f; --blue:#2f5f9e; --ochre:#9a6a1c; --green:#2f6a3c; --canvas:#7b7b7b;
-  --serif:"Iowan Old Style","Charter","Bitstream Charter",Georgia,serif; --mono:ui-monospace,"DejaVu Sans Mono",Menlo,monospace; }
-[data-theme=dark] { --paper:#1b1a18; --sheet:#232220; --ink:#e8e3d6; --dim:#948e81; --rule:#3a3732; --hover:#2d2b28;
-  --red:#ef7a5f; --blue:#7fa8e6; --ochre:#d7a54f; --green:#79b884; --canvas:#5e5e5e; }
+/* Soft chrome, pixels only in the image. Light: cool mineral gray. Dark: soft graphite. Canvas always neutral gray. */
+:root { --bg:#e9ecee; --panel:#ffffff; --ink:#22262b; --dim:#6c737c; --line:#dde1e5; --soft:#f2f4f6; --hover:#eef1f4;
+  --you:#e4572e; --claude:#178f86; --check:#c98a0b; --ok:#2f8f4e; --canvas:#7a7a7a; --shadow:0 1px 2px rgba(20,30,40,.06),0 4px 14px rgba(20,30,40,.07);
+  --sans:"Atkinson Hyperlegible Next",system-ui,sans-serif; --mono:"Atkinson Hyperlegible Mono",ui-monospace,monospace; }
+[data-theme=dark] { --bg:#18191b; --panel:#222427; --ink:#e6e8eb; --dim:#9aa1a9; --line:#33363a; --soft:#2a2c30; --hover:#2d3034;
+  --you:#ff7f5c; --claude:#3cc1b5; --check:#e7ad3c; --ok:#5cc07c; --canvas:#5c5c5c; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.3); }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--paper); color:var(--ink); font:13px/1.45 system-ui, sans-serif; }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 var(--sans); }
+svg.i { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .app { height:800px; display:flex; flex-direction:column; }
-.top { height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 12px; border-bottom:1px solid var(--rule); }
-.top .l, .top .r { display:flex; align-items:center; gap:10px; } .top .r { justify-content:flex-end; }
-.name { font-family:var(--serif); font-size:17px; }
-.meta { color:var(--dim); font-family:var(--mono); font-size:11px; }
-.modes { display:flex; border:1px solid var(--rule); }
-.modes span { padding:4px 14px; color:var(--dim); border-right:1px solid var(--rule); }
-.modes span:last-child { border-right:0; } .modes .on { background:var(--ink); color:var(--paper); }
-.modes .off { opacity:.35; }
-.ib { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; color:var(--dim); font-size:15px; }
-.ib.b { border-color:var(--rule); }
-.stamp { font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; padding:5px 10px; border:1.5px solid currentColor; }
-.stamp.ok { color:var(--green); } .stamp.no { color:var(--red); }
-.body { flex:1; display:flex; min-height:0; }
-.work { flex:1; display:flex; flex-direction:column; min-width:0; }
-.canvas { flex:1; background:var(--canvas); position:relative; display:flex; align-items:center; justify-content:center; gap:16px; overflow:hidden; }
-.canvas canvas { image-rendering:pixelated; box-shadow:0 0 0 1px rgba(0,0,0,.35); }
-.tag { position:absolute; font-family:var(--mono); font-size:11px; background:var(--sheet); color:var(--ink); padding:2px 6px; border:1px solid var(--rule); }
-.side { width:310px; border-left:1px solid var(--rule); background:var(--sheet); display:flex; flex-direction:column; }
-.tabs { display:flex; border-bottom:1px solid var(--rule); }
-.tabs span { flex:1; text-align:center; padding:9px 0; color:var(--dim); border-bottom:2px solid transparent; }
-.tabs .on { color:var(--ink); border-bottom-color:var(--ink); }
-.tabs .n { font-family:var(--mono); font-size:10px; margin-left:4px; }
-.pane { padding:12px; overflow:hidden; flex:1; }
-.cap { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); margin:2px 0 8px; }
-.verdict { border-left:2px solid var(--blue); padding:4px 0 4px 10px; margin-bottom:12px; }
-.issue { display:grid; grid-template-columns:14px 1fr auto; gap:8px; padding:8px 0; border-top:1px solid var(--rule); }
-.issue.sel { background:var(--hover); margin:0 -12px; padding:8px 12px; }
-.sw { width:10px; height:10px; margin-top:4px; }
-.you { background:var(--red); } .claude { background:var(--blue); } .check { border:2px solid var(--ochre); }
-.t-you { color:var(--red); } .t-claude { color:var(--blue); } .t-check { color:var(--ochre); }
-.rule { font-family:var(--mono); font-size:11px; color:var(--dim); }
-.st { font-family:var(--mono); font-size:11px; }
-.g { display:inline-block; width:15px; height:15px; line-height:13px; text-align:center; font-size:10px; font-weight:700; border:1.5px solid; margin-right:6px; }
-.pass { color:var(--green); } .warn { color:var(--ochre); } .fail { color:var(--red); }
-.crow { display:flex; align-items:center; padding:6px 0; border-top:1px solid var(--rule); }
-.crow .m { margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--dim); }
-select, input, textarea { font:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--rule); padding:4px 6px; }
+.top { height:52px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 12px; }
+.top .l, .top .r { display:flex; align-items:center; gap:8px; } .top .r { justify-content:flex-end; }
+.name { font-weight:600; font-size:16px; margin-left:4px; }
+.meta { color:var(--dim); font-size:12.5px; }
+.mono { font-family:var(--mono); }
+.modes { display:flex; gap:2px; background:var(--soft); padding:3px; border-radius:10px; }
+.modes span { padding:5px 16px; color:var(--dim); border-radius:8px; }
+.modes .on { background:var(--panel); color:var(--ink); box-shadow:var(--shadow); font-weight:600; }
+.modes .off { opacity:.4; }
+.ib { position:relative; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; color:var(--dim); }
+.ib:hover, .ib.h { background:var(--hover); color:var(--ink); }
+.ib .dot { position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--claude); box-shadow:0 0 0 2px var(--bg); }
+.vsep { width:1px; height:22px; background:var(--line); margin:0 4px; }
+.pill { padding:7px 16px; border-radius:20px; font-weight:600; font-size:13.5px; display:inline-flex; align-items:center; gap:6px; }
+.pill.ok { background:var(--ok); color:#fff; } .pill.no { color:var(--you); box-shadow:inset 0 0 0 1.5px var(--you); }
+.pill.q { background:var(--soft); color:var(--ink); }
+.body { flex:1; display:flex; min-height:0; gap:10px; padding:0 10px 10px; }
+.work { flex:1; display:flex; flex-direction:column; min-width:0; background:var(--panel); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; }
+.canvas { flex:1; background:var(--canvas); position:relative; display:flex; align-items:center; justify-content:center; gap:18px; overflow:hidden; }
+.canvas canvas { image-rendering:pixelated; }
+.tag { position:absolute; font-size:12px; background:var(--panel); color:var(--ink); padding:3px 10px; border-radius:12px; box-shadow:var(--shadow); }
+.side { width:318px; background:var(--panel); border-radius:14px; box-shadow:var(--shadow); display:flex; flex-direction:column; overflow:hidden; }
+.tabs { display:flex; gap:4px; padding:10px 10px 0; }
+.tabs span { padding:6px 12px; color:var(--dim); border-radius:8px; }
+.tabs .on { background:var(--soft); color:var(--ink); font-weight:600; }
+.tabs .n { font-size:11px; margin-left:5px; padding:0 6px; border-radius:8px; background:var(--line); color:var(--ink); }
+.tabs .n.w { background:var(--check); color:#fff; }
+.pane { padding:12px 14px; overflow:hidden; flex:1; }
+.cap { font-size:12px; color:var(--dim); margin:2px 0 8px; font-weight:600; }
+.verdict { background:var(--soft); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.who { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; }
+.av { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; }
+.a-you { background:var(--you); } .a-claude { background:var(--claude); } .a-check { background:var(--check); }
+.t-you { color:var(--you); } .t-claude { color:var(--claude); } .t-check { color:var(--check); }
+.issue { display:grid; grid-template-columns:22px 1fr auto; gap:8px; padding:9px 8px; border-radius:10px; }
+.issue.sel { background:var(--hover); }
+.rule { font-size:12px; color:var(--dim); }
+.done { font-size:12px; color:var(--ok); }
+.st { width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; margin-right:10px; }
+.st svg { width:12px; height:12px; stroke-width:2.6; }
+.pass { background:var(--ok); } .warn { background:var(--check); } .fail { background:var(--you); }
+.crow { display:flex; align-items:center; padding:7px 4px; }
+.crow + .crow { border-top:1px solid var(--line); }
+.crow .m { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--dim); }
+select, input, textarea { font:inherit; font-size:13.5px; color:var(--ink); background:var(--soft); border:1px solid transparent; border-radius:9px; padding:6px 10px; }
 textarea { width:100%; resize:none; }
-.strip { height:74px; display:flex; gap:6px; padding:6px 10px; border-top:1px solid var(--rule); background:var(--sheet); }
-.th { border:1px solid var(--rule); padding:2px; font-family:var(--mono); font-size:10px; color:var(--dim); position:relative; }
-.th canvas { width:80px; height:45px; image-rendering:pixelated; display:block; }
-.th.sel { border:2px solid var(--ink); color:var(--ink); } .th.b { border:2px dashed var(--blue); }
-.th .dot { position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:var(--blue); }
-.th .s { position:absolute; left:4px; top:4px; padding:0 3px; background:var(--sheet); }
-.bar { height:32px; display:flex; align-items:center; gap:14px; padding:0 10px; border-top:1px solid var(--rule); font-family:var(--mono); font-size:11px; color:var(--dim); }
+.strip { height:78px; display:flex; gap:8px; padding:8px 12px; background:var(--panel); }
+.th { border-radius:8px; padding:3px; font-size:11px; color:var(--dim); position:relative; text-align:center; }
+.th canvas { width:84px; height:47px; image-rendering:pixelated; display:block; border-radius:5px; }
+.th.sel { background:var(--soft); color:var(--ink); box-shadow:inset 0 0 0 2px var(--ink); } .th.b { box-shadow:inset 0 0 0 2px var(--claude); }
+.th .dot { position:absolute; top:7px; right:7px; width:8px; height:8px; border-radius:50%; background:var(--claude); box-shadow:0 0 0 2px var(--panel); }
+.th .ok { position:absolute; left:7px; top:7px; width:15px; height:15px; border-radius:50%; background:var(--ok); color:#fff; display:flex; align-items:center; justify-content:center; }
+.th .ok svg { width:10px; height:10px; stroke-width:3; }
+.bar { height:44px; display:flex; align-items:center; gap:10px; padding:0 12px; border-top:1px solid var(--line); font-size:12.5px; color:var(--dim); }
 .bar .sp { flex:1; }
-.btn { border:1px solid var(--rule); padding:2px 8px; color:var(--ink); font-family:system-ui; font-size:12px; }
-.btn.on { background:var(--ink); color:var(--paper); }
-.slider { display:inline-flex; align-items:center; gap:6px; } .slider i { display:block; width:90px; height:2px; background:var(--rule); position:relative; }
-.slider i b { position:absolute; left:38%; top:-5px; width:6px; height:12px; background:var(--ink); }
-.swatch { display:inline-block; width:10px; height:10px; vertical-align:-1px; border:1px solid var(--rule); }
-.tools { position:absolute; left:12px; top:12px; background:var(--sheet); border:1px solid var(--rule); display:flex; flex-direction:column; }
-.tools span { width:34px; height:32px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--rule); color:var(--dim); font-size:15px; }
-.tools .on { background:var(--ink); color:var(--paper); }
-.seg { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; background:var(--sheet); border:1px solid var(--rule); }
-.seg span { padding:3px 12px; color:var(--dim); font-size:12px; } .seg .on { background:var(--ink); color:var(--paper); }
-.pop { position:absolute; right:12px; top:52px; width:290px; background:var(--sheet); border:1px solid var(--ink); padding:12px; z-index:2; }
-.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; padding:18px; }
-.card canvas { width:100%; image-rendering:pixelated; display:block; background:var(--canvas); }
-.card .n { font-family:var(--serif); font-size:15px; margin-top:6px; display:flex; justify-content:space-between; align-items:baseline; }
-.card .m { font-family:var(--mono); font-size:11px; color:var(--dim); }
-.wait { color:var(--blue); }
-.filters { display:flex; gap:8px; align-items:center; padding:12px 18px 0; }
-.hist .e { padding:7px 0; border-top:1px solid var(--rule); }
-.hist .d { font-family:var(--mono); font-size:10px; color:var(--dim); }
-.frames { height:76px; display:flex; gap:6px; padding:6px 10px; border-top:1px solid var(--rule); background:var(--sheet); }
-.fr { border:1px solid var(--rule); padding:2px; font-family:var(--mono); font-size:10px; color:var(--dim); text-align:center; }
-.fr.sel { border:2px solid var(--ink); color:var(--ink); }
-.fr canvas { width:46px; height:46px; image-rendering:pixelated; display:block; }
-.screen { display:none; } .screen.on { display:block; }
+.chip { padding:5px 10px; border-radius:8px; background:var(--soft); color:var(--ink); display:inline-flex; align-items:center; gap:6px; }
+.chip.on { background:var(--ink); color:var(--panel); }
+.slider { display:inline-flex; align-items:center; gap:8px; color:var(--ink); }
+.slider i { display:block; width:90px; height:4px; border-radius:2px; background:var(--line); position:relative; }
+.slider i b { position:absolute; left:0; width:40%; height:4px; border-radius:2px; background:var(--ink); }
+.slider i u { position:absolute; left:calc(40% - 7px); top:-5px; width:14px; height:14px; border-radius:50%; background:var(--panel); box-shadow:0 0 0 2px var(--ink); }
+.swatch { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-2px; }
+.tools { position:absolute; left:14px; top:14px; background:var(--panel); border-radius:12px; box-shadow:var(--shadow); padding:5px; display:flex; flex-direction:column; gap:2px; }
+.tools .ib.on { background:var(--ink); color:var(--panel); }
+.seg { position:absolute; top:14px; left:50%; transform:translateX(-50%); display:flex; gap:2px; background:var(--panel); border-radius:10px; padding:3px; box-shadow:var(--shadow); }
+.seg span { padding:4px 12px; color:var(--dim); font-size:13px; border-radius:8px; } .seg .on { background:var(--ink); color:var(--panel); }
+.pop { position:absolute; right:16px; top:14px; width:300px; background:var(--panel); border-radius:14px; box-shadow:var(--shadow),0 12px 40px rgba(0,0,0,.18); padding:16px; z-index:2; }
+.btn { padding:6px 14px; border-radius:9px; background:var(--soft); font-weight:600; font-size:13px; }
+.btn.pri { background:var(--ink); color:var(--panel); }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:6px 22px 22px; }
+.card { background:var(--panel); border-radius:14px; box-shadow:var(--shadow); padding:8px 8px 12px; }
+.card canvas { width:100%; image-rendering:pixelated; display:block; border-radius:9px; background:var(--canvas); }
+.card .n { font-weight:600; margin:8px 4px 2px; display:flex; justify-content:space-between; align-items:baseline; }
+.card .m { font-size:12.5px; color:var(--dim); margin:0 4px; display:flex; align-items:center; gap:6px; }
+.badge { font-size:12px; padding:1px 8px; border-radius:10px; background:var(--soft); color:var(--ink); }
+.badge.wait { background:color-mix(in srgb, var(--claude) 15%, transparent); color:var(--claude); }
+.badge.bad { background:color-mix(in srgb, var(--you) 15%, transparent); color:var(--you); }
+.badge.good { background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok); }
+.filters { display:flex; gap:8px; align-items:center; padding:4px 22px 12px; }
+.hist .e { display:grid; grid-template-columns:22px 1fr; gap:8px; padding:8px 4px; }
+.hist .d { font-size:12px; color:var(--dim); }
+.frames { height:84px; display:flex; gap:8px; padding:8px 12px; background:var(--panel); }
+.fr { border-radius:8px; padding:3px; font-size:11px; color:var(--dim); text-align:center; }
+.fr.sel { background:var(--soft); color:var(--ink); box-shadow:inset 0 0 0 2px var(--ink); }
+.fr canvas { width:50px; height:50px; image-rendering:pixelated; display:block; border-radius:5px; }
 </style>
 </head>
 <body>
-<!-- Static mockup of the M2 viewer, revision 2. Screens: #s01 .. #s06; add ,dark for the dark theme. Not production code. -->
+<!-- Static mockup of the M2 viewer, revision 3. Screens: #s01 .. #s06; add ,dark for the dark theme. Not production code. -->
 <script>
 // A small procedural night-harbour scene (native 160x90) used only to make the mockup look real.
 const PAL = ['#0b0e1f','#141a33','#1f2a4d','#2c3d6b','#3e5f8a','#5b86a8','#8fb5c9','#f2e6b5','#c9a24a','#5a3a2a','#3a2519','#22160f','#e86a3a','#ffd27a','#101418','#6b7f8c'];
@@ -171,109 +189,120 @@ function hero(c, f, s, onion) {
 
 function paint(g, s, cells, color) { g.fillStyle = color; for (const [x, y] of cells) g.fillRect(x * s, y * s, s, s); }
 const ORPH = [[59, 51, 5, 4], [65, 50, 5, 4], [72, 51, 9, 6]];
-const VERS = [['v0001', 'exp', 1], ['v0002', 'draft', 2], ['v0003', 'approved', 3], ['v0004', 'draft', 4], ['v0005', 'draft', 4]];
+const VERS = [['v0001', 'experiment', 1], ['v0002', 'draft', 2], ['v0003', 'approved', 3], ['v0004', 'draft', 4], ['v0005', 'draft', 4]];
 const $ = id => document.getElementById(id);
+const P = {
+  menu: 'M4 6h16M4 12h16M4 18h16', back: 'M15 5l-7 7 7 7', undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3', redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 000 12h3',
+  bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4', keys: 'M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8', theme: 'M12 3a9 9 0 100 18 7 7 0 010-18z',
+  panel: 'M3 5h18v14H3zM15 5v14', check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6L6 18', bang: 'M12 5v9M12 19h.01',
+  brush: 'M4 20c3 0 4-1 4-3a2 2 0 114 0c0 2-2 3-8 3zM11 15L20 6l-2-2-9 9', rect: 'M4 6h16v12H4z', fill: 'M5 12l7-7 7 7-7 7zM19 15c1 2 2 3 1 4s-3 0-2-2',
+  erase: 'M8 20h12M5 15l9-9 5 5-8 8H8z', play: 'M7 5l12 7-12 7z', prev: 'M17 5L8 12l9 7zM6 5v14', next: 'M7 5l9 7-9 7zM18 5v14',
+  grid: 'M4 4h16v16H4zM4 10h16M4 15h16M10 4v16M15 4v16', search: 'M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-4-4',
+};
+const I = n => `<svg class="i" viewBox="0 0 24 24"><path d="${P[n]}"/></svg>`;
+const ib = (n, title, cls = '', extra = '') => `<span class="ib ${cls}" title="${title}">${I(n)}${extra}</span>`;
+const AV = { you: 'Y', claude: 'C', check: '!' };
+const av = w => `<span class="av a-${w}">${AV[w]}</span>`;
 
 function topBar(mode, opts = {}) {
   const modes = ['Look', 'Compare', 'Mark', 'Play'].map(m =>
     `<span class="${m === mode ? 'on' : ''} ${m === 'Play' && !opts.anim ? 'off' : ''}">${m}</span>`).join('');
-  return `<div class="top"><div class="l"><span class="ib b" title="All assets (Esc)">←</span>
-    <span class="name">${opts.name || 'bg-harbour-night'}</span><span class="meta">${opts.meta || 'background · 320×180 · palette harbour-32'}</span></div>
+  return `<div class="top"><div class="l">${ib('menu', 'Menu (Alt)')}${ib('back', 'All assets (Esc)')}
+    <span class="name">${opts.name || 'bg-harbour-night'}</span><span class="meta">${opts.meta || 'background · 320×180 · harbour-32'}</span></div>
     <div class="modes">${modes}</div>
-    <div class="r"><span class="ib" title="Undo (Ctrl+Z)">↶</span><span class="ib" title="Redo">↷</span>
-    <span class="stamp no" title="Reject (R)">Reject</span><span class="stamp ok" title="Approve (A)">Approve</span>
-    <span class="ib" title="Theme: follows the system">◐</span></div></div>`;
+    <div class="r">${ib('undo', 'Undo (Ctrl+Z)')}${ib('redo', 'Redo (Ctrl+Shift+Z)')}<span class="vsep"></span>
+    <span class="pill no" title="Reject (R)">Reject</span><span class="pill ok" title="Approve (A)">${I('check')}Approve</span><span class="vsep"></span>
+    ${ib('bell', 'Inbox: 1 new version from Claude', '', '<span class="dot"></span>')}${ib('keys', 'Keyboard shortcuts (?)')}${ib('theme', 'Theme: follows the system')}${ib('panel', 'Side panel (Tab)')}</div></div>`;
 }
 function strip(sel, b) {
   return `<div class="strip">${VERS.map(([v, st, n], i) => `<div class="th ${i === sel ? 'sel' : ''} ${i === b ? 'b' : ''}" title="${v} · ${st}">
-    <canvas data-v="${n}"></canvas>${v}${i === 4 ? '<span class="dot" title="New from Claude, not seen yet"></span>' : ''}
-    ${st === 'approved' ? '<span class="s pass">✓</span>' : ''}</div>`).join('')}</div>`;
+    <canvas data-v="${n}"></canvas>${v}${i === 4 ? '<span class="dot" title="New from Claude"></span>' : ''}
+    ${st === 'approved' ? `<span class="ok">${I('check')}</span>` : ''}</div>`).join('')}</div>`;
 }
 function bar(left, opts = {}) {
   return `<div class="bar">${left}<span class="sp"></span>
     <select title="View (V)"><option>${opts.view || 'Color'}</option></select>
-    <span class="btn ${opts.grid === false ? '' : 'on'}" title="Pixel grid (G)">Grid</span>
-    <span class="slider" title="Zoom (1-6, Ctrl+wheel)">−<i><b></b></i>+ ${opts.zoom || '4×'}</span>
-    <span class="ib" title="Hide the panel (Tab)">▤</span></div>`;
+    <span class="chip ${opts.grid === false ? '' : 'on'}" title="Pixel grid (G)">${I('grid')}Grid</span>
+    <span class="slider" title="Zoom (1-6, Ctrl+wheel)">−<i><b></b><u></u></i>+ <span class="mono">${opts.zoom || '4×'}</span></span></div>`;
 }
 const ISSUES = [
-  ['claude', 'Dock edge orphans', 'R-PIX-3 orphans', 'open', 'Three 1-px clusters on the pier edge. Fix: clean inside the mask.'],
-  ['you', 'Lamp glow banding', 'R-PIX-5 banding', 'open', 'Merge the four steps into two.'],
-  ['check', 'orphans · 3 regions', 'R-PIX-3', 'open', '0.8 per tile, max 0.5'],
+  ['claude', 'Dock edge orphans', 'R-PIX-3 · orphans', '', 'Three 1-px clusters on the pier edge. Fix: clean inside this mark.'],
+  ['you', 'Lamp glow banding', 'R-PIX-5 · banding', '', 'Merge the four steps into two.'],
+  ['check', 'Orphans, 3 places', 'R-PIX-3 · 0.8 per tile', '', ''],
   ['claude', 'Sky value steps', 'R-VAL-1', 'fixed in v0004', '']];
+const tabs = (on, nI = 3, warn = true) => `<div class="tabs">${['Issues', 'Checks', 'History'].map(t => `<span class="${t === on ? 'on' : ''}">${t}${t === 'Issues' ? `<span class="n">${nI}</span>` : ''}${t === 'Checks' && warn ? '<span class="n w">2</span>' : ''}</span>`).join('')}</div>`;
 function issues(sel, form) {
-  return `<div class="tabs"><span class="on">Issues<span class="n">3</span></span><span>Checks<span class="n">2!</span></span><span>History</span></div>
-  <div class="pane">${form || `<div class="verdict"><div class="cap t-claude">Claude · v0004 vs v0003</div>Better value structure; more noise on the dock and around the lamp.</div>`}
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="cap" style="margin:0">On this version</span><select><option>All</option></select></div>
-  ${ISSUES.map(([who, t, r, s, n], i) => `<div class="issue ${i === sel ? 'sel' : ''}"><span class="sw ${who}"></span>
-    <div><div>${t}</div><div class="rule">${r}${n && i === sel ? '' : ''}</div>${n && i === sel ? `<div style="margin-top:4px">${n}</div>` : ''}</div>
-    <span class="st ${s === 'open' ? '' : 'pass'}">${s === 'open' ? '' : '✓ ' + s.replace('fixed in ', '')}</span></div>`).join('')}
-  </div>`;
+  return `${tabs('Issues')}<div class="pane">${form || `<div class="verdict"><div class="who t-claude">${av('claude')} Claude · v0004 against v0003</div>
+    <div style="margin-top:6px">Better value structure; more noise on the dock and around the lamp.</div></div>`}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span class="cap" style="margin:0">On this version</span><select><option>All</option></select></div>
+  ${ISSUES.map(([who, t, r, s, n], i) => `<div class="issue ${i === sel ? 'sel' : ''}">${av(who)}
+    <div><div>${t}</div><div class="rule">${r}</div>${n && i === sel ? `<div style="margin-top:4px;font-size:13px">${n}</div>` : ''}</div>
+    <span class="done">${s ? '✓ ' + s.replace('fixed in ', '') : ''}</span></div>`).join('')}</div>`;
 }
-const CHECKS = [['palette', 'pass', '1.00 · 24/32'], ['grid', 'pass', 'clean'], ['value-groups', 'pass', 'k=4'], ['orphans', 'warn', '0.8/tile'],
-  ['line-runs', 'pass', '0'], ['banding', 'warn', '18 px'], ['pillow', 'pass', '0.71'], ['ramps', 'pass', '4 ok'], ['focal-contrast', 'pass', '2.1×']];
-const GL = { pass: '✓', warn: '!', fail: '✕' };
+const CHECKS = [['palette', 'pass', '1.00 · 24/32'], ['grid', 'pass', 'clean'], ['value groups', 'pass', 'k=4'], ['orphans', 'warn', '0.8/tile'],
+  ['line runs', 'pass', '0'], ['banding', 'warn', '18 px'], ['pillow shading', 'pass', '0.71'], ['ramps', 'pass', '4 ok'], ['focal contrast', 'pass', '2.1×']];
+const GL = { pass: 'check', warn: 'bang', fail: 'x' };
 function checks(delta) {
-  const D = { 'orphans': ['0.2', 'pass'], 'banding': ['0', 'pass'], 'focal-contrast': ['1.7×', 'pass'] };
-  return `<div class="tabs"><span>Issues<span class="n">3</span></span><span class="on">Checks<span class="n">2!</span></span><span>History</span></div>
-  <div class="pane">${delta ? '<div class="cap">A v0003 → B v0004</div>' : '<div class="cap">report.json · v0004</div>'}
-  ${CHECKS.map(([n, s, m]) => `<div class="crow"><span class="g ${s}">${GL[s]}</span>${n}<span class="m">${delta && D[n] ? `${D[n][0]} → ` : ''}${m}</span></div>`).join('')}
-  ${delta ? `<div class="cap" style="margin-top:14px">Difference</div>
+  const D = { 'orphans': '0.2 → ', 'banding': '0 → ', 'focal contrast': '1.7× → ' };
+  return `${tabs('Checks')}<div class="pane"><div class="cap">${delta ? 'A v0003 → B v0004' : 'v0004'}</div>
+  ${CHECKS.map(([n, s, m]) => `<div class="crow"><span class="st ${s}">${I(GL[s])}</span>${n}<span class="m">${delta && D[n] ? D[n] : ''}${m}</span></div>`).join('')}
+  ${delta ? `<div class="cap" style="margin-top:16px">Difference</div>
   <div class="crow">changed pixels<span class="m">214 · 0.37%</span></div><div class="crow">colors used<span class="m">23 → 24</span></div>
-  <div class="crow">area<span class="m">58,40 – 141,79</span></div>` : ''}</div>`;
+  <div class="crow">changed area<span class="m">58,40 – 141,79</span></div>` : ''}</div>`;
 }
 function history() {
-  return `<div class="tabs"><span>Issues<span class="n">3</span></span><span>Checks<span class="n">2!</span></span><span class="on">History</span></div>
-  <div class="pane hist"><div class="cap">bg-harbour-night · newest first</div>
-  <div class="e"><span class="t-claude">Claude</span> made v0005 from v0004: clean inside “dock-orphans”<div class="d">13:12 · not reviewed</div></div>
-  <div class="e"><span class="t-check">check</span> v0004: 2 warnings<div class="d">13:02 · orphans 0.8/tile · banding 18 px</div></div>
-  <div class="e"><span class="t-claude">Claude</span> critique of v0004 vs v0003<div class="d">13:02 · 2 issues</div></div>
-  <div class="e"><span class="t-you">You</span> <span class="pass">approved</span> v0003 “good base, keep palette”<div class="d">12:40 · palette 1.00 · k=4</div></div>
-  <div class="e"><span class="t-you">You</span> <span class="fail">rejected</span> v0002 “sky too busy”<div class="d">12:31 · k=7</div></div>
-  <div class="e"><span class="t-claude">Claude</span> made v0001 (experiment)<div class="d">12:05 · snap + quantize</div></div></div>`;
+  const E = [['claude', 'Made <b>v0005</b> from v0004: cleaned inside “Dock edge orphans”', '13:12 · new'],
+    ['check', 'Checked v0004: 2 warnings', '13:02 · orphans 0.8/tile · banding 18 px'],
+    ['claude', 'Critique of v0004 against v0003', '13:02 · 2 issues'],
+    ['you', '<span style="color:var(--ok)">Approved</span> v0003 “good base, keep the palette”', '12:40 · palette 1.00 · k=4'],
+    ['you', '<span style="color:var(--you)">Rejected</span> v0002 “sky too busy”', '12:31 · k=7'],
+    ['claude', 'Made v0001 (experiment)', '12:05 · snap + quantize']];
+  return `${tabs('History')}<div class="pane hist">${E.map(([w, t, d]) => `<div class="e">${av(w)}<div>${t}<div class="d">${d}</div></div></div>`).join('')}</div>`;
 }
 function asset(mode, centre, side, foot, opts = {}) {
   return `<div class="app">${topBar(mode, opts)}<div class="body"><div class="work">
     <div class="canvas">${centre}</div>${foot}</div><div class="side">${side}</div></div></div>`;
 }
-const PIX = '<span>x 112 y 41</span><span><span class="swatch" style="background:#3e5f8a"></span> 9 #3e5f8a water-2</span><span>v0004 · draft · from v0003</span>';
+const PIX = '<span class="mono">112, 41</span><span><span class="swatch" style="background:#3e5f8a"></span> <span class="mono">#3e5f8a</span> · index 9 · water-2</span>';
 
 const SCREENS = {
   s01() {
-    const A = [['bg-harbour-night', 'background', 'v0005', 'new from Claude', 1], ['bg-tavern-inside', 'background', 'v0007', 'approved', 3],
-      ['bg-lighthouse', 'background', 'v0002', '1 failing check', 2], ['bg-market-day', 'background', 'v0011', 'final', 4],
-      ['chr-hero', 'sprite', 'v0003', 'waiting for you', 4], ['prop-lantern', 'prop', 'v0002', 'approved', 3],
-      ['prop-crate', 'prop', 'v0001', 'waiting for you', 2], ['bg-cliff-road', 'background', 'v0005', 'Claude is working', 1]];
-    return `<div class="app"><div class="top"><div class="l"><span class="name">art-workspace</span><span class="meta">style v3 · 8 assets</span></div><div></div>
-      <div class="r"><span class="ib" title="Live: updated 4 s ago">●</span><span class="ib" title="Theme">◐</span></div></div>
-      <div class="filters"><input placeholder="Find an asset" style="width:220px"><select><option>Drafts, approved, final</option></select>
-      <select><option>All kinds</option></select><select><option>Any status</option></select><span style="flex:1"></span><span class="meta">sorted by</span><select><option>Last change</option></select></div>
-      <div class="grid">${A.map(([id, k, v, s, n]) => `<div class="card"><canvas data-v="${n}"></canvas>
-        <div class="n"><span>${id}</span><span class="meta">${v}</span></div>
-        <div class="m">${k} · <span class="${/waiting|new/.test(s) ? 'wait' : /fail/.test(s) ? 'fail' : /approved|final/.test(s) ? 'pass' : ''}">${s}</span></div></div>`).join('')}</div></div>`;
+    const A = [['bg-harbour-night', 'background', 'v0005', 'New from Claude', 'wait', 1], ['bg-tavern-inside', 'background', 'v0007', 'Approved', 'good', 3],
+      ['bg-lighthouse', 'background', 'v0002', '1 failing check', 'bad', 2], ['bg-market-day', 'background', 'v0011', 'Final', 'good', 4],
+      ['chr-hero', 'sprite', 'v0003', 'Waiting for you', 'wait', 4], ['prop-lantern', 'prop', 'v0002', 'Approved', 'good', 3],
+      ['prop-crate', 'prop', 'v0001', 'Waiting for you', 'wait', 2], ['bg-cliff-road', 'background', 'v0005', 'Claude is working…', '', 1]];
+    return `<div class="app"><div class="top"><div class="l">${ib('menu', 'Menu (Alt)')}<span class="name">art-workspace</span><span class="meta">style v3 · 8 assets</span></div><div></div>
+      <div class="r">${ib('bell', 'Inbox: 1 new version from Claude', '', '<span class="dot"></span>')}${ib('keys', 'Keyboard shortcuts (?)')}${ib('theme', 'Theme')}</div></div>
+      <div class="filters"><span style="position:relative"><input placeholder="Find an asset" style="width:240px;padding-left:34px"><span style="position:absolute;left:9px;top:6px;color:var(--dim)">${I('search')}</span></span>
+      <select><option>Drafts, approved, final</option></select><select><option>All kinds</option></select><select><option>Any status</option></select>
+      <span style="flex:1"></span><span class="meta">Sort</span><select><option>Last change</option></select></div>
+      <div class="grid">${A.map(([id, k, v, s, c, n]) => `<div class="card"><canvas data-v="${n}"></canvas>
+        <div class="n"><span>${id}</span><span class="meta mono">${v}</span></div>
+        <div class="m">${k}<span style="flex:1"></span><span class="badge ${c}">${s}</span></div></div>`).join('')}</div></div>`;
   },
   s02: () => asset('Look', '<canvas id="c"></canvas>', issues(0), strip(3) + bar(PIX)),
   s03: () => asset('Compare', `<div class="seg"><span class="on">Side by side</span><span>Onion</span><span>Swipe</span><span>Difference</span></div>
-      <canvas id="ca"></canvas><canvas id="cb"></canvas><span class="tag" style="left:12px;bottom:12px">A v0003 approved</span><span class="tag" style="right:12px;bottom:12px">B v0004</span>`,
-    checks(true), strip(3, 2) + bar('<span>x 70 y 60</span><span>A 4 · B 9</span><span title="Click a version for B, shift-click for A">A v0003 · B v0004</span>', { zoom: '2×', grid: false })),
-  s04: () => asset('Mark', `<div class="tools"><span class="on" title="Brush (B)">✎</span><span title="Rectangle (M)">▭</span><span title="Fill same color (F)">◧</span><span title="Erase (E)">⌫</span><span style="font-size:11px;font-family:var(--mono)" title="Brush size ([ ])">2px</span></div><canvas id="c"></canvas>`,
-    issues(1, `<div class="cap t-you">New issue · 37 px marked</div><select style="width:100%"><option>R-PIX-5 banding</option></select>
-      <textarea rows="2" style="margin-top:6px">Lamp glow banding; merge into two steps.</textarea>
-      <div style="display:flex;gap:8px;margin:6px 0 14px"><span class="btn on">Save issue</span><span class="btn">Discard</span></div>`),
-    strip(3) + bar('<span>x 84 y 35</span><span>marking on v0004</span>')),
-  s05: () => asset('Look', '<canvas id="c"></canvas>' + `<div class="pop"><div class="cap t-you" style="color:var(--red)">Reject v0004</div>
-      <textarea rows="3" placeholder="Why? (needed)">Dock reads noisy at 1×; keep v0003 sky.</textarea>
-      <div class="meta" style="margin:6px 0 10px">Saved to the history with the check results.</div>
-      <div style="display:flex;gap:8px"><span class="stamp no">Reject</span><span class="btn">Cancel</span></div></div>`,
+      <canvas id="ca"></canvas><canvas id="cb"></canvas><span class="tag" style="left:14px;bottom:14px">A · v0003 approved</span><span class="tag" style="right:14px;bottom:14px">B · v0004</span>`,
+    checks(true), strip(3, 2) + bar('<span class="mono">70, 60</span><span title="Click a version for B, shift-click for A">A v0003 · B v0004</span>', { zoom: '2×', grid: false })),
+  s04: () => asset('Mark', `<div class="tools">${ib('brush', 'Brush (B)', 'on')}${ib('rect', 'Rectangle (M)')}${ib('fill', 'Fill the same color (F)')}${ib('erase', 'Erase (E)')}
+      <span class="ib mono" style="font-size:12px" title="Brush size ([ and ])">2px</span></div><canvas id="c"></canvas>`,
+    issues(1, `<div class="cap" style="color:var(--you)">New issue · 37 pixels marked</div><select style="width:100%"><option>R-PIX-5 · banding</option></select>
+      <textarea rows="2" style="margin-top:8px">Lamp glow banding; merge into two steps.</textarea>
+      <div style="display:flex;gap:8px;margin:8px 0 16px"><span class="btn pri">Save issue</span><span class="btn">Discard</span></div>`),
+    strip(3) + bar('<span class="mono">84, 35</span><span>Marking on v0004</span>')),
+  s05: () => asset('Look', '<canvas id="c"></canvas>' + `<div class="pop"><div style="font-weight:600;margin-bottom:8px">Reject v0004?</div>
+      <textarea rows="3" placeholder="Why? (needed)">Dock reads noisy at 1×; keep the v0003 sky.</textarea>
+      <div class="meta" style="margin:8px 0 12px">Saved in History with the check results.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn">Cancel</span><span class="pill no">Reject</span></div></div>`,
     history(), strip(3) + bar(PIX)),
-  s06: () => asset('Play', '<canvas id="hero"></canvas><span class="tag" style="left:12px;bottom:12px">frame 3/6 · 100 ms</span>',
-    `<div class="tabs"><span class="on">Issues<span class="n">0</span></span><span>Checks</span><span>History</span></div><div class="pane"><div class="cap">Animation</div>
-      <div class="crow">tag<span class="m"><select><option>walk-side</option></select></span></div>
-      <div class="crow">speed<span class="m"><select><option>file timing</option></select></span></div>
-      <div class="crow">loop<span class="m">on</span></div><div class="crow">onion skin<span class="m">previous frame</span></div>
-      <div class="cap" style="margin-top:14px">Issues on this version</div><div class="meta">None open.</div></div>`,
-    `<div class="frames">${[100, 100, 100, 120, 100, 100].map((ms, i) => `<div class="fr ${i === 2 ? 'sel' : ''}"><canvas data-f="${i}"></canvas>${ms}</div>`).join('')}</div>`
-    + bar('<span class="btn on" title="Play (Space)">▶</span><span class="btn" title="Previous frame (,)">◀</span><span class="btn" title="Next frame (.)">▶|</span>', { zoom: '16×', grid: false }),
+  s06: () => asset('Play', '<canvas id="hero"></canvas><span class="tag" style="left:14px;bottom:14px">Frame 3 of 6 · 100 ms</span>',
+    `${tabs('Issues', 0, false)}<div class="pane"><div class="cap">Playback</div>
+      <div class="crow">Tag<span class="m"><select><option>walk-side</option></select></span></div>
+      <div class="crow">Speed<span class="m"><select><option>File timing</option></select></span></div>
+      <div class="crow">Loop<span class="m">On</span></div><div class="crow">Onion skin<span class="m">Previous frame</span></div>
+      <div class="cap" style="margin-top:16px">Issues on this version</div><div class="meta">None open.</div></div>`,
+    `<div class="frames">${[100, 100, 100, 120, 100, 100].map((ms, i) => `<div class="fr ${i === 2 ? 'sel' : ''}"><canvas data-f="${i}"></canvas>${ms} ms</div>`).join('')}</div>`
+    + bar(`${ib('prev', 'Previous frame (,)')}<span class="ib h" title="Play (Space)">${I('play')}</span>${ib('next', 'Next frame (.)')}`, { zoom: '16×', grid: false }),
     { name: 'chr-hero', meta: 'sprite · 24×24 · 6 frames', anim: true }),
 };
 
@@ -283,12 +312,14 @@ function render() {
   document.body.innerHTML = SCREENS[id]();
   document.querySelectorAll('canvas[data-v]').forEach(c => draw(c, scene(+c.dataset.v), 1));
   document.querySelectorAll('canvas[data-f]').forEach(c => hero(c, +c.dataset.f, 2));
+  const css = getComputedStyle(document.documentElement);
+  const you = css.getPropertyValue('--you').trim(), cl = css.getPropertyValue('--claude').trim();
   if ($('c')) {
     const g = draw($('c'), scene(4), 4, { grid: true });
-    if (id === 's02') { for (const r of ORPH) box(g, 4, ...r, '#2f5f9e', 'rgba(47,95,158,0.18)'); }
+    if (id === 's02') { g.setLineDash([6, 4]); for (const r of ORPH) box(g, 4, ...r, cl); }
     if (id === 's04') {
       const lamp = []; for (let y = 26; y < 45; y++) for (let x = 75; x < 94; x++) { const d = (x - 84) ** 2 + (y - 35) ** 2; if (d < 70 && d > 20) lamp.push([x, y]); }
-      paint(g, 4, lamp, 'rgba(194,56,31,0.5)'); for (const r of ORPH) box(g, 4, ...r, 'rgba(47,95,158,0.9)');
+      g.globalAlpha = 0.55; paint(g, 4, lamp, you); g.globalAlpha = 1; g.setLineDash([6, 4]); for (const r of ORPH) box(g, 4, ...r, cl);
     }
   }
   if ($('ca')) { draw($('ca'), scene(3), 2); draw($('cb'), scene(4), 2); }

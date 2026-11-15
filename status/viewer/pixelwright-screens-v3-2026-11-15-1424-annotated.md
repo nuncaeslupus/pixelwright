@@ -8,7 +8,7 @@
 
 ## Preamble & scope
 
-**Revision**: 2
+**Revision**: 3
 
 The screens of `pw view` (spec §2.8), drawn as a static mockup (`status/viewer/mockup.html`,
 `#s02` light, `#s02,dark` dark) before anything is built. The art is a placeholder scene.
@@ -37,14 +37,18 @@ What holds on all screens, so each screen below only says what is specific to it
   until seen; a running step shows on the asset card; everything lands in History.
 - **One way to undo.** Ctrl+Z undoes the last mask stroke or saved issue, and a decision
   (logged as a reversal, since the history is append-only). Same everywhere.
-- **Light and dark.** Follows the system; one button switches. The look is a drafting
-  table (paper, ink, red and blue pencil) and a lightbox in the dark: serif for names,
-  monospace for numbers and ids, square corners, no shadows, no gradients. Only system
-  fonts, so the viewer works offline.
+- **Light and dark.** Follows the system; one button switches. Soft chrome, pixels only in
+  the image: cool mineral gray in light, soft graphite in dark; rounded panels and pill
+  buttons, line icons, gentle shadows. Type: Atkinson Hyperlegible Next for text and its
+  Mono for numbers (both OFL, shipped inside the package so the viewer works offline).
+- **One place for news.** The inbox bell (top right) collects what happened while you were
+  away (new versions, finished checks, Claude's critiques), with a dot until seen. The
+  keyboard icon beside it lists the shortcuts of the current screen; the menu icon (top
+  left) holds every command, so nothing needs a toolbar.
 - **Colors are never judged on a tinted ground.** The canvas is neutral gray in both
   themes; checkerboard behind transparent pixels; integer zoom; grid from 4x.
-- **Author colors are the same everywhere**: red pencil = you, blue pencil = Claude,
-  ochre outline = a check. Status uses a shape and a color (✓ ! ✕), not color alone.
+- **Author colors are the same everywhere**: coral = you, teal = Claude,
+  ochre = a check. Status uses a shape and a color (✓ ! ✕), not color alone.
 - Technical: one local page served by `pw view` on 127.0.0.1 (stdlib HTTP server, plain
   HTML/CSS/JS in the package, no build step); polls the workspace every 2 s; writes only
   masks and history through the core functions, never pixels; refuses non-local clients
@@ -177,6 +181,18 @@ Screens the spec lists that wait for their milestone.
 <!-- -->
 
 > **✎ Notes** · `SCREENS › S07 · Not in M2`
+> _(your notes here — replace this line)_
+
+## What changed in revision 3
+
+- New look: no cream or paper tones and no hard pixel-style edges in the chrome; soft
+  gray surfaces, rounded panels, pill buttons, line icons, a friendlier typeface.
+- Inbox bell, shortcuts icon and menu icon added (one place for notices, contextual keys).
+- Authors shown as small colored avatars (Y, C, !) in Issues and History.
+
+<!-- -->
+
+> **✎ Notes** · `SCREENS › What changed in revision 3`
 > _(your notes here — replace this line)_
 
 ## What changed in revision 2
