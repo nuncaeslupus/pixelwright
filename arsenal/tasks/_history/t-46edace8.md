@@ -5,6 +5,7 @@ label: "T48: PixelLab"
 priority: 5
 deps: [t-fc975e68]
 tags: [m3]
+status: merged
 ---
 
 PixelLab adapter. Built from the provider's current API docs at implementation time; capability flags, price per image, licence note, recorded responses with keys stripped. Real calls only in the owner's local session.
