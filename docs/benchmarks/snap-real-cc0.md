@@ -45,3 +45,24 @@ few borders leave the grid underdetermined. Worst mode: blur (90.8% pixels).
 - No CC0 image found uses a full 256-color VGA palette with soft lighting gradients;
   a synthetic low-contrast dither case pins that behaviour at x12
   (`test_noisy_low_contrast_dither_*`, about half the seeds recovered, none on main).
+
+## VGA adventure screenshots (study only)
+
+Native 320x200-era room maps from four commercial 1990s VGA point-and-click games
+(fetched from a map archive for this one-off run; not committed, not redistributed).
+Stitched maps exceed 256 colors overall, but each crop has 4-200 colors, often with
+dithering and close lighting shades. Same protocol: 9 maps, 1980 cases.
+
+| | scale-exact | pixels (exact index) | pixels within RGB 12 |
+|---|---|---|---|
+| before | 94.8% | 81.6% | |
+| after the uniformity guard | 96.5% | 83.1% | 92-100% per mode |
+
+The multiple check of the previous fix over-picked twice the scale on blurred crops
+(6 -> 12, 7 -> 14, 8 -> 16): art drawn mostly in 2x2 blocks keeps most borders on the
+coarser grid. Guard: the multiple must also have an inner error no larger than the
+pick's (+ 1 RMS). Blur 89.9 -> 92.2%, noise 94.2 -> 97.7%; synthetic set unchanged.
+
+Exact-index pixel accuracy is low because VGA shading uses neighbor colors a few RGB
+units apart, below the noise and JPEG error; within 12 RGB units the recovered cells
+match. x2 stays the weakest scale (88%).
