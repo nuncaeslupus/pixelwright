@@ -83,3 +83,9 @@ def test_masks_are_indexed(ws: Workspace) -> None:
     ]
     with pytest.raises(FileExistsError):
         asset.add_mask("focal", b"png")
+
+
+def test_extras_cannot_override_core_meta(ws: Workspace) -> None:
+    asset = ws.new_asset("chr-hero", "sprite")
+    with pytest.raises(ValueError, match="reserved"):
+        asset.new_version("snap", {"image.png": b"x"}, stage="approved")

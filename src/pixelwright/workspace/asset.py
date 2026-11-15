@@ -30,6 +30,17 @@ VERSION = re.compile(r"^v(\d{4,})$")
 FILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SUBDIRS = ("inputs", "drafts", "versions", "masks", "export")
 _RESERVED_FILES = {"meta.yaml"}
+_META_CORE = {
+    "schema",
+    "version",
+    "parent",
+    "step",
+    "params",
+    "stage",
+    "created",
+    "inputs",
+    "outputs",
+}
 
 
 def utc_now() -> str:
@@ -109,6 +120,9 @@ class Asset:
         """
         if not files:
             raise ValueError("a version needs at least one file")
+        clash = set(extra) & _META_CORE
+        if clash:
+            raise ValueError(f"reserved meta keys cannot be passed as extras: {sorted(clash)}")
         if parent is not None and not (self.versions_dir / parent / "meta.yaml").is_file():
             raise FileNotFoundError(f"parent version not found: {parent}")
         tmp = self.versions_dir / f".tmp-{uuid.uuid4().hex}"
