@@ -31,6 +31,7 @@ from pixelwright.io.aseprite import flatten_frames, read_aseprite
 from pixelwright.io.palette_io import read_palette, read_ramps
 from pixelwright.io.png import encode_png, read_png
 from pixelwright.workspace import Workspace
+from pixelwright.workspace.next_step import next_step
 
 TOKEN_HEADER = "X-PW-Token"
 STATIC = resources.files("pixelwright.viewer") / "static"
@@ -136,6 +137,7 @@ def asset_detail(v: Viewer, q: Query, b: Body, p: dict[str, str]) -> Reply:
     events = cli(v, "inbox", reader="human").data["items"]
     inbox = sum(e.get("asset") == asset.id for e in events)
     body = {"id": asset.id, "spec": asset.spec(), "versions": versions, "inbox": inbox}
+    body["next"] = next_step(asset).to_dict()
     return Reply({**body, **_palette_info(Workspace.open(v.root), asset.spec().get("palette"))})
 
 
