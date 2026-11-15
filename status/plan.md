@@ -1,12 +1,12 @@
-# Plan: pixelwright M2 (viewer and critique loop)
+# Plan: pixelwright M3 (generation and a guided first run)
 
 **Date**: 2026-11-15
-**Specification**: `status/specification.md` (M2 in §4) and `status/viewer/screens.md` (r4, accepted 2026-11-15)
+**Specification**: `status/m3/spec.md` (r1, approved 2026-11-15); provider contract in `status/specification.md` §2.9 and §5
 **Author**: Claude (for the repository owner)
 **Revision**: 1
 **Status**: approved (2026-11-15, revision 1) — without annotations
 **Revision log**:
-- r1 — first draft: M2 task split (T19-T33). The M0-M1 plan is in `status/archive/plan-m0-m1.md`.
+- r1 — first draft: M3 task split (T34-T51). The M2 plan is in `status/archive/plan-m2.md`.
 
 > Review record, kept the way the spec keeps its own: each round of notes bumps
 > **Revision** with a log line naming the `<repo>-plan-v<N>-<date>-notes.md`
@@ -18,135 +18,162 @@
 
 ### Architecture overview
 
-M2 adds three things on top of the M1 package, all over the same workspace files:
+M3 adds a painter in front of the M1-M2 pipeline and a guide around it:
 
-- **Issues and critique** (`workspace/`, `cli/`): an issue is a `masks.yaml` entry with a
-  region (mask PNG, box, or the whole image), rule, note, author, version and status.
-  `critique.md` gets a parseable format whose complaints point at issues. Stages
-  `quantize` and `clean` take `--mask <issue>` and change pixels only inside it.
-- **Viewer** (`src/pixelwright/viewer/`): `pw view` serves one page (plain HTML/CSS/JS and
-  two OFL font files shipped as package data, no build step) from a stdlib
-  `ThreadingHTTPServer` on 127.0.0.1. A small JSON API calls the same functions as the CLI
-  command registry, so the viewer adds no business logic of its own.
-- **Plugin v0** (`plugin/`): Claude Code skills for art direction (critique protocol, review
-  loop, zone-fix loop, style definition) that drive `pw` / `pw mcp`, starting from
-  `pw inbox`.
-
-Plus the small M1 leftovers chosen for M2 (`style propose|test`, `palette edit`,
-`render --view gif`, `grid` from the CLI) and the gaps found by the real Aseprite test
-(`load_version` through the `.aseprite` codec, `palette discover --asset`, positional
-`pw init <path>`).
+- **Providers** (`src/pixelwright/core/providers/`): the `Provider` protocol, `GenRequest`,
+  `GenResult`, `Capabilities` and `Cost` from the main spec §5; a registry by name; a
+  request hasher (canonical JSON plus SHA-256 of every input image); a file cache in the
+  workspace `cache/`; retry 2x with backoff on 429/5xx; a budget guard and a cost ledger.
+  Adapters are one module each: `replay`, `comfyui`, `gemini`, `retro_diffusion`,
+  `pixellab`, `gpt_image`. HTTP goes through one small client (`urllib`, injectable
+  transport) so tests replay recorded responses and never touch the network.
+- **Generation commands** (`cli/`, `mcp/`): `generate` and `regen-region` write candidate
+  versions through the existing `Asset` API, reading the style guide's generation preset
+  for the provider. `cost`, `doctor` and `next` are read-only.
+- **Guided first run**: `pw tour` builds a workspace in a temp or given folder from a
+  bundled sample drawn by code (`fixtures/tour.py`), runs every step with the `replay`
+  provider, prints a short "what happened / why / look at" block per step, and ends by
+  opening the viewer. `pw next <id>` and the viewer hint share one function
+  (`workspace/next_step.py`) that maps an asset's state to the next action.
+- **Benchmark** (`src/pixelwright/bench/`): a run matrix (providers x chains x briefs x
+  samples) with a cost estimate shown before anything is sent, detector scores from the
+  check catalog, a Claude pairwise file Claude fills through MCP, a blind pairwise page in
+  the viewer for the artist, Bradley-Terry ranking, and `report.html`.
 
 ### Data flow
 
-```drawspec
-{"version": 1, "kind": "flow", "title": "M2 review loop",
- "nodes": [
-  {"id": "cl", "text": "Claude: pw / pw mcp"},
-  {"id": "ws", "text": "workspace files"},
-  {"id": "vw", "text": "pw view (browser)"},
-  {"id": "pp", "text": "person"}
- ],
- "edges": [
-  {"from": "cl", "to": "ws", "label": "writes"},
-  {"from": "ws", "to": "vw", "label": "polls"},
-  {"from": "pp", "to": "vw", "label": "reviews"},
-  {"from": "vw", "to": "ws", "label": "writes"},
-  {"from": "ws", "to": "cl", "label": "inbox"}
- ]}
+```text
+pw generate bg01 --provider comfyui --mode img2img --n 2
+  -> style preset (style.yaml generation.comfyui) + asset sketch + palette
+  -> GenRequest -> hash -> cache hit? -> GenResult (cost 0, logged)
+                        -> miss: budget guard -> adapter.generate -> cache write -> ledger
+  -> one version per image (stage draft, or experiment with --experiment),
+     meta.yaml: provider, model, mode, request_hash, seed, cost_usd, cache_hit, licence
+  -> envelope {"ok": true, "data": {"versions": ["v0007", "v0008"], "cost_usd": 0.0}}
 ```
 
 ### State changes
 
-- `masks.yaml` schema `masks@2`: entries gain `version`, `status` (`open` | `fixed`),
-  `fixed_in`, `region` (`mask` | `box` | `image`), optional `box`. `masks@1` files read as
-  `open`, version unknown, region `mask`; the first write upgrades the file.
-- `critique.md`: YAML front matter (`version`, `compared_to`, `verdict`) and one `##` per
-  complaint with `issue: <id>`; written by `pw critique write`, parsed for the viewer.
-- `history.jsonl`: new events `issue_add`, `issue_resolve`, `decision_revert`; existing
-  events unchanged.
-- `asset.yaml`: `palette` set by `pw palette discover --asset`.
+| Component | File | Change | Description |
+|---|---|---|---|
+| core | `pixelwright.toml` | UPDATE (optional tables) | `[providers.<name>]` (enabled, base_url, model, params), `[budget]` (`monthly_usd = 5.0`), `[defaults]` (provider per asset kind) |
+| core | `cost.jsonl` | CREATE | One JSON line per call: time, provider, model, request_hash, n, cost_usd, cache_hit, asset, version |
+| core | `.pixelwright/secrets.toml` | CREATE (by user) | `[keys] gemini = "..."`; git-ignored by `pw init`; env vars `PW_<PROVIDER>_KEY` win |
+| core | `cache/<hash[:2]>/<hash>/` | CREATE | `request.json`, `response.json` (raw, keys stripped), `out_<n>.png` |
+| core | `versions/vNNNN/meta.yaml` | UPDATE (extra fields) | `provider`, `model`, `mode`, `request_hash`, `seed`, `cost_usd`, `cache_hit`, `licence` |
+| core | `style/style.yaml` | READ | `generation.<provider>`: preamble, negative, references, lora, strength, steps |
+| bench | `benchmarks/<date>/` | CREATE | `matrix.yaml`, `runs/`, `scores.json`, `claude_pairs.jsonl`, `human_pairs.jsonl`, `report.html` |
+
+All new fields are optional; a workspace from M2 loads unchanged.
 
 ### Contracts
 
-HTTP API (`pw view`, all JSON except images; every write needs header `X-PW-Token`, the
-per-run token embedded in the page; requests with a non-local peer or a `Host` other than
-`127.0.0.1:<port>` / `localhost:<port>` get 403):
+**`GenRequest`** (frozen dataclass): `mode` (`txt2img|img2img|edit|inpaint`), `prompt`,
+`negative`, `init_image` (path or None), `mask` (path or None), `references` (paths),
+`palette` (list of hex or None), `size` (w, h), `seed` (int or None), `n` (1-4),
+`params` (dict). Hash = SHA-256 of canonical JSON with image paths replaced by their
+SHA-256.
 
-| Method | Path | Returns / does |
-|---|---|---|
-| GET | `/api/assets` | cards: id, kind, newest version, stage, status line, thumbnail URL |
-| GET | `/api/assets/<id>` | spec, versions (stage, parent, steps), inbox count |
-| GET | `/api/assets/<id>/<v>/image.png?view=color\|gray\|values\|silhouette` | native-size PNG |
-| GET | `/api/assets/<id>/<v>/report` | `report.json` |
-| GET | `/api/assets/<id>/<v>/frames` | frames, durations, tags (from `.aseprite`) |
-| GET | `/api/assets/<id>/diff?a=&b=` | changed mask PNG URL, counts, check deltas |
-| GET | `/api/assets/<id>/issues?version=` | issues, critique verdict |
-| GET | `/api/assets/<id>/history` | history entries, newest first |
-| GET | `/api/inbox?since=` | new versions, decisions, issues, notes |
-| POST | `/api/assets/<id>/issues` | add (mask PNG base64, box, or none) |
-| POST | `/api/assets/<id>/issues/<issue>/resolve` | mark fixed in a version |
-| POST | `/api/assets/<id>/<v>/decision` | approve / reject (+ note; reject needs one) |
-| POST | `/api/assets/<id>/revert` | log `decision_revert` for the last decision (undo) |
+**Errors** (envelope from main spec §5): `provider_unavailable` (exit 5, e.g. ComfyUI not
+running, with the fix in `message`), `provider_error` (exit 5, after retries),
+`capability_missing` (exit 2, e.g. inpaint on Gemini), `missing_key` (exit 2, names the
+env var and the secrets file), `budget_exceeded` (exit 6, with spent, limit and estimate).
 
-Errors use the CLI envelope's `error.code` / `error.message`. New CLI commands (same
-envelope, mirrored in MCP): `issue add|list|resolve`, `critique write|show`, `history`,
-`status`, `inbox`, `view [--open]`.
+**CLI** (all with `--json`):
+
+| Command | Result `data` |
+|---|---|
+| `pw generate <id> --provider --mode [--prompt/--prompt-file] [--n] [--seed] [--experiment] [--dry-run]` | `versions`, `cost_usd`, `cache_hits`; `--dry-run`: `request_hash`, `estimate_usd` |
+| `pw regen-region <id> --issue <n> --provider [--version]` | `version`, `pixels_changed`, `issue` |
+| `pw cost [--month] [--by provider\|asset]` | `spent_usd`, `limit_usd`, `rows` |
+| `pw doctor` | one row per check: Python, Aseprite, each provider (key present, reachable), budget, ComfyUI models |
+| `pw next <id>` | `step`, `command`, `why` |
+| `pw tour [--path] [--no-view]` | `workspace`, `steps` |
+| `pw bench run --matrix <file> [--yes]`, `pw bench rank`, `pw bench report` | run ids, estimate; ranking; report path |
+
+**MCP**: `generate`, `regen_region`, `cost_report`, `next_step`, `bench_*`, from the same
+registry (M2 pattern).
 
 ### Technology choices
 
-- Stdlib `http.server` + vanilla JS modules: no web framework, no Node build, nothing new
-  to install (`R-FORM-2`, spec §2.8 "no UI framework required").
-- Fonts: Atkinson Hyperlegible Next and Mono (OFL), shipped as package data.
-- Viewer end-to-end tests with Playwright (dev dependency only; the CI image needs
-  Chromium).
+| Choice | Justification |
+|---|---|
+| stdlib `urllib` with an injectable transport | No new HTTP dependency; recorded-response tests are trivial |
+| ComfyUI HTTP API (`/prompt`, `/history`, `/view`) with workflow JSON per preset in package data | Main spec contract; presets are editable files, not code |
+| Bradley-Terry by MM iteration in numpy | ~20 lines; no stats dependency |
+| Sample art drawn by code | D-M3-4: no third-party images; deterministic |
 
 ### Out of scope
 
-Providers and `generate` (M3); scene preview, light zones, rigs and cross-frame checks
-(M4); LoRA (M5); editing pixels in the viewer (never: Aseprite does that).
+Style LoRA training, `animate` mode, scene preview and light zones, rigs, generation from the
+viewer (D-M3-5), any provider without a licence note.
+
+---
 
 ## Implementation tasks
 
 | T# | Description | Service | Size | Depends | Gate | Tests |
 |----|-------------|---------|------|---------|------|-------|
-| T19 | Issues model | workspace | S | — | `make_check_exit_code == 0` | `test_masks_v1_reads_as_open_issues` in `tests/workspace/test_issues.py` — a `masks@1` file loads with status open and region mask |
-| T20 | Issue and inbox commands | cli, mcp | M | T19 | `make_check_exit_code == 0` | `test_inbox_since_lists_new_versions_and_decisions` in `tests/cli/test_inbox.py` — only events after `--since` are returned |
-| T21 | Critique format | workspace, cli | S | T19 | `make_check_exit_code == 0` | `test_critique_roundtrip_keeps_verdict_and_issue_links` in `tests/workspace/test_critique.py` — write then parse gives the same front matter and issue ids |
-| T22 | Masked stages | core, cli | M | T19 | `pixels_changed_outside_mask == 0` | `test_clean_with_mask_changes_nothing_outside` in `tests/core/test_masked_stages.py` — quantize and clean with `--mask` leave every pixel outside the mask identical |
-| T23 | Diff deltas | cli | S | — | `make_check_exit_code == 0` | `test_diff_reports_check_deltas_and_changed_area` in `tests/cli/test_diff.py` — deltas per check, changed count and bounding box |
-| T24 | CLI leftovers | cli, core | M | — | `make_check_exit_code == 0` | `test_render_gif_matches_frame_count_and_durations` in `tests/cli/test_render.py` — GIF has the file's frames and timings; `test_palette_discover_asset_sets_asset_palette`; `test_init_accepts_positional_path` |
-| T25 | Bridge on the codec | io, plugin | S | — | `make_check_exit_code == 0` | `test_load_version_prefers_aseprite_file` in `tests/plugin/test_lua_helpers.py` — a version with `image.aseprite` opens with its layers |
-| T26 | Style and palette edit | workspace, cli | M | — | `make_check_exit_code == 0` | `test_style_test_reports_per_asset_results` in `tests/cli/test_style.py` — `style test` runs checks on the style's test assets |
-| T27 | Viewer server | viewer | L | T20, T21, T23 | `api_endpoints_covered == 13` | `test_write_without_token_is_forbidden` and `test_foreign_host_is_forbidden` in `tests/viewer/test_server.py` — 403 on both; one test per endpoint |
-| T28 | Viewer Look | viewer | L | T27 | `e2e_failed == 0` | `test_approve_writes_history_with_measurements` in `tests/viewer/e2e/test_look.py` — clicking Approve logs a decision with the check results |
-| T29 | Viewer Compare | viewer | M | T28 | `e2e_failed == 0` | `test_compare_defaults_a_to_latest_approved` in `tests/viewer/e2e/test_compare.py` — A is the newest approved version |
-| T30 | Viewer Mark | viewer | M | T28 | `e2e_failed == 0` | `test_saved_mark_is_an_issue_in_native_pixels` in `tests/viewer/e2e/test_mark.py` — the saved mask PNG has the canvas's native size and the drawn pixels |
-| T31 | Viewer Play | viewer | M | T28, T25 | `e2e_failed == 0` | `test_play_uses_file_durations` in `tests/viewer/e2e/test_play.py` — frame advance follows the `.aseprite` durations |
-| T32 | Viewer polish | viewer | S | T29, T30, T31 | `e2e_failed == 0` | `test_every_control_has_a_title_and_shortcut` in `tests/viewer/e2e/test_a11y.py` — every button has a hover title; every mode reachable by keyboard; both themes render |
-| T33 | Plugin v0 skills | plugin | M | T20, T21, T22 | `make_check_exit_code == 0` | `test_plugin_skills_reference_existing_commands` in `tests/plugin/test_skills.py` — every `pw` command a skill names exists in the registry |
+| T34 | Providers | core | M | — | `make_check_exit_code == 0` | `test_same_request_twice_is_cache_hit_with_zero_cost` in `tests/core/test_providers.py` — the second call returns byte-identical images, cost 0, `cache_hit` true |
+| T35 | Cost control | core, cli | M | T34 | `make_check_exit_code == 0` | `test_call_over_budget_is_refused_before_send` in `tests/core/test_budget.py` — exit 6 and the fake transport saw no request |
+| T36 | Replay and sample | core, fixtures | S | T34 | `make_check_exit_code == 0` | `test_tour_sample_is_deterministic` in `tests/core/test_tour_sample.py` — two builds give identical sketch and painted PNG hashes |
+| T37 | generate | cli, mcp | M | T35, T36 | `make_check_exit_code == 0` | `test_generate_n2_writes_two_versions_with_provider_meta` in `tests/cli/test_generate.py` — two versions, each `meta.yaml` with provider, request_hash, seed and cost |
+| T38 | Next step | workspace, viewer | M | T37 | `e2e_failed == 0` | `test_next_step_covers_every_asset_state` in `tests/workspace/test_next_step.py` — every state maps to a command that exists in the registry |
+| T39 | doctor | cli | S | T35 | `make_check_exit_code == 0` | `test_doctor_reports_missing_key_with_env_var_name` in `tests/cli/test_doctor.py` — a provider without key shows `PW_<NAME>_KEY` |
+| T40 | tour | cli | M | T38 | `tour_seconds <= 60` | `test_tour_runs_whole_loop_offline` in `tests/cli/test_tour.py` — exits 0 with network blocked, ends with an exported asset and one approved version |
+| T41 | Guide | docs, plugin | S | T40 | `make_check_exit_code == 0` | `test_plugin_skills_reference_existing_commands` in `tests/plugin/test_skills.py` — `first-run` names only commands in the registry |
+| T42 | ComfyUI | core | L | T34 | `make_check_exit_code == 0` | `test_comfyui_img2img_replays_recorded_history` in `tests/core/test_comfyui.py` — recorded `/prompt` and `/history` responses give the recorded image |
+| T43 | regen-region | cli, mcp | M | T37 | `pixels_changed_outside_mask == 0` | `test_regen_region_changes_nothing_outside_mask` in `tests/cli/test_regen_region.py` — byte compare outside the issue mask |
+| T44 | Candidates | viewer | M | T37 | `e2e_failed == 0` | `test_compare_shows_candidates_of_one_generate` in `tests/viewer/e2e/test_candidates.py` — siblings with the same request_hash appear side by side |
+| T45 | ComfyUI setup | docs, core | S | T42 | `make_check_exit_code == 0` | `test_presets_are_valid_workflow_json` in `tests/core/test_comfyui.py` — each preset loads and has the input nodes the adapter fills |
+| T46 | Gemini | core | M | T34 | `make_check_exit_code == 0` | `test_gemini_img2img_sends_references_and_parses_image` in `tests/core/test_gemini.py` — request body matches the recorded shape; image decoded |
+| T47 | Retro Diffusion | core | M | T34 | `make_check_exit_code == 0` | `test_retro_diffusion_sends_palette_and_strength` in `tests/core/test_retro_diffusion.py` — palette and strength in the body; image decoded |
+| T48 | PixelLab | core | M | T34 | `make_check_exit_code == 0` | `test_pixellab_inpaint_sends_mask` in `tests/core/test_pixellab.py` — mask in the body; image decoded |
+| T49 | GPT Image | core | M | T34 | `make_check_exit_code == 0` | `test_gpt_image_edit_sends_mask_and_parses_b64` in `tests/core/test_gpt_image.py` — edit request with mask; image decoded |
+| T50 | Bench run | bench, cli | L | T37 | `estimate_shown_before_send == 1` | `test_bench_run_refuses_without_yes_and_shows_estimate` in `tests/bench/test_run.py` — no request before `--yes`; estimate printed |
+| T51 | Ranking | bench, viewer | L | T50 | `e2e_failed == 0` | `test_bradley_terry_recovers_known_order` in `tests/bench/test_rank.py` — synthetic pairs rank in the true order; `test_blind_page_hides_provider_names` in `tests/viewer/e2e/test_blind.py` |
 
 ### Task details
 
-- **T19 Issues model**: `masks@2` (version, status, fixed_in, region mask/box/image), `Asset.add_issue`, `resolve_issue`, reading `masks@1`.
-- **T20 Commands**: `pw issue add|list|resolve`, `pw history`, `pw status <id>`, `pw inbox [--since]`; MCP mirrors from the registry.
-- **T21 Critique**: `critique.md` front matter + complaints linked to issues; `pw critique write|show`.
-- **T22 Masked stages**: `--mask <issue>` on `quantize` and `clean`; pixels outside unchanged; issue can be resolved by the new version.
-- **T23 Diff**: `pw diff` adds per-check deltas, changed pixel count and share, colors used, bounding box.
-- **T24 CLI leftovers**: `render --view gif` (GIF and APNG from frames), `check --only grid` on exports, `pw init <path>` positional (keeps `--workspace`), `palette discover --asset` writes `asset.yaml` palette.
-- **T25 Bridge**: `load_version.lua` opens `image.aseprite` when present (layers, frames); `send_to_pixelwright` keeps the `.aseprite` alongside the PNG.
-- **T26 Style and palette**: `style propose` (palette families and ramps from references), `style test` (checks on the style's test assets), `palette edit` (set, add, remove, reorder colors; ramps re-checked).
-- **T27 Viewer server**: `pw view [--port] [--open id/version]`, the API above, token and host checks, static files and fonts as package data.
-- **T28 Shell, Assets, Look**: layout, light/dark, top bar, versions strip, status bar (pixel info, view, grid, zoom), Issues/Checks/History panels, decision popover, inbox, shortcuts dialog, 2 s polling.
-- **T29 Compare**: side by side (synced), onion, swipe, difference; A/B selection; check deltas.
-- **T30 Mark**: brush, rectangle, fill, erase, size; issue form; issue without a mark; undo of strokes and saved issues.
-- **T31 Play**: frames strip, play/step, tag, speed, loop, onion skin.
-- **T32 Pass**: keyboard reachability, hover titles with shortcuts, both themes, a screenshot per screen for the record.
-- **T33 Plugin v0**: skills `art-direction` (critique protocol §2.7), `review-loop` (inbox → critique → issues → masked fixes → checks), `style-definition` (workflow 0); slash commands wrap them.
+- **T34 Framework**: protocol, dataclasses, registry, hasher, cache, retry/backoff, transport
+  injection, errors; a `fake` provider for tests only.
+- **T35 Cost control**: `[budget]` and secrets loading, guard before every non-cached call
+  (estimate + spent this month > limit → exit 6), `cost.jsonl`, `pw cost`, `.gitignore`
+  entries for `cache/`, `.pixelwright/secrets.toml`.
+- **T36 Replay and sample**: `replay` serves images from a folder keyed by request hash or
+  in order; `fixtures/tour.py` draws a small sketch (lines) and a "painted" version (soft
+  gradients and noise) at 4x of a 160x90 canvas, so snap and quantize have work to do.
+- **T37 generate**: modes txt2img/img2img/edit/inpaint per capability, style preset merge
+  (preamble + prompt, references, palette as input or swatch image), `--n` candidates,
+  `--experiment` stage, `--dry-run`; MCP tool.
+- **T38 Next step**: states (no source, sketch only, raw generated, snapped, quantized,
+  cleaned, checks failing, open issues, ready to approve, approved, exported) → command and
+  one-line why; `pw next`; the viewer shows it in the empty side panel and status bar.
+- **T39 doctor**: table output plus `--json`; each failing row says how to fix it.
+- **T40 tour**: steps with a "what happened / why / look at" block each; `--path` keeps the
+  workspace; opens `pw view` at the end unless `--no-view`.
+- **T41 Guide**: `docs/guide/how-it-works.md` (one drawspec diagram of the loop, glossary,
+  "your first real asset"); README and `pw --help` link it; plugin skill `first-run`.
+- **T42 ComfyUI**: queue a workflow, poll history, fetch images; txt2img, img2img, inpaint;
+  clear `provider_unavailable` when the server is down; recorded responses in tests.
+- **T43 regen-region**: build an inpaint request from the issue mask (box or PNG), paste
+  the result only inside the mask, resolve the issue with the new version.
+- **T44 Candidates**: Compare offers siblings sharing a request hash; pick one, reject the rest.
+- **T45 Setup**: install guide (ComfyUI, models, a pixel-art LoRA with a licence note),
+  presets for Flux and SDXL, and `status/m3/local-comfyui-test-prompt.md` for the owner's
+  local session.
+- **T46-T49 Paid adapters**: each from the provider's current API docs at implementation
+  time; capability flags, price per image, licence note, recorded responses with keys
+  stripped. Real calls only in the owner's local session.
+- **T50 Bench run**: `matrix.yaml` (main spec: 3 generators x 2 chains x 3 briefs x 3
+  samples), estimate, `--yes` to spend, resumable, detector scores per output.
+- **T51 Ranking**: Claude pairwise through MCP (`bench_pairs_next`, `bench_pair_record`),
+  blind pairwise page in the viewer, Bradley-Terry, `report.html`, `pw bench apply` writes
+  `[defaults]`.
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged
 
-**Merge order**: T19, T23, T24, T25, T26 (parallel); T20, T21, T22 (parallel); T27, T33; T28; T29, T30, T31 (parallel); T32
+**Merge order**: T34; T35, T36, T42, T46-T49 (parallel); T37, T39, T45; T38, T43, T44, T50; T40, T51; T41
 **Branch pattern**: `pw-T<N>-description` from the default branch
 
 ### Dependency graph
@@ -156,68 +183,70 @@ Generated from the **Depends** column — never drawn by hand.
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phases",
  "nodes": [
-  {"id": "P1", "text": "Phase 1\nT19, T23, T24, T25, T26, T20, T21,…"},
-  {"id": "P2", "text": "Phase 2\nT27, T33, T28, T29, T30, T31, T32"}
+  {"id": "P1", "text": "Phase 1\nT34, T35, T36, T42, T46, T47, T48,…"},
+  {"id": "P2", "text": "Phase 2\nT39, T45, T38, T43, T44, T50, T40,…"}
  ],
  "edges": [
   {"from": "P1", "to": "P2"}
  ]}
 ```
 
-**Phase 1** — T19, T23, T24, T25, T26, T20, T21, T22
+**Phase 1** — T34, T35, T36, T42, T46, T47, T48, T49, T37
 
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phase 1",
  "nodes": [
-  {"id": "T19", "text": "T19\nIssues model"},
-  {"id": "T23", "text": "T23\nDiff deltas"},
-  {"id": "T24", "text": "T24\nCLI leftovers"},
-  {"id": "T25", "text": "T25\nBridge on the codec"},
-  {"id": "T26", "text": "T26\nStyle and palette edit"},
-  {"id": "T20", "text": "T20\nIssue and inbox commands"},
-  {"id": "T21", "text": "T21\nCritique format"},
-  {"id": "T22", "text": "T22\nMasked stages"}
+  {"id": "T34", "text": "T34\nProviders"},
+  {"id": "T35", "text": "T35\nCost control"},
+  {"id": "T36", "text": "T36\nReplay and sample"},
+  {"id": "T42", "text": "T42\nComfyUI"},
+  {"id": "T46", "text": "T46\nGemini"},
+  {"id": "T47", "text": "T47\nRetro Diffusion"},
+  {"id": "T48", "text": "T48\nPixelLab"},
+  {"id": "T49", "text": "T49\nGPT Image"},
+  {"id": "T37", "text": "T37\ngenerate"}
  ],
  "edges": [
-  {"from": "T19", "to": "T20"},
-  {"from": "T19", "to": "T21"},
-  {"from": "T19", "to": "T22"}
+  {"from": "T34", "to": "T35"},
+  {"from": "T34", "to": "T36"},
+  {"from": "T35", "to": "T37"},
+  {"from": "T36", "to": "T37"},
+  {"from": "T34", "to": "T42"},
+  {"from": "T34", "to": "T46"},
+  {"from": "T34", "to": "T47"},
+  {"from": "T34", "to": "T48"},
+  {"from": "T34", "to": "T49"}
  ]}
 ```
 
-**Phase 2** — T27, T33, T28, T29, T30, T31, T32 (with T20, T21, T22, T23, T25 from earlier phases)
+**Phase 2** — T39, T45, T38, T43, T44, T50, T40, T51, T41 (with T35, T37, T42 from earlier phases)
 
 ```drawspec
 {"version": 1, "kind": "flow", "title": "Task dependencies — phase 2",
  "nodes": [
-  {"id": "T20", "text": "T20\nphase 1"},
-  {"id": "T21", "text": "T21\nphase 1"},
-  {"id": "T22", "text": "T22\nphase 1"},
-  {"id": "T23", "text": "T23\nphase 1"},
-  {"id": "T25", "text": "T25\nphase 1"},
-  {"id": "T27", "text": "T27\nViewer server"},
-  {"id": "T33", "text": "T33\nPlugin v0 skills"},
-  {"id": "T28", "text": "T28\nViewer Look"},
-  {"id": "T29", "text": "T29\nViewer Compare"},
-  {"id": "T30", "text": "T30\nViewer Mark"},
-  {"id": "T31", "text": "T31\nViewer Play"},
-  {"id": "T32", "text": "T32\nViewer polish"}
+  {"id": "T35", "text": "T35\nphase 1"},
+  {"id": "T37", "text": "T37\nphase 1"},
+  {"id": "T42", "text": "T42\nphase 1"},
+  {"id": "T39", "text": "T39\ndoctor"},
+  {"id": "T45", "text": "T45\nComfyUI setup"},
+  {"id": "T38", "text": "T38\nNext step"},
+  {"id": "T43", "text": "T43\nregen-region"},
+  {"id": "T44", "text": "T44\nCandidates"},
+  {"id": "T50", "text": "T50\nBench run"},
+  {"id": "T40", "text": "T40\ntour"},
+  {"id": "T51", "text": "T51\nRanking"},
+  {"id": "T41", "text": "T41\nGuide"}
  ],
  "edges": [
-  {"from": "T20", "to": "T27"},
-  {"from": "T21", "to": "T27"},
-  {"from": "T23", "to": "T27"},
-  {"from": "T27", "to": "T28"},
-  {"from": "T28", "to": "T29"},
-  {"from": "T28", "to": "T30"},
-  {"from": "T25", "to": "T31"},
-  {"from": "T28", "to": "T31"},
-  {"from": "T29", "to": "T32"},
-  {"from": "T30", "to": "T32"},
-  {"from": "T31", "to": "T32"},
-  {"from": "T20", "to": "T33"},
-  {"from": "T21", "to": "T33"},
-  {"from": "T22", "to": "T33"}
+  {"from": "T37", "to": "T38"},
+  {"from": "T35", "to": "T39"},
+  {"from": "T38", "to": "T40"},
+  {"from": "T40", "to": "T41"},
+  {"from": "T37", "to": "T43"},
+  {"from": "T37", "to": "T44"},
+  {"from": "T42", "to": "T45"},
+  {"from": "T37", "to": "T50"},
+  {"from": "T50", "to": "T51"}
  ]}
 ```
 
@@ -225,11 +254,12 @@ Generated from the **Depends** column — never drawn by hand.
 
 | Risk | Likelihood | Impact | Mitigation | Rollback |
 |---|---|---|---|---|
-| Viewer write endpoints reachable from another site (CSRF, DNS rebinding) | Med | High | Bind 127.0.0.1, check `Host`, per-run token header, no CORS | Start read-only (`--read-only`) |
-| `masks@2` breaks existing workspaces | Low | Med | Read `@1` forever; upgrade on first write; fixture test | Writer can emit `@1` again |
-| Playwright in CI is slow or flaky | Med | Low | One Chromium, `--trace off`, e2e in its own job; unit tests cover the API | Mark e2e job non-blocking while fixing |
-| Masked stages leak changes at mask edges | Med | Med | Gate measures pixels changed outside the mask = 0 | Revert the version; history keeps the parent |
-| Viewer grows into an editor | Low | Med | Spec rule: never edits pixels; review checks the API has no pixel writes | — |
+| A paid API changed shape since the research | High | Med | Each adapter is written from current docs; recorded responses; the owner runs one real call per adapter locally before the benchmark | Disable the adapter in `pixelwright.toml` |
+| Key leaks into git, cache or logs | Low | High | Keys only in env or git-ignored secrets file; recorder strips auth headers and query keys; gitleaks in CI | Rotate the key |
+| Unexpected spend | Low | Med | Budget guard before every call, `--dry-run`, bench refuses without `--yes` and shows the estimate | Hard stop at the monthly limit |
+| ComfyUI setup is hard on the owner's machine | Med | Med | `pw doctor` checks the server and models; setup guide; replay keeps everything else usable | Use a paid provider meanwhile |
+| The tour still does not make the loop clear | Med | High | Owner runs it before M3b; each step's text is reviewed; feedback round planned | Rewrite step texts; no code risk |
+| Inpaint result bleeds outside the mask | Med | Med | Gate: pixels changed outside mask = 0; paste only inside the mask | History keeps the parent |
 
 ## Evidence log
 
@@ -241,6 +271,5 @@ Generated from the **Depends** column — never drawn by hand.
 ## Sign-off
 
 - [ ] Design reviewed by the owner
-- [ ] Contracts agreed (API table above, `masks@2`, `critique.md`)
-- [ ] Migration strategy validated (`masks@1` read forever)
+- [ ] Contracts agreed (state changes and CLI table above)
 - [ ] Ready for execution
