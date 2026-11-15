@@ -4,7 +4,7 @@
 **Specification**: `status/specification.md`
 **Author**: Claude (for the repository owner)
 **Revision**: 1
-**Status**: draft
+**Status**: approved (2026-11-15, revision 1) — without annotations
 **Revision log**:
 - r1 — first draft: technical solution and the M0-M1 task split; M2-M5 are planned in later design rounds
 
