@@ -4,7 +4,7 @@
 **Specification**: `status/m3/spec.md` (r1, approved 2026-11-15); provider contract in `status/specification.md` §2.9 and §5
 **Author**: Claude (for the repository owner)
 **Revision**: 1
-**Status**: draft
+**Status**: approved (2026-11-15, revision 1) — without annotations
 **Revision log**:
 - r1 — first draft: M3 task split (T34-T51). The M2 plan is in `status/archive/plan-m2.md`.
 
