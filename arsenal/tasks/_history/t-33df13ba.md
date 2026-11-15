@@ -5,6 +5,7 @@ label: "T5: Workspace"
 priority: 5
 deps: [t-2a519d6c]
 tags: [m0-m1]
+status: merged
 ---
 
 Workspace: `pixelwright.toml` roles/paths, stages, `.gitignore` writer, asset folder, versions, `meta.yaml`, `history.jsonl`, masks, schema versioning.
