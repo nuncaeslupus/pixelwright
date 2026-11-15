@@ -6,6 +6,7 @@ pixels keep no colour index (they read back as index 0 with alpha False).
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import numpy as np
@@ -43,15 +44,16 @@ def _from_paletted(im: PILImage.Image) -> IndexedImage:
     return IndexedImage(indices, Palette(colors), None if alpha.all() else alpha)
 
 
+def encode_png(image: Image) -> bytes:
+    im, params = _to_pil(image)
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=False, **params)
+    return buf.getvalue()
+
+
 def write_png(path: Path, image: Image) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        im, params = _to_pil(image)
-        im.save(tmp, format="PNG", optimize=False, **params)
-        write_bytes_atomic(path, tmp.read_bytes())
-    finally:
-        tmp.unlink(missing_ok=True)
+    write_bytes_atomic(path, encode_png(image))
 
 
 def _to_pil(image: Image) -> tuple[PILImage.Image, dict[str, int]]:
