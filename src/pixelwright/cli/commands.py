@@ -715,3 +715,145 @@ def cmd_prune(root: Path, a: dict[str, Any]) -> Outcome:
                 entry.unlink()
     removed = [_rel(ws, e) for e in entries]
     return Outcome(stage=a["stage"], data={"removed": removed, "dry_run": a["dry_run"]})
+
+
+# -- issues, history, status, inbox -------------------------------------------------
+@command(
+    "issue",
+    "add, list or resolve issues (a region, a rule, a note) on an asset",
+    ASSET,
+    Param(
+        "action",
+        help="what to do",
+        required=True,
+        positional=True,
+        choices=("add", "list", "resolve"),
+    ),
+    Param("id", help="issue id (add: default derived from the rule; resolve: required)"),
+    Param("file", help="mask PNG (white = inside) for add"),
+    Param("box", help="x,y,w,h in native pixels for add"),
+    Param("version", help="version the issue is about (add) or that fixes it (resolve)"),
+    Param("rule", help="rule id, e.g. R-PIX-3", default=""),
+    Param("note", help="free text", default=""),
+    Param("author", help="who raises it", default="claude", choices=("human", "claude", "check")),
+    Param("status", help="list filter", default="all", choices=("open", "fixed", "all")),
+)
+def cmd_issue(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    asset = ws.asset(a["asset"])
+    if a["action"] == "list":
+        found = [i for i in asset.issues() if a["status"] in ("all", i["status"])]
+        if a["version"]:
+            found = [i for i in found if i["version"] in (a["version"], None)]
+        return Outcome(asset.id, data={"issues": found})
+    if a["action"] == "resolve":
+        if not a["id"]:
+            raise PwError("invalid", "issue resolve needs --id")
+        version = _version(asset, a["version"])
+        try:
+            entry = asset.resolve_issue(a["id"], version, author=a["author"])
+        except KeyError as err:
+            raise PwError("issue_not_found", str(err)) from err
+        return Outcome(asset.id, version, asset.stage(version), data={"issue": entry})
+    version = _version(asset, a["version"])
+    issue_id = a["id"] or _issue_id(asset, a["rule"])
+    box = _box(a["box"]) if a["box"] else None
+    png = Path(a["file"]).read_bytes() if a["file"] else None
+    try:
+        entry = asset.add_issue(
+            issue_id,
+            png=png,
+            box=box,
+            version=version,
+            rule=a["rule"],
+            note=a["note"],
+            author=a["author"],
+        )
+    except (ValueError, FileExistsError) as err:
+        raise PwError("invalid", str(err)) from err
+    return Outcome(asset.id, version, asset.stage(version), data={"issue": entry})
+
+
+def _issue_id(asset: Asset, rule: str) -> str:
+    stem = "".join(ch if ch.isalnum() else "-" for ch in (rule or "issue").lower()).strip("-")
+    stem = "-".join(part for part in stem.split("-") if part) or "issue"
+    taken = {i["id"] for i in asset.issues()}
+    n = 1
+    while f"{stem}-{n}" in taken:
+        n += 1
+    return f"{stem}-{n}"
+
+
+def _box(text: str) -> tuple[int, int, int, int]:
+    parts = text.split(",")
+    if len(parts) != 4 or not all(p.strip().isdigit() for p in parts):
+        raise PwError("invalid", f"box must be x,y,w,h, got {text!r}")
+    x, y, w, h = (int(p) for p in parts)
+    return x, y, w, h
+
+
+@command(
+    "history",
+    "the asset's log, newest first",
+    ASSET,
+    Param("since", help="only entries at or after this ISO time"),
+    Param("limit", "int", help="at most this many entries", default=50),
+)
+def cmd_history(root: Path, a: dict[str, Any]) -> Outcome:
+    asset = Workspace.open(root).asset(a["asset"])
+    entries = [h for h in reversed(asset.history()) if not a["since"] or h["time"] >= a["since"]]
+    return Outcome(asset.id, data={"history": entries[: a["limit"]]})
+
+
+def _asset_status(asset: Asset) -> dict[str, Any]:
+    versions = asset.versions()
+    newest = versions[-1] if versions else None
+    decided = {h.get("version") for h in asset.history() if h["event"] == "decision"}
+    report = asset.versions_dir / newest / "report.json" if newest else None
+    flagged = None
+    if report is not None and report.exists():
+        flagged = sum(r["status"] != "pass" for r in C.read_report(report))
+    return {
+        "asset": asset.id,
+        "kind": asset.spec()["kind"],
+        "versions": [{"version": v, "stage": asset.stage(v)} for v in versions],
+        "newest": newest,
+        "waiting_for_decision": newest is not None and newest not in decided,
+        "flagged_checks": flagged,
+        "open_issues": sum(i["status"] == "open" for i in asset.issues()),
+    }
+
+
+@command(
+    "status",
+    "versions, stages, open issues and what an asset is waiting on",
+    Param("asset", help="asset id (default: every asset)", positional=True),
+)
+def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    ids = [a["asset"]] if a["asset"] else ws.assets()
+    return Outcome(a["asset"], data={"assets": [_asset_status(ws.asset(i)) for i in ids]})
+
+
+@command(
+    "inbox",
+    "what others did since you last acted (default: since Claude's last entry)",
+    Param("since", help="ISO time (default: after the reader's own last entry, per asset)"),
+    Param("reader", help="whose inbox", default="claude", choices=("claude", "human")),
+)
+def cmd_inbox(root: Path, a: dict[str, Any]) -> Outcome:
+    ws = Workspace.open(root)
+    items: list[dict[str, Any]] = []
+    for asset_id in ws.assets():
+        log = ws.asset(asset_id).history()
+        since = a["since"]
+        if since is None:
+            own = [h["time"] for h in log if h.get("author") == a["reader"]]
+            since = own[-1] if own else ""
+        items += [
+            {"asset": asset_id, **h}
+            for h in log
+            if h["time"] > since and h.get("author") != a["reader"]
+        ]
+    items.sort(key=lambda h: h["time"])
+    return Outcome(data={"items": items, "count": len(items)})
