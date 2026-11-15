@@ -1,9 +1,11 @@
 ---
 name: style-definition
-description: Build or revise a pixelwright style guide with the artist - references, palette families and ramps, light and outline conventions, test assets. Use at the start of a project or when the artist wants to change the look.
+description: Builds or revises a pixelwright style guide with the artist - references, palette families and ramps, light and outline conventions, test assets. Use when the user starts a project, or wants `style/style.yaml` changed. Not for judging one asset against the guide (critique).
 ---
 
 # Style definition
+
+CANARY: style-definition-loaded-2026-11-15-a5b9bd88-a4a6b853676da01f
 
 The style guide (`style/style.yaml`) drives both generation and checks. It is versioned:
 every change is a `pw style bump`, and assets made under an older version show as stale.

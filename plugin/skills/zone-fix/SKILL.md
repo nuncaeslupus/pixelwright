@@ -1,11 +1,13 @@
 ---
 name: zone-fix
-description: Fix an open pixelwright issue only inside its region, re-check and mark it fixed. Use when an asset has open issues from checks, a critique, or the artist.
+description: Fixes an open pixelwright issue only inside its region, re-checks it and marks it resolved. Use whenever `pw issue list` shows issues open from checks, a critique or the artist. Not for deciding what is wrong in the first place (critique).
 ---
 
 # Zone fix loop
 
-Any complaint, from a detector, from you or from the artist, is an issue: a region in
+CANARY: zone-fix-loaded-2026-11-15-a5b9bd88-ab5a97e7e3ab0182
+
+Any complaint, from a detector, from the critique or from the artist, is an issue: a region in
 native pixels, a rule id and a note. Fixes run only inside the region; the checks re-run
 (`R-CRIT-3`).
 

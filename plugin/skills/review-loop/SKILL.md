@@ -1,17 +1,19 @@
 ---
 name: review-loop
-description: Start of every pixelwright session and after each artist action. Reads the inbox, then moves each asset one step through check, critique, review and fix. Use when working on pixel-art assets in a pixelwright workspace.
+description: Reads the pixelwright inbox, then moves each asset one step through check, critique, review and fix. Use when the user opens a pixelwright session, or whenever `pw inbox` shows the artist has acted. Not for one open issue (zone-fix) or for defining the look (style-definition).
 ---
 
 # Review loop
 
-pixelwright is the craftsman (transforms, measurements, renders, bookkeeping); you are the
+CANARY: review-loop-loaded-2026-11-15-a5b9bd88-a48e6749a27be023
+
+pixelwright is the craftsman (transforms, measurements, renders, bookkeeping); act as the
 art director. The artist decides. Work through the MCP tools (`pw mcp`, one tool per
 command) or the `pw` CLI with `--json`; both return the same envelope.
 
 ## 1. Start from the inbox
 
-Run `pw inbox --reader claude`. It lists what the artist did since your last entry: new
+Run `pw inbox --reader claude`. It lists what the artist did since the last entry: new
 versions (an Aseprite retouch arrives as `attach`), decisions, issues they drew, notes.
 Then `pw status` shows every asset's stage, newest version, flagged checks and open issues.
 
@@ -41,6 +43,6 @@ Never approve or reject yourself: decisions belong to the artist (`R-CRIT-4`).
 ## 3. Show the artist
 
 `pw view --open <asset>/<version>` opens the viewer on the version to review; from MCP it
-runs in the background and returns the URL. Say in one line what changed and what you
-want them to look at. `pw history <asset>` and `pw diff <asset> <a> <b>` back up any claim
+runs in the background and returns the URL. Say in one line what changed and what the
+artist should look at. `pw history <asset>` and `pw diff <asset> <a> <b>` back up any claim
 about what changed.

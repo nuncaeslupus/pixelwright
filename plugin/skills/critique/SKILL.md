@@ -1,9 +1,11 @@
 ---
 name: critique
-description: Write a pixelwright critique for a version - pairwise against the previous best and approved references, every complaint tied to a region, a rule id and a proposed fix. Use after `pw check`, before asking the artist to review.
+description: Writes a pixelwright critique for a version - pairwise against the previous best and the approved references, every complaint tied to a region, a rule id and a proposed fix. Use when the user wants a version judged, after `pw check` and before the artist reviews it. Not for applying the fixes it asks for (zone-fix).
 ---
 
 # Critique protocol
+
+CANARY: critique-loaded-2026-11-15-a5b9bd88-ad2d57745c27c405
 
 A critique is evidence for the artist, not a grade. Never give a bare 1-10 score; compare
 (`R-CRIT-2`).
