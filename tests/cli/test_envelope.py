@@ -109,6 +109,20 @@ def test_cli_json_envelope_on_every_command(
     run("issue", "hero", "resolve", "--id", "r-pix-3-1")
     assert run("status", "hero")["data"]["assets"][0]["open_issues"] == 1
     assert run("history", "hero")["data"]["history"]
+    (ws / "replay").mkdir()
+    (ws / "replay" / "a.png").write_bytes((files / "src.png").read_bytes())
+    regen = run(
+        "regen-region",
+        "hero",
+        "--issue",
+        "focal",
+        "--provider",
+        "replay",
+        "--keep-open",
+        "--prompt",
+        "x",
+    )
+    assert regen["data"]["issue"] == "focal"
     assert run("cost")["data"]["spent_usd"] == 0.0
     gen = run("generate", "hero", "--provider", "replay", "--prompt", "x", "--dry-run")
     assert gen["data"]["estimate_usd"] == 0.0
