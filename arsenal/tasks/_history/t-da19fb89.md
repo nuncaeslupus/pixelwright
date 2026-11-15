@@ -5,6 +5,7 @@ label: "T16: MCP server"
 priority: 5
 deps: [t-cabdce60]
 tags: [m0-m1]
+status: merged
 ---
 
 MCP server `pw mcp` from the same registry; image content for `render` capped at 1024 px.
