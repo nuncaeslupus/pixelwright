@@ -5,6 +5,7 @@ label: "T44: Candidates"
 priority: 5
 deps: [t-e0b2016c]
 tags: [m3]
+status: merged
 ---
 
 Compare offers siblings sharing a request hash; pick one, reject the rest.
