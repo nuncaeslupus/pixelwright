@@ -152,6 +152,9 @@ def cmd_new(root: Path, a: dict[str, Any]) -> Outcome:
     ASSET,
     Param("file", help="image file", required=True, positional=True),
     Param("as", help="what the file is", default="source", choices=("source", "sketch", "ref")),
+    Param("parent", help="version the file was edited from (source only)"),
+    Param("note", help="history note, e.g. what was retouched", default=""),
+    Param("author", help="who made it", default="human", choices=("human", "claude")),
 )
 def cmd_attach(root: Path, a: dict[str, Any]) -> Outcome:
     ws = Workspace.open(root)
@@ -161,15 +164,18 @@ def cmd_attach(root: Path, a: dict[str, Any]) -> Outcome:
         raise PwError("not_found", f"no such file: {src}")
     if a["as"] == "source":
         image = read_png(src)
-        outcome = _publish(ws, asset, "attach", image, None, file=src.name)
+        parent = _version(asset, a["parent"]) if a["parent"] else None
+        outcome = _publish(ws, asset, "attach", image, parent, file=src.name)
         outcome.data = {"width": image.width, "height": image.height}
-        return outcome
-    raw = src.read_bytes()
-    dest = asset.path / "inputs" / (f"sketch{src.suffix}" if a["as"] == "sketch" else "refs")
-    if a["as"] == "ref":
-        dest = dest / src.name
-    write_bytes_atomic(dest, raw)
-    return Outcome(asset.id, outputs=[_rel(ws, dest)], data={"sha256": sha256_bytes(raw)})
+    else:
+        raw = src.read_bytes()
+        folder = asset.path / "inputs"
+        dest = folder / (f"sketch{src.suffix}" if a["as"] == "sketch" else f"refs/{src.name}")
+        write_bytes_atomic(dest, raw)
+        outcome = Outcome(asset.id, outputs=[_rel(ws, dest)], data={"sha256": sha256_bytes(raw)})
+    if a["note"]:
+        asset.note(a["note"], author=a["author"], version=outcome.version)
+    return outcome
 
 
 # -- pipeline steps -----------------------------------------------------------
@@ -401,7 +407,9 @@ def cmd_render(root: Path, a: dict[str, Any]) -> Outcome:
         rgba = overlay(rgba, mask if mask is not None else _report_mask(asset, version, shape))
     out = ws.path("cache") / "renders" / asset.id / f"{version}-{view}.png"
     write_png(out, RGBImage(upscale(rgba, a["scale"])))
-    return Outcome(asset.id, version, asset.stage(version), [_rel(ws, out)], {"view": view})
+    source = _rel(ws, asset.versions_dir / version / IMAGE)
+    data = {"view": view, "source": source}
+    return Outcome(asset.id, version, asset.stage(version), [_rel(ws, out)], data)
 
 
 @command(

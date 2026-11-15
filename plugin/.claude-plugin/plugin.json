@@ -1,0 +1,11 @@
+{
+  "name": "pixelwright",
+  "description": "Drive the pixelwright pixel-art pipeline from Claude Code: MCP tools mirroring the pw CLI.",
+  "version": "0.1.0",
+  "mcpServers": {
+    "pixelwright": {
+      "command": "pw",
+      "args": ["mcp"]
+    }
+  }
+}
