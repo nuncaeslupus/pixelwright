@@ -20,6 +20,7 @@ from pixelwright.cli.registry import (
     Param,
     PwError,
 )
+from pixelwright.viewer import command as _view  # noqa: F401  (registers `view`)
 from pixelwright.workspace.config import CONFIG_NAME
 from pixelwright.workspace.schema import SchemaError
 

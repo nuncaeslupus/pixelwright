@@ -1,0 +1,29 @@
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/static/fonts/AtkinsonHyperlegibleNext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Mono";
+  src: url("/static/fonts/AtkinsonHyperlegibleMono.woff2") format("woff2");
+  font-display: swap;
+}
+:root {
+  --bg: #eef0f2; --surface: #f8f9fa; --line: #d7dbe0; --text: #23272e; --muted: #687280;
+  --canvas: #9aa0a6; --you: #e8735a; --claude: #2a9d8f; --check: #e0a030;
+  --sans: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1f2226; --surface: #272b30; --line: #363b42; --text: #e6e8eb; --muted: #9aa3ad; --canvas: #4a4f55; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--sans); }
+.bar { padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+main { padding: 20px; }
+.muted { color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.card .thumb { background: var(--canvas); border-radius: 10px; aspect-ratio: 1; display: grid; place-items: center; }
+.card img { image-rendering: pixelated; max-width: 90%; max-height: 90%; }

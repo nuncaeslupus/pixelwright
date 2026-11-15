@@ -97,6 +97,8 @@ def call_tool(name: str, raw: object, workspace: Path | None) -> dict[str, Any]:
             raise PwError("usage", f"unknown tool: {name}", exit_code=EXIT_USAGE)
         args = _arguments(cmd, raw)
         root = Path(args.pop("workspace")) if args.get("workspace") else workspace
+        if name == "view":  # never block the MCP server; it keeps the viewer alive
+            args["background"] = True
         outcome = run(cmd, args, root)
     except (PwError, OSError, ValueError) as exc:
         error = as_error(exc)

@@ -10,6 +10,7 @@ from pixelwright.core.image import RGBImage
 from pixelwright.core.palette import Color, Palette
 from pixelwright.io.palette_io import write_palette
 from pixelwright.io.png import write_png
+from pixelwright.viewer import command as view_command
 
 OK_KEYS = {
     "ok",
@@ -118,6 +119,9 @@ def test_cli_json_envelope_on_every_command(
     shown = run("critique", "hero", "show", "--version", "v0004")["data"]
     assert shown["complaints"][0]["issue"] == "focal"
     run("mask", "hero", "clear")
+    viewed = run("view", "--open", "hero/v0004", "--port", "0", "--background", "--no-browser")
+    assert viewed["data"]["url"].endswith("/#/hero/v0004")
+    view_command.stop(ws.resolve())
     assert seen == set(REGISTRY)
 
 
