@@ -1,12 +1,4 @@
-# Pixelwright — Specification (annotated edition)
-
-> Generated 2026-11-15. This is the document with a **note slot** after every section that has text of its own. Read it in any Markdown app. To annotate, replace the `_(your notes…)_` placeholder under any section. When done, send the file back — notes are acted on.
-
----
-
-# Specification
-
-## Preamble & scope
+# Specification: pixelwright, an LLM-directed pixel art pipeline
 
 **Date**: 2026-11-15
 **Ticket / PR**: initial specification
@@ -25,12 +17,9 @@
 Rule ids such as `R-PIX-4` refer to the adopted rules in
 `docs/research/pixelart-research_v1.10-source.md` (rendered: `docs/research/pixelart-research.html`).
 
-<!-- -->
+---
 
-> **✎ Notes** · `SPEC · intro`
-> _(your notes here — replace this line)_
-
-## §1 Problem statement
+## 1. Problem statement
 
 Hand-made pixel art at the level of the VGA-era point-and-click adventures (320x200, up to 256 colors, painted backgrounds, expressive animated characters) is slow and laborious, and one artist cannot produce the hundreds of backgrounds, sprites and animations a full adventure game needs. Image models now paint convincing scenes, but their output only looks like pixel art: it ignores the pixel grid and the palette, breaks clusters and lines, and is inconsistent between frames. Claude can direct art and write code but cannot reach that quality by drawing with code alone, and under a Claude Max subscription it cannot be called from a program; it has to drive the tool from Claude Code or Claude Desktop. pixelwright is the tool that closes this gap: a local pipeline in which image models paint, deterministic post-processing turns their output into true pixel art, automatic checks plus Claude's critique find defects region by region, Claude fixes or regenerates those regions, and the human artist sketches, approves and retouches in Aseprite. The research (`docs/research/`) shows this is the same shape as the original LucasArts process (paint, reduce to ~256 colors, retouch by hand at native resolution: `R-STYLE-1`), so quality depends mostly on post-processing, checks and the retouch loop rather than on the generator.
 
@@ -51,12 +40,7 @@ Hand-made pixel art at the level of the VGA-era point-and-click adventures (320x
 - [ ] Outputs can be still images, animations (sprite sheet + JSON, GIF/APNG, `.aseprite`) or both, and scene previews (character moving through a background) as GIF/APNG/MP4.
 - [ ] Privacy: gitleaks runs in the host gate and passes, and the pre-PR review checklist includes "no personal data, no references to unrelated projects". No deny-list of names is committed (a list of words to avoid would itself leak them); an optional personal list may live only outside the repository (for example in the user's home config) and is read by the check if present.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §1`
-> _(your notes here — replace this line)_
-
-## §2 Systems & Impact
+## 2. Systems & Impact
 
 Greenfield project: every component is new. "Needs changes" means "to be built".
 
@@ -74,24 +58,14 @@ Greenfield project: every component is new. "Needs changes" means "to be built".
 | Aseprite / LibreSprite | Infrastructure | Human editor; Aseprite compiled for personal use or bought | No | External dependency | Low |
 | NVIDIA GPU + ComfyUI | Infrastructure | Local generation and, later, style LoRA training | No (setup only) | Free, licence-clear route | Low |
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2`
-> _(your notes here — replace this line)_
-
-### §2.1 Actors and roles
+### 2.1 Actors and roles
 
 - **Artist (human)**: sketches (Wacom, any raster), picks references, approves or rejects versions, draws annotations, retouches in Aseprite. Owns final taste.
 - **Claude (driver)**: art direction (asset spec, prompts, reference choice), runs the pipeline through MCP/CLI, reads check reports, writes pairwise critiques with regions, applies zone fixes, writes animation key specs, keeps assets coherent with the style guide. Never the source of truth for pixel facts (`R-CRIT-1`).
 - **Image models (painters)**: produce detail and atmosphere from sketch, references and prompt. Swappable (`R-GEN-1`). How their input is prepared decides how well the output converts to pixel art, so every generation is conditioned on the style guide: style reference images, a prompt preamble, the scene palette (as palette input where the provider supports it, otherwise as a color swatch reference), lighting notes and provider presets. The goal is raw output already close to the target style and palette, so snap and quantize change little; the `style-match` check measures that distance before post-processing.
 - **pixelwright (craftsman)**: deterministic transforms, measurements, renders and bookkeeping. Never calls Claude.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.1`
-> _(your notes here — replace this line)_
-
-### §2.2 Workflows
+### 2.2 Workflows
 
 All workflows run inside one asset folder and append to its history.
 
@@ -108,12 +82,7 @@ All workflows run inside one asset folder and append to its history.
 10. **Scene lighting**: declare light zones on a background (mask + light color/intensity, or palette remap tables); a character crossing them is recolored through palette-mapped lighting (each sprite color maps to a darker/tinted color of its own ramp or the scene palette, never to off-palette colors), so it darkens in shadow and warms near a lamp while staying pixel art. Lit and unlit variants can be exported as palette swaps.
 11. **Effects** (`R-STYLE-3`): palette cycling, procedural effects (water, fire, flicker, rain, fog, particles) and lighting changes rendered frame by frame and quantized to the scene palette; any output passes the `palette` and `grid` checks.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.2`
-> _(your notes here — replace this line)_
-
-### §2.3 Workspace layout
+### 2.3 Workspace layout
 
 pixelwright works on a **workspace** that lives in the game repository, not in this repository. Everything is plain files so git, Aseprite, the viewer, the CLI and any Claude session see the same state (`R-FORM-2`).
 
@@ -147,12 +116,7 @@ workspace/
   cache/                    # provider responses keyed by request hash (not committed)
 ```
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.3`
-> _(your notes here — replace this line)_
-
-### §2.4 Asset spec (asset.yaml)
+### 2.4 Asset spec (`asset.yaml`)
 
 ```yaml
 id: bg-harbour-night
@@ -172,12 +136,7 @@ notes: "Night, fog over the water, one warm accent."
 checks: {profile: background-default, overrides: {}}
 ```
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.4`
-> _(your notes here — replace this line)_
-
-### §2.5 Pipeline stages (core functions)
+### 2.5 Pipeline stages (core functions)
 
 Each stage is a pure function with saved parameters (`R-POST-4`), callable from CLI and MCP, and can be limited to a mask.
 
@@ -195,12 +154,7 @@ Each stage is a pure function with saved parameters (`R-POST-4`), callable from 
 | `check` | Run the check catalog | Writes `report.json` |
 | `export` | Final PNG, indexed PNG, sprite sheet + JSON, `.aseprite`, palette files | Fails if `palette_compliance < 1` |
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.5`
-> _(your notes here — replace this line)_
-
-### §2.6 Check catalog
+### 2.6 Check catalog
 
 Every check returns `pass | warn | fail`, its measurement, and offending regions in native pixel coordinates. Thresholds start as defaults, then are calibrated from approved assets and logged rejections (`R-CRIT-5`, domain rule 2). Detectors own pixel facts; Claude interprets.
 
@@ -227,12 +181,7 @@ Every check returns `pass | warn | fail`, its measurement, and offending regions
 | `in-scene` | R-COLOR-1, R-READ-1 | figure-ground ΔL and silhouette for a sprite at each placement or path point; scale vs scene | warn |
 | `diagnostics` | DA-Q001-2 | saliency peak vs focal mask, spectrum slope | report only |
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.6`
-> _(your notes here — replace this line)_
-
-### §2.7 Critique protocol
+### 2.7 Critique protocol
 
 1. `check` runs; `render` produces upscaled crops, grayscale, value-group map and overlays labelled in native coordinates.
 2. Claude compares pairwise (new vs previous best, new vs approved references), never gives a bare 1-10 score (`R-CRIT-2`, `DA-Q008-1`).
@@ -240,12 +189,7 @@ Every check returns `pass | warn | fail`, its measurement, and offending regions
 4. The human reviews in the viewer: approve, reject, or draw new annotations. Every decision is logged with the measurements (`R-CRIT-4`).
 5. Fixes run only inside masks; checks re-run; the loop ends at human approval.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.7`
-> _(your notes here — replace this line)_
-
-### §2.8 Interfaces
+### 2.8 Interfaces
 
 **CLI** (`pw`, Typer-style, JSON output with `--json`):
 
@@ -255,32 +199,17 @@ Every check returns `pass | warn | fail`, its measurement, and offending regions
 
 **Viewer** (`pw view`, local HTTP on 127.0.0.1, no UI framework required): asset list; version timeline; side-by-side and onion-skin compare; integer zoom with pixel grid; overlays from `report.json`; draw/erase annotation masks with a rule picker and a note; approve/reject buttons that write to `history.jsonl`; animation preview with per-frame timing; scene preview (character moving through a background); stage filter (experiments, drafts, approved, final). The viewer only writes masks and decisions; it never edits pixels (Aseprite does). A screens spec for the viewer is written during M2, before it is built.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.8`
-> _(your notes here — replace this line)_
-
-### §2.9 Providers
+### 2.9 Providers
 
 One adapter interface with capability flags: `img2img`, `references (n)`, `style_refs`, `mask_inpaint`, `palette_input`, `native_size (max)`, `animation`, `price_per_image`, `watermark`, `licence` (`R-GEN-1`). Initial adapters: Gemini image models (painter; reference images; no palette/mask), Retro Diffusion (palette input, img2img strength, references, mask edit), PixelLab (forced palette, inpainting, skeleton animation), GPT Image (to verify), local ComfyUI (Flux/SDXL + pixel-art LoRA; free; later the project style LoRA). API keys from environment variables or a git-ignored file; per-workspace monthly budget with a hard stop; every call logged with cost. Before any provider output enters the game, its output licence is recorded (`R-GEN-3`).
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.9`
-> _(your notes here — replace this line)_
-
-### §2.10 Aseprite bridge
+### 2.10 Aseprite bridge
 
 - Direct read/write of the documented `.aseprite` format from Python (layers, cels, frames, durations, tags, palette, slices) so no Aseprite process is needed for data exchange (`R-TOOL-1`).
 - Optional headless Aseprite (`aseprite --batch --script`) for exports and Lua helpers: a small Lua script set that the artist can run inside Aseprite to "send to pixelwright" (save version + note) and "load version".
 - LibreSprite and Pixelorama are not targets for v1; files stay standard PNG so they remain usable.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.10`
-> _(your notes here — replace this line)_
-
-### §2.11 Non-functional requirements
+### 2.11 Non-functional requirements
 
 - Ubuntu first (current LTS); Python 3.12+; installable with `uv` / `pip`; no GPU needed except for the local provider.
 - Open-source dependencies preferred; licences of reused snapping/quantization code checked before vendoring.
@@ -289,21 +218,11 @@ One adapter interface with capability flags: `img2img`, `references (n)`, `style
 - The repository contains no personal data and no references to other private projects; the game-specific workspace lives outside this repository.
 - Images given to Claude via MCP stay small (crops and upscales sized for the vision model) to save tokens.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.11`
-> _(your notes here — replace this line)_
-
-### §2.12 Out of scope (v1)
+### 2.12 Out of scope (v1)
 
 A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a model from scratch; using screenshots of commercial games as inputs or training data (`DA-Q003-1`); game-engine integration beyond export files.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC §2.12`
-> _(your notes here — replace this line)_
-
-## §3 Options
+## 3. Options
 
 ### Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)
 
@@ -313,11 +232,6 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 - **Tradeoffs**: least code; but version comparison, overlays and decision logging are clumsy in Aseprite, and the human review loop (the main quality lever) is slower.
 - **Compatibility**: a later viewer can be added without format changes.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC › Option A: CLI + MCP only, Aseprite as the only viewer (Conservative)`
-> _(your notes here — replace this line)_
-
 ### Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)
 
 - **Description**: everything in section 2, delivered in milestones; the viewer is a small local web app over the same files; the plugin carries the art-direction skills.
@@ -326,11 +240,6 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 - **Tradeoffs**: more code to maintain; gives the fastest review loop and a clean place for annotations; every layer stays optional.
 - **Compatibility**: file formats are the contract; each layer can be replaced.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC › Option B: Layered tool: core + CLI + MCP + local web viewer + thin Claude Code plugin (Recommended)`
-> _(your notes here — replace this line)_
-
 ### Option C: Desktop application with embedded editor
 
 - **Description**: a native app (Qt/Electron) with its own canvas and the pipeline inside.
@@ -338,11 +247,6 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 - **Effort**: Large+
 - **Tradeoffs**: duplicates Aseprite; Claude still needs MCP/CLI because it cannot be embedded under Claude Max; rejected in research (`DA-Q010-1`, `DA-Q007-1`).
 - **Compatibility**: n/a
-
-<!-- -->
-
-> **✎ Notes** · `SPEC › Option C: Desktop application with embedded editor`
-> _(your notes here — replace this line)_
 
 ### Comparison
 
@@ -354,12 +258,7 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 | Compatibility | Upgradable to B | Formats are contract | Closed |
 | Maintenance | Low | Medium | High |
 
-<!-- -->
-
-> **✎ Notes** · `SPEC › Comparison`
-> _(your notes here — replace this line)_
-
-## §4 Recommendation
+## 4. Recommendation
 
 **Recommended option**: Option B, built in milestones so that Option A is simply its first half. The research puts quality in post-processing, checks and the review loop; the viewer makes that loop fast, and the plugin turns the technique manual into Claude's working instructions.
 
@@ -404,19 +303,11 @@ A pixel editor of its own (`DA-Q007-1`); a desktop app (`DA-Q010-1`); training a
 | D-20 | No committed deny-list for the privacy check | agreed | 2026-11-15 |
 | D-21 | Viewer screens spec deferred to M2 (D-11 holds for this spec) | agreed | 2026-11-15 |
 
-<!-- -->
+---
 
-> **✎ Notes** · `SPEC §4`
-> _(your notes here — replace this line)_
-
-## §5 Contracts
+## 5. Contracts
 
 All file formats carry `schema: pixelwright/<name>@<major>`. Readers accept the current major and refuse a newer one with a clear error; a major bump ships a `pw migrate` step. Paths inside files are relative to the asset folder unless they start with a workspace role (`style:`, `game:`).
-
-<!-- -->
-
-> **✎ Notes** · `SPEC §5`
-> _(your notes here — replace this line)_
 
 ### API contracts
 
@@ -460,11 +351,6 @@ class Provider(Protocol):
 
 `GenRequest` = mode (`txt2img|img2img|edit|inpaint|animate`), prompt, init image, mask, references, palette, size, seed, provider params. Requests are hashed (canonical JSON + input image hashes) and cached in `cache/`; a cache hit costs 0 and is logged as such.
 
-<!-- -->
-
-> **✎ Notes** · `SPEC › API contracts`
-> _(your notes here — replace this line)_
-
 ### Inter-service contracts
 
 | Caller | Callee | Protocol | Contract | Failure handling |
@@ -475,11 +361,6 @@ class Provider(Protocol):
 | `pw` core | Aseprite (optional) | CLI `aseprite --batch --script` | Lua helpers in `plugin/aseprite/` | Feature disabled with a warning when Aseprite is absent |
 | Aseprite Lua helpers | Workspace files | File system | "Send to pixelwright" writes `drafts/<ts>.aseprite` + note; "Load version" opens `versions/vNNNN/image.aseprite` | Helper shows the error in an Aseprite dialog |
 | Viewer (`pw view`) | Workspace files | HTTP on 127.0.0.1 | Reads versions and reports; writes only `masks/` and `history.jsonl` via core functions | Refuses non-local connections |
-
-<!-- -->
-
-> **✎ Notes** · `SPEC › Inter-service contracts`
-> _(your notes here — replace this line)_
 
 ### Database migrations
 
@@ -495,12 +376,7 @@ No database. File schemas (versioned as above):
 | core | `masks/masks.yaml` | create `@1`: id, file, rule, note, author (`human`/`claude`/`check`), created | yes | yes |
 | core | `history.jsonl` | create `@1`: one JSON object per event (`step`, `decision`, `note`, `style_bump`); append-only | yes | yes |
 
-<!-- -->
-
-> **✎ Notes** · `SPEC › Database migrations`
-> _(your notes here — replace this line)_
-
-## §6 Risks & Validation
+## 6. Risks & Validation
 
 | Risk | Likelihood | Impact | Mitigation | Validation |
 |------|-----------|--------|------------|------------|
@@ -514,9 +390,3 @@ No database. File schemas (versioned as above):
 | Personal data or other-project references committed | Low | High | gitleaks in host gate; pre-PR review checklist item; no deny-list in repo | host gate |
 | Reused open-source snapper has an incompatible licence | Med | Low | Licence check before vendoring; own implementation as default | review |
 | Scope creep from animation/scene features into the MVP | Med | Med | M0-M1 plan only; M2-M5 planned in later design rounds | plan review |
-
-<!-- -->
-
-> **✎ Notes** · `SPEC §6`
-> _(your notes here — replace this line)_
-

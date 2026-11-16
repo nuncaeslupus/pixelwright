@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="11881f6c089e5baf9d1d861572f8e4c6f019c317301dcd8f89e27fc2b1fefd3a">
-<title>pixelwright — Plan (annotatable)</title>
+<meta name="arsenal-source-sha256" content="cf4a15f1cf64aab2473bf2da013f557b556f6ac29b9eb3cc3100e866c6a15b96">
+<title>Pixelwright — Plan (annotatable)</title>
 <style>
 :root{
   --bg:#fbfaf7;--fg:#1d1c1a;--muted:#5f5c56;--line:#e3ded4;
@@ -193,18 +193,18 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <body>
 <div class="topbar">
   <div class="wrap">
-    <div class="brand">pixelwright — Plan<small>annotatable reader · 2026-11-15</small></div>
+    <div class="brand">Pixelwright — Plan<small>annotatable reader · 2026-11-16</small></div>
     <span class="savestate ok" id="savestate">✓ Auto-saving</span>
     <button class="btn" id="btn-import">Import</button>
     <button class="btn primary" id="btn-export">Save / Export</button>
   </div>
 </div>
-<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 13 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 12 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
 <div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
 
 <div class="wrap">
   <div class="hero">
-    <h1>pixelwright — Plan</h1>
+    <h1>Pixelwright — Plan</h1>
     <p>Read at your own pace and leave a note on any point you want to discuss.</p>
   </div>
   <details class="help">
@@ -224,13 +224,12 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <li class="sub"><a href="#s-plan-architecture-overview">Architecture overview</a></li>
 <li class="sub"><a href="#s-plan-data-flow">Data flow</a></li>
 <li class="sub"><a href="#s-plan-state-changes">State changes</a></li>
-<li class="sub"><a href="#s-plan-contracts">Contracts</a></li>
 <li class="sub"><a href="#s-plan-technology-choices">Technology choices</a></li>
+<li class="sub"><a href="#s-plan-reuse-map-m0-m3">Reuse map (M0–M3)</a></li>
 <li class="sub"><a href="#s-plan-out-of-scope">Out of scope</a></li>
 <li><a href="#s-plan-implementation-tasks">Implementation tasks</a></li>
 <li class="sub"><a href="#s-plan-task-details">Task details</a></li>
 <li class="sub"><a href="#s-plan-dependency-graph">Dependency graph</a></li>
-<li><a href="#s-plan-risks">Risks</a></li>
 <li><a href="#s-plan-evidence-log">Evidence log</a></li>
 <li><a href="#s-plan-sign-off">Sign-off</a></li>
 </ul>
@@ -238,17 +237,19 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
   <section class="part">
 <article class="sec l2" id="s-plan-intro" data-ref="PLAN · intro" data-label="Preamble &amp; scope" data-part="Plan">
 <h3 class="sec-h"><span class="chip">overview</span><span class="sec-title">Preamble &amp; scope</span></h3>
-<div class="sec-body"><p><strong>Date</strong>: 2026-11-15<br />
-<strong>Specification</strong>: <code>status/specification.md</code> (M2 in §4) and <code>status/viewer/screens.md</code> (r4, accepted 2026-11-15)<br />
+<div class="sec-body"><p><strong>Date</strong>: 2026-11-16<br />
+<strong>Specification</strong>: <code>status/specification.md</code><br />
 <strong>Author</strong>: Claude (for the repository owner)<br />
 <strong>Revision</strong>: 1<br />
 <strong>Status</strong>: draft<br />
 <strong>Revision log</strong>:
-- r1 — first draft: M2 task split (T19-T33). The M0-M1 plan is in <code>status/archive/plan-m0-m1.md</code>.</p>
+- r1 — first draft</p>
 <blockquote>
 <p>Review record, kept the way the spec keeps its own: each round of notes bumps
 <strong>Revision</strong> with a log line naming the <code>&lt;repo&gt;-plan-v&lt;N&gt;-&lt;date&gt;-notes.md</code>
-export it applied, committed beside this file in the same commit.</p>
+export it applied, committed beside this file in the same commit. Approval is
+<code>approved (YYYY-MM-DD, revision N)</code>, plus <code>— without annotations</code> when there
+were none.</p>
 </blockquote></div>
 <div class="note" data-for="s-plan-intro"><label class="note-head" for="n-s-plan-intro"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN · intro</span></label><textarea class="note-ta" data-key="s-plan-intro" id="n-s-plan-intro" data-label="Preamble &amp; scope" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
@@ -257,146 +258,162 @@ export it applied, committed beside this file in the same commit.</p>
 </article>
 <article class="sec l3" id="s-plan-architecture-overview" data-ref="PLAN › Architecture overview" data-label="Architecture overview" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Architecture overview</span></h4>
-<div class="sec-body"><p>M2 adds three things on top of the M1 package, all over the same workspace files:</p>
+<div class="sec-body"><p>Three layers, one flow (spec §2.2):</p>
 <ul>
-<li><strong>Issues and critique</strong> (<code>workspace/</code>, <code>cli/</code>): an issue is a <code>masks.yaml</code> entry with a
-  region (mask PNG, box, or the whole image), rule, note, author, version and status.
-  <code>critique.md</code> gets a parseable format whose complaints point at issues. Stages
-  <code>quantize</code> and <code>clean</code> take <code>--mask &lt;issue&gt;</code> and change pixels only inside it.</li>
-<li><strong>Viewer</strong> (<code>src/pixelwright/viewer/</code>): <code>pw view</code> serves one page (plain HTML/CSS/JS and
-  two OFL font files shipped as package data, no build step) from a stdlib
-  <code>ThreadingHTTPServer</code> on 127.0.0.1. A small JSON API calls the same functions as the CLI
-  command registry, so the viewer adds no business logic of its own.</li>
-<li><strong>Plugin v0</strong> (<code>plugin/</code>): Claude Code skills for art direction (critique protocol, review
-  loop, zone-fix loop, style definition) that drive <code>pw</code> / <code>pw mcp</code>, starting from
-  <code>pw inbox</code>.</li>
-</ul>
-<p>Plus the small M1 leftovers chosen for M2 (<code>style propose|test</code>, <code>palette edit</code>,
-<code>render --view gif</code>, <code>grid</code> from the CLI) and the gaps found by the real Aseprite test
-(<code>load_version</code> through the <code>.aseprite</code> codec, <code>palette discover --asset</code>, positional
-<code>pw init &lt;path&gt;</code>).</p></div>
+<li><strong>Core (Python library + <code>pw</code>)</strong> owns every file in a project: the project, group and asset
+  files, versions, the advice log, normalising, checks, export and <code>pw wait</code>. Everything an AI
+  or the app does goes through it.</li>
+<li><strong>App</strong> is a pywebview window started by <code>pw open</code>. The page is plain HTML/JS/CSS, as today.
+  It calls the core in-process through pywebview's <code>js_api</code>, so there is no HTTP server, port or
+  token. It has two screens: <strong>Project</strong> (assets by group, each with its state and next step)
+  and <strong>Asset</strong> (the image in the centre, a strip of versions, before/after, advice on the
+  image, and the actions accept, reject, request, star, approve and open in Aseprite).</li>
+<li><strong>Agent instructions</strong>: Claude skills for steps 0 and 4 and for the bridge, plus <code>AGENTS.md</code>
+  for other agents.</li>
+</ul></div>
 <div class="note" data-for="s-plan-architecture-overview"><label class="note-head" for="n-s-plan-architecture-overview"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Architecture overview</span></label><textarea class="note-ta" data-key="s-plan-architecture-overview" id="n-s-plan-architecture-overview" data-label="Architecture overview" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-plan-data-flow" data-ref="PLAN › Data flow" data-label="Data flow" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Data flow</span></h4>
-<div class="sec-body"><figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 232.05" role="img" aria-labelledby="dsc0e07d9b5b-title"><title id="dsc0e07d9b5b-title">M2 review loop</title><path d="M 260.016 48.85 L 260.016 96.85" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="260.016,96.85 256.416,88.85 263.616,88.85" fill="currentColor" stroke="none"/><path d="M 260.016 133.7 L 260.016 157.7 L 300.52 157.7 L 300.52 181.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="300.52,181.7 296.92,173.7 304.12,173.7" fill="currentColor" stroke="none"/><path d="M 423.317 48.85 L 423.317 157.7 L 328.38 157.7 L 328.38 181.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="328.38,181.7 324.78,173.7 331.98,173.7" fill="currentColor" stroke="none"/><path d="M 244.799 200.125 L 171.032 200.125 L 171.032 115.275 L 190.365 115.275" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="190.365,115.275 182.365,118.875 182.365,111.675" fill="currentColor" stroke="none"/><path d="M 329.667 115.275 L 341.667 115.275 L 341.667 30.425 L 329.667 30.425" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="329.667,30.425 337.667,26.825 337.667,34.025" fill="currentColor" stroke="none"/><rect x="190.365" y="12" width="139.301" height="36.85" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="260.016" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Claude: pw / pw mcp</tspan></text><rect x="353.667" y="12" width="139.301" height="36.85" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="423.317" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>person</tspan></text><rect x="244.799" y="181.7" width="139.301" height="36.85" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="314.45" y="202.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>pw view (browser)</tspan></text><rect x="190.365" y="96.85" width="139.301" height="36.85" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="260.016" y="118.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>workspace files</tspan></text><text x="264.766" y="76.312" font-family="'DejaVu Sans', sans-serif" font-size="10" fill="currentColor">writes</text><text x="268.652" y="150.592" font-family="'DejaVu Sans', sans-serif" font-size="10" fill="currentColor">polls</text><text x="428.067" y="106.737" font-family="'DejaVu Sans', sans-serif" font-size="10" fill="currentColor">reviews</text><text x="175.782" y="161.162" font-family="'DejaVu Sans', sans-serif" font-size="10" fill="currentColor">writes</text><text x="346.417" y="76.312" font-family="'DejaVu Sans', sans-serif" font-size="10" fill="currentColor">inbox</text></svg></figure></div>
+<div class="sec-body"><p>Person or AI → <code>pw add</code> (inputs) → <code>pw normalize</code> (v001) → <code>pw check</code> (script advice) → AI loop
+via <code>pw advice</code> / fix ops (ai advice, new versions) → app (person accepts or rejects, or leaves a
+request) → <code>pw wait</code> wakes the AI → … → <code>pw approve</code> (final + export).</p></div>
 <div class="note" data-for="s-plan-data-flow"><label class="note-head" for="n-s-plan-data-flow"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Data flow</span></label><textarea class="note-ta" data-key="s-plan-data-flow" id="n-s-plan-data-flow" data-label="Data flow" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-plan-state-changes" data-ref="PLAN › State changes" data-label="State changes" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">State changes</span></h4>
-<div class="sec-body"><ul>
-<li><code>masks.yaml</code> schema <code>masks@2</code>: entries gain <code>version</code>, <code>status</code> (<code>open</code> | <code>fixed</code>),
-  <code>fixed_in</code>, <code>region</code> (<code>mask</code> | <code>box</code> | <code>image</code>), optional <code>box</code>. <code>masks@1</code> files read as
-  <code>open</code>, version unknown, region <code>mask</code>; the first write upgrades the file.</li>
-<li><code>critique.md</code>: YAML front matter (<code>version</code>, <code>compared_to</code>, <code>verdict</code>) and one <code>##</code> per
-  complaint with <code>issue: &lt;id&gt;</code>; written by <code>pw critique write</code>, parsed for the viewer.</li>
-<li><code>history.jsonl</code>: new events <code>issue_add</code>, <code>issue_resolve</code>, <code>decision_revert</code>; existing
-  events unchanged.</li>
-<li><code>asset.yaml</code>: <code>palette</code> set by <code>pw palette discover --asset</code>.</li>
-</ul></div>
-<div class="note" data-for="s-plan-state-changes"><label class="note-head" for="n-s-plan-state-changes"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › State changes</span></label><textarea class="note-ta" data-key="s-plan-state-changes" id="n-s-plan-state-changes" data-label="State changes" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-plan-contracts" data-ref="PLAN › Contracts" data-label="Contracts" data-part="Plan">
-<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Contracts</span></h4>
-<div class="sec-body"><p>HTTP API (<code>pw view</code>, all JSON except images; every write needs header <code>X-PW-Token</code>, the
-per-run token embedded in the page; requests with a non-local peer or a <code>Host</code> other than
-<code>127.0.0.1:&lt;port&gt;</code> / <code>localhost:&lt;port&gt;</code> get 403):</p>
-<table>
+<div class="sec-body"><table>
 <thead>
 <tr>
-<th>Method</th>
-<th>Path</th>
-<th>Returns / does</th>
+<th>Service</th>
+<th>Database</th>
+<th>Change</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>GET</td>
-<td><code>/api/assets</code></td>
-<td>cards: id, kind, newest version, stage, status line, thumbnail URL</td>
+<td>Core</td>
+<td>Project folder</td>
+<td>CREATE</td>
+<td><code>pixelwright.toml</code> v2, <code>group.toml</code>, <code>asset.toml</code>, <code>advice.jsonl</code>, <code>final.png</code></td>
 </tr>
 <tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;</code></td>
-<td>spec, versions (stage, parent, steps), inbox count</td>
+<td>Core</td>
+<td>Project folder</td>
+<td>UPDATE</td>
+<td><code>versions/</code> gains a file per change; <code>asset.toml</code> state, chosen and starred</td>
 </tr>
 <tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/&lt;v&gt;/image.png?view=color\|gray\|values\|silhouette</code></td>
-<td>native-size PNG</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/&lt;v&gt;/report</code></td>
-<td><code>report.json</code></td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/&lt;v&gt;/frames</code></td>
-<td>frames, durations, tags (from <code>.aseprite</code>)</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/diff?a=&amp;b=</code></td>
-<td>changed mask PNG URL, counts, check deltas</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/issues?version=</code></td>
-<td>issues, critique verdict</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/assets/&lt;id&gt;/history</code></td>
-<td>history entries, newest first</td>
-</tr>
-<tr>
-<td>GET</td>
-<td><code>/api/inbox?since=</code></td>
-<td>new versions, decisions, issues, notes</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/assets/&lt;id&gt;/issues</code></td>
-<td>add (mask PNG base64, box, or none)</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/assets/&lt;id&gt;/issues/&lt;issue&gt;/resolve</code></td>
-<td>mark fixed in a version</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/assets/&lt;id&gt;/&lt;v&gt;/decision</code></td>
-<td>approve / reject (+ note; reject needs one)</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/api/assets/&lt;id&gt;/revert</code></td>
-<td>log <code>decision_revert</code> for the last decision (undo)</td>
+<td>Core</td>
+<td>Project folder</td>
+<td>DELETE</td>
+<td>Only on approve with <code>keep_all_versions = false</code>: unstarred middle versions</td>
 </tr>
 </tbody>
-</table>
-<p>Errors use the CLI envelope's <code>error.code</code> / <code>error.message</code>. New CLI commands (same
-envelope, mirrored in MCP): <code>issue add|list|resolve</code>, <code>critique write|show</code>, <code>history</code>,
-<code>status</code>, <code>inbox</code>, <code>view [--open]</code>.</p></div>
-<div class="note" data-for="s-plan-contracts"><label class="note-head" for="n-s-plan-contracts"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Contracts</span></label><textarea class="note-ta" data-key="s-plan-contracts" id="n-s-plan-contracts" data-label="Contracts" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</table></div>
+<div class="note" data-for="s-plan-state-changes"><label class="note-head" for="n-s-plan-state-changes"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › State changes</span></label><textarea class="note-ta" data-key="s-plan-state-changes" id="n-s-plan-state-changes" data-label="State changes" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-plan-technology-choices" data-ref="PLAN › Technology choices" data-label="Technology choices" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Technology choices</span></h4>
-<div class="sec-body"><ul>
-<li>Stdlib <code>http.server</code> + vanilla JS modules: no web framework, no Node build, nothing new
-  to install (<code>R-FORM-2</code>, spec §2.8 "no UI framework required").</li>
-<li>Fonts: Atkinson Hyperlegible Next and Mono (OFL), shipped as package data.</li>
-<li>Viewer end-to-end tests with Playwright (dev dependency only; the CI image needs
-  Chromium).</li>
-</ul></div>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pywebview (≥ 5)</td>
+<td>Native window from Python, reuses the HTML/JS UI, runs on Linux (WebKitGTK) and Windows (WebView2) (D-10)</td>
+</tr>
+<tr>
+<td><code>tomllib</code> + <code>tomli-w</code></td>
+<td>TOML for every human-readable file (spec criterion: plain <code>png</code>/<code>toml</code>/<code>jsonl</code>)</td>
+</tr>
+<tr>
+<td>Polling in <code>pw wait</code> (1 s)</td>
+<td>Portable across Linux and Windows; inotify is not needed at this scale</td>
+</tr>
+</tbody>
+</table></div>
 <div class="note" data-for="s-plan-technology-choices"><label class="note-head" for="n-s-plan-technology-choices"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Technology choices</span></label><textarea class="note-ta" data-key="s-plan-technology-choices" id="n-s-plan-technology-choices" data-label="Technology choices" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-plan-reuse-map-m0-m3" data-ref="PLAN › Reuse map (M0–M3)" data-label="Reuse map (M0–M3)" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Reuse map (M0–M3)</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Fate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core/</code> (quantize, snap, clean, palette, color, image, checks)</td>
+<td><strong>Keep</strong> as is; normalise and fix ops call it</td>
+</tr>
+<tr>
+<td><code>core/providers/</code>, <code>bench/</code></td>
+<td><strong>Keep</strong>; optional input source and its benchmark</td>
+</tr>
+<tr>
+<td><code>io/</code> (png, palette_io, aseprite)</td>
+<td><strong>Keep</strong></td>
+</tr>
+<tr>
+<td><code>workspace/asset.py</code> (immutable versions, append-only log, masks)</td>
+<td><strong>Adapt</strong> to <code>asset.toml</code> + <code>advice.jsonl</code></td>
+</tr>
+<tr>
+<td><code>workspace/config.py</code>, <code>style.py</code>, <code>workspace.py</code></td>
+<td><strong>Adapt</strong>: palette library, groups, export path, retention; drop roles and stages</td>
+</tr>
+<tr>
+<td><code>workspace/next_step.py</code></td>
+<td><strong>Adapt</strong> into <code>pw status</code>'s next step per asset</td>
+</tr>
+<tr>
+<td><code>workspace/critique.py</code>, <code>budget.py</code></td>
+<td><strong>Adapt</strong> critique into AI advice; keep budget</td>
+</tr>
+<tr>
+<td><code>cli/</code></td>
+<td><strong>Adapt</strong> to the flow commands; keep the registry and JSON envelope</td>
+</tr>
+<tr>
+<td><code>mcp/server.py</code></td>
+<td><strong>Adapt</strong> to the same commands</td>
+</tr>
+<tr>
+<td><code>viewer/server.py</code> + static (Look/Compare/Mark/Play)</td>
+<td><strong>Replace</strong> by the app; compare, mark and play code is reused inside the Asset screen</td>
+</tr>
+<tr>
+<td><code>viewer/static/blind.*</code></td>
+<td><strong>Keep</strong> for the benchmark only</td>
+</tr>
+<tr>
+<td><code>cli/tour.py</code>, <code>fixtures/tour.py</code></td>
+<td><strong>Replace</strong> by the in-app first run on a sample project</td>
+</tr>
+<tr>
+<td><code>plugin/skills/</code></td>
+<td><strong>Rewrite</strong> for the flow; keep the Aseprite plugin</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-plan-reuse-map-m0-m3"><label class="note-head" for="n-s-plan-reuse-map-m0-m3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Reuse map (M0–M3)</span></label><textarea class="note-ta" data-key="s-plan-reuse-map-m0-m3" id="n-s-plan-reuse-map-m0-m3" data-label="Reuse map (M0–M3)" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-plan-out-of-scope" data-ref="PLAN › Out of scope" data-label="Out of scope" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Out of scope</span></h4>
-<div class="sec-body"><p>Providers and <code>generate</code> (M3); scene preview, light zones, rigs and cross-frame checks
-(M4); LoRA (M5); editing pixels in the viewer (never: Aseprite does that).</p></div>
+<div class="sec-body"><ul>
+<li>Game-engine integration beyond the export path (D-4)</li>
+<li>Delta storage of versions (D-13)</li>
+<li>Windows packaging (only the core tests run on Windows)</li>
+<li>New check rules or providers</li>
+</ul></div>
 <div class="note" data-for="s-plan-out-of-scope"><label class="note-head" for="n-s-plan-out-of-scope"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Out of scope</span></label><textarea class="note-ta" data-key="s-plan-out-of-scope" id="n-s-plan-out-of-scope" data-label="Out of scope" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l2" id="s-plan-implementation-tasks" data-ref="PLAN › Implementation tasks" data-label="Implementation tasks" data-part="Plan">
@@ -415,139 +432,139 @@ envelope, mirrored in MCP): <code>issue add|list|resolve</code>, <code>critique 
 </thead>
 <tbody>
 <tr>
-<td>T19</td>
-<td>Issues model</td>
-<td>workspace</td>
-<td>S</td>
+<td>T52</td>
+<td>Screens review</td>
+<td>docs</td>
+<td>M</td>
 <td>—</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_masks_v1_reads_as_open_issues</code> in <code>tests/workspace/test_issues.py</code> — a <code>masks@1</code> file loads with status open and region mask</td>
+<td>owner approves the screens in the reader</td>
+<td>none (review artifact)</td>
 </tr>
 <tr>
-<td>T20</td>
-<td>Issue and inbox commands</td>
-<td>cli, mcp</td>
+<td>T53</td>
+<td>Project model v2</td>
+<td>core</td>
 <td>M</td>
-<td>T19</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_inbox_since_lists_new_versions_and_decisions</code> in <code>tests/cli/test_inbox.py</code> — only events after <code>--since</code> are returned</td>
+<td>—</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_settings_asset_in_group_uses_group_palette</code> in <code>tests/test_project.py</code> — an asset under a group with <code>palette = "night"</code> resolves to the night palette</td>
 </tr>
 <tr>
-<td>T21</td>
-<td>Critique format</td>
-<td>workspace, cli</td>
+<td>T54</td>
+<td>Asset model v2</td>
+<td>core</td>
+<td>M</td>
+<td>T53</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_asset_files_plain_without_app_readable</code> in <code>tests/test_asset_model.py</code> — every file in an asset parses with <code>tomllib</code>, <code>json</code> and Pillow alone</td>
+</tr>
+<tr>
+<td>T55</td>
+<td>Advice log</td>
+<td>core</td>
+<td>M</td>
+<td>T54</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_advice_accept_with_fix_writes_new_version</code> in <code>tests/test_advice.py</code> — accepting advice with a fix adds exactly one version and links it</td>
+</tr>
+<tr>
+<td>T56</td>
+<td>Promote rejections</td>
+<td>core</td>
 <td>S</td>
-<td>T19</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_critique_roundtrip_keeps_verdict_and_issue_links</code> in <code>tests/workspace/test_critique.py</code> — write then parse gives the same front matter and issue ids</td>
+<td>T55</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_check_promoted_rejection_not_raised_again</code> in <code>tests/test_advice.py</code> — the same rule on the same scope yields no new advice</td>
 </tr>
 <tr>
-<td>T22</td>
-<td>Masked stages</td>
-<td>core, cli</td>
-<td>M</td>
-<td>T19</td>
-<td><code>pixels_changed_outside_mask == 0</code></td>
-<td><code>test_clean_with_mask_changes_nothing_outside</code> in <code>tests/core/test_masked_stages.py</code> — quantize and clean with <code>--mask</code> leave every pixel outside the mask identical</td>
-</tr>
-<tr>
-<td>T23</td>
-<td>Diff deltas</td>
+<td>T57</td>
+<td>Flow CLI + MCP</td>
 <td>cli</td>
-<td>S</td>
-<td>—</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_diff_reports_check_deltas_and_changed_area</code> in <code>tests/cli/test_diff.py</code> — deltas per check, changed count and bounding box</td>
-</tr>
-<tr>
-<td>T24</td>
-<td>CLI leftovers</td>
-<td>cli, core</td>
-<td>M</td>
-<td>—</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_render_gif_matches_frame_count_and_durations</code> in <code>tests/cli/test_render.py</code> — GIF has the file's frames and timings; <code>test_palette_discover_asset_sets_asset_palette</code>; <code>test_init_accepts_positional_path</code></td>
-</tr>
-<tr>
-<td>T25</td>
-<td>Bridge on the codec</td>
-<td>io, plugin</td>
-<td>S</td>
-<td>—</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_load_version_prefers_aseprite_file</code> in <code>tests/plugin/test_lua_helpers.py</code> — a version with <code>image.aseprite</code> opens with its layers</td>
-</tr>
-<tr>
-<td>T26</td>
-<td>Style and palette edit</td>
-<td>workspace, cli</td>
-<td>M</td>
-<td>—</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_style_test_reports_per_asset_results</code> in <code>tests/cli/test_style.py</code> — <code>style test</code> runs checks on the style's test assets</td>
-</tr>
-<tr>
-<td>T27</td>
-<td>Viewer server</td>
-<td>viewer</td>
 <td>L</td>
-<td>T20, T21, T23</td>
-<td><code>api_endpoints_covered == 13</code></td>
-<td><code>test_write_without_token_is_forbidden</code> and <code>test_foreign_host_is_forbidden</code> in <code>tests/viewer/test_server.py</code> — 403 on both; one test per endpoint</td>
+<td>T55</td>
+<td><code>normalize_seconds &lt;= 5</code></td>
+<td><code>test_normalize_320x180_under_budget</code> in <code>tests/test_flow_cli.py</code> — normalising a 320×180 fixture takes at most 5 s</td>
 </tr>
 <tr>
-<td>T28</td>
-<td>Viewer Look</td>
-<td>viewer</td>
-<td>L</td>
-<td>T27</td>
-<td><code>e2e_failed == 0</code></td>
-<td><code>test_approve_writes_history_with_measurements</code> in <code>tests/viewer/e2e/test_look.py</code> — clicking Approve logs a decision with the check results</td>
-</tr>
-<tr>
-<td>T29</td>
-<td>Viewer Compare</td>
-<td>viewer</td>
-<td>M</td>
-<td>T28</td>
-<td><code>e2e_failed == 0</code></td>
-<td><code>test_compare_defaults_a_to_latest_approved</code> in <code>tests/viewer/e2e/test_compare.py</code> — A is the newest approved version</td>
-</tr>
-<tr>
-<td>T30</td>
-<td>Viewer Mark</td>
-<td>viewer</td>
-<td>M</td>
-<td>T28</td>
-<td><code>e2e_failed == 0</code></td>
-<td><code>test_saved_mark_is_an_issue_in_native_pixels</code> in <code>tests/viewer/e2e/test_mark.py</code> — the saved mask PNG has the canvas's native size and the drawn pixels</td>
-</tr>
-<tr>
-<td>T31</td>
-<td>Viewer Play</td>
-<td>viewer</td>
-<td>M</td>
-<td>T28, T25</td>
-<td><code>e2e_failed == 0</code></td>
-<td><code>test_play_uses_file_durations</code> in <code>tests/viewer/e2e/test_play.py</code> — frame advance follows the <code>.aseprite</code> durations</td>
-</tr>
-<tr>
-<td>T32</td>
-<td>Viewer polish</td>
-<td>viewer</td>
+<td>T58</td>
+<td>Version retention</td>
+<td>core</td>
 <td>S</td>
-<td>T29, T30, T31</td>
-<td><code>e2e_failed == 0</code></td>
-<td><code>test_every_control_has_a_title_and_shortcut</code> in <code>tests/viewer/e2e/test_a11y.py</code> — every button has a hover title; every mode reachable by keyboard; both themes render</td>
+<td>T57</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_prune_setting_off_keeps_protected_versions</code> in <code>tests/test_retention.py</code> — after approve only protected versions remain; with the setting on, none are removed</td>
 </tr>
 <tr>
-<td>T33</td>
-<td>Plugin v0 skills</td>
+<td>T59</td>
+<td>pw wait + hook</td>
+<td>core</td>
+<td>M</td>
+<td>T55</td>
+<td><code>wait_latency_seconds &lt;= 10</code></td>
+<td><code>test_wait_request_written_returns_within_latency</code> in <code>tests/test_wait.py</code> — a request written by another process ends <code>pw wait</code> within 10 s</td>
+</tr>
+<tr>
+<td>T60</td>
+<td>App shell</td>
+<td>app</td>
+<td>M</td>
+<td>T52, T53</td>
+<td><code>open_50_assets_seconds &lt;= 2</code></td>
+<td><code>test_project_list_50_assets_under_budget</code> in <code>tests/test_app_api.py</code> — the app API lists a 50-asset project in at most 2 s</td>
+</tr>
+<tr>
+<td>T61</td>
+<td>Project screen</td>
+<td>app</td>
+<td>M</td>
+<td>T60, T57</td>
+<td><code>e2e_failed == 0</code></td>
+<td><code>test_project_screen_shows_next_step</code> in <code>tests/e2e/test_project_screen.py</code> — each asset card shows one next step</td>
+</tr>
+<tr>
+<td>T62</td>
+<td>Asset screen</td>
+<td>app</td>
+<td>L</td>
+<td>T61, T58, T59</td>
+<td><code>e2e_failed == 0</code></td>
+<td><code>test_asset_screen_request_creates_pending_advice</code> in <code>tests/e2e/test_asset_screen.py</code> — a request made in the app appears as pending advice with target <code>ai</code></td>
+</tr>
+<tr>
+<td>T63</td>
+<td>In-app first run</td>
+<td>app</td>
+<td>M</td>
+<td>T62</td>
+<td>owner states what the app does and the next step at each screen without help text</td>
+<td><code>test_first_launch_opens_sample_project</code> in <code>tests/e2e/test_first_run.py</code> — first launch with no recent projects opens the sample</td>
+</tr>
+<tr>
+<td>T64</td>
+<td>Agent instructions</td>
 <td>plugin</td>
 <td>M</td>
-<td>T20, T21, T22</td>
-<td><code>make_check_exit_code == 0</code></td>
-<td><code>test_plugin_skills_reference_existing_commands</code> in <code>tests/plugin/test_skills.py</code> — every <code>pw</code> command a skill names exists in the registry</td>
+<td>T57, T59</td>
+<td><code>skills_invalid == 0</code></td>
+<td><code>test_skills_reference_existing_commands</code> in <code>tests/test_skills.py</code> — every <code>pw</code> command named in a skill exists</td>
+</tr>
+<tr>
+<td>T65</td>
+<td>Migrate + clean up</td>
+<td>core</td>
+<td>M</td>
+<td>T63, T64</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_migrate_m3_workspace_preserves_versions</code> in <code>tests/test_migrate.py</code> — every old version is present and readable after migration</td>
+</tr>
+<tr>
+<td>T66</td>
+<td>Windows core CI</td>
+<td>ci</td>
+<td>S</td>
+<td>T57</td>
+<td><code>windows_core_tests_failed == 0</code></td>
+<td>none (CI job)</td>
 </tr>
 </tbody>
 </table></div>
@@ -556,88 +573,35 @@ envelope, mirrored in MCP): <code>issue add|list|resolve</code>, <code>critique 
 <article class="sec l3" id="s-plan-task-details" data-ref="PLAN › Task details" data-label="Task details" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Task details</span></h4>
 <div class="sec-body"><ul>
-<li><strong>T19 Issues model</strong>: <code>masks@2</code> (version, status, fixed_in, region mask/box/image), <code>Asset.add_issue</code>, <code>resolve_issue</code>, reading <code>masks@1</code>.</li>
-<li><strong>T20 Commands</strong>: <code>pw issue add|list|resolve</code>, <code>pw history</code>, <code>pw status &lt;id&gt;</code>, <code>pw inbox [--since]</code>; MCP mirrors from the registry.</li>
-<li><strong>T21 Critique</strong>: <code>critique.md</code> front matter + complaints linked to issues; <code>pw critique write|show</code>.</li>
-<li><strong>T22 Masked stages</strong>: <code>--mask &lt;issue&gt;</code> on <code>quantize</code> and <code>clean</code>; pixels outside unchanged; issue can be resolved by the new version.</li>
-<li><strong>T23 Diff</strong>: <code>pw diff</code> adds per-check deltas, changed pixel count and share, colors used, bounding box.</li>
-<li><strong>T24 CLI leftovers</strong>: <code>render --view gif</code> (GIF and APNG from frames), <code>check --only grid</code> on exports, <code>pw init &lt;path&gt;</code> positional (keeps <code>--workspace</code>), <code>palette discover --asset</code> writes <code>asset.yaml</code> palette.</li>
-<li><strong>T25 Bridge</strong>: <code>load_version.lua</code> opens <code>image.aseprite</code> when present (layers, frames); <code>send_to_pixelwright</code> keeps the <code>.aseprite</code> alongside the PNG.</li>
-<li><strong>T26 Style and palette</strong>: <code>style propose</code> (palette families and ramps from references), <code>style test</code> (checks on the style's test assets), <code>palette edit</code> (set, add, remove, reorder colors; ramps re-checked).</li>
-<li><strong>T27 Viewer server</strong>: <code>pw view [--port] [--open id/version]</code>, the API above, token and host checks, static files and fonts as package data.</li>
-<li><strong>T28 Shell, Assets, Look</strong>: layout, light/dark, top bar, versions strip, status bar (pixel info, view, grid, zoom), Issues/Checks/History panels, decision popover, inbox, shortcuts dialog, 2 s polling.</li>
-<li><strong>T29 Compare</strong>: side by side (synced), onion, swipe, difference; A/B selection; check deltas.</li>
-<li><strong>T30 Mark</strong>: brush, rectangle, fill, erase, size; issue form; issue without a mark; undo of strokes and saved issues.</li>
-<li><strong>T31 Play</strong>: frames strip, play/step, tag, speed, loop, onion skin.</li>
-<li><strong>T32 Pass</strong>: keyboard reachability, hover titles with shortcuts, both themes, a screenshot per screen for the record.</li>
-<li><strong>T33 Plugin v0</strong>: skills <code>art-direction</code> (critique protocol §2.7), <code>review-loop</code> (inbox → critique → issues → masked fixes → checks), <code>style-definition</code> (workflow 0); slash commands wrap them.</li>
+<li><strong>T52 Screens review</strong>: Screens review: annotated mock-ups of the Project and Asset screens and the first run, in the reader</li>
+<li><strong>T53 Project model v2</strong>: Project model v2: <code>pixelwright.toml</code> (palette library, export path, <code>keep_all_versions</code>, rules), <code>group.toml</code>, nearest-folder resolution</li>
+<li><strong>T54 Asset model v2</strong>: Asset model v2: <code>asset.toml</code>, <code>inputs/</code>, star, chosen, <code>final.png</code>; readable with no app</li>
+<li><strong>T55 Advice log</strong>: Advice log: schema, append, state events, accept runs fix into a new version, reject with reason</li>
+<li><strong>T56 Promote rejections</strong>: Promote a rejection reason to <code>style/rules.toml</code>; <code>pw check</code> stops raising it in scope</li>
+<li><strong>T57 Flow CLI + MCP</strong>: Flow CLI + MCP: <code>init</code>, <code>add</code>, <code>normalize</code>, <code>check</code>, <code>advice</code>, <code>star</code>, <code>approve</code> (+ export), <code>status</code> with next step</li>
+<li><strong>T58 Version retention</strong>: Retention: <code>keep_all_versions = false</code> prunes on approve, never input, v001, starred or final</li>
+<li><strong>T59 pw wait + hook</strong>: <code>pw wait</code> + Claude session-start hook that reports pending requests</li>
+<li><strong>T60 App shell</strong>: App shell: <code>pw open</code>, pywebview window, open folder, recent projects, DMABUF default on Linux</li>
+<li><strong>T61 Project screen</strong>: Project screen: assets by group, state, next step and actor</li>
+<li><strong>T62 Asset screen</strong>: Asset screen: image, versions strip, before/after, advice on image, accept, reject, request to AI, star, approve, open in Aseprite</li>
+<li><strong>T63 In-app first run</strong>: First run: sample project opened on first launch, guided in the app (replaces <code>pw tour</code>)</li>
+<li><strong>T64 Agent instructions</strong>: Agent instructions: rewrite Claude skills (style, critique-and-fix loop, listen with <code>pw wait</code>) and add <code>AGENTS.md</code></li>
+<li><strong>T65 Migrate + clean up</strong>: <code>pw migrate</code> for M0–M3 workspaces; remove the four-mode viewer, <code>pw tour</code> and stages; update docs</li>
+<li><strong>T66 Windows core CI</strong>: Windows CI job running the core tests</li>
 </ul>
-<p><strong>Status legend</strong>: ☐ not started · ◐ in progress · ☑ merged</p>
-<p><strong>Merge order</strong>: T19, T23, T24, T25, T26 (parallel); T20, T21, T22 (parallel); T27, T33; T28; T29, T30, T31 (parallel); T32<br />
+<p><strong>Status legend</strong>: ☐ not started · ◐ in progress · ☑ merged<br />
+<strong>Merge order</strong>: T52 and T53 first; then T54 → T55; then T56, T57, T59 in parallel; T58, T60, T66; then T61 → T62 → T63; T64; T65 last<br />
 <strong>Branch pattern</strong>: <code>pw-T&lt;N&gt;-description</code> from the default branch</p></div>
 <div class="note" data-for="s-plan-task-details"><label class="note-head" for="n-s-plan-task-details"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Task details</span></label><textarea class="note-ta" data-key="s-plan-task-details" id="n-s-plan-task-details" data-label="Task details" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-plan-dependency-graph" data-ref="PLAN › Dependency graph" data-label="Dependency graph" data-part="Plan">
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Dependency graph</span></h4>
-<div class="sec-body"><p>Generated from the <strong>Depends</strong> column — never drawn by hand.</p>
-<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 206.6" role="img" aria-labelledby="ds93acbdaee4-title"><title id="ds93acbdaee4-title">Task dependencies — phases</title><path d="M 332 78.55 L 332 126.55" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="332,126.55 328.4,118.55 335.6,118.55" fill="currentColor" stroke="none"/><rect x="252.475" y="12" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 1</tspan></text><text x="332" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T19, T23, T24, T25, T26,</tspan></text><text x="332" y="62.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T20, T21,…</tspan></text><rect x="252.475" y="126.55" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 2</tspan></text><text x="332" y="162.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T27, T33, T28, T29, T30,</tspan></text><text x="332" y="177.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T31, T32</tspan></text></svg></figure>
-<p><strong>Phase 1</strong> — T19, T23, T24, T25, T26, T20, T21, T22</p>
-<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 455.7" role="img" aria-labelledby="dse0fce78c20-title"><title id="dse0fce78c20-title">Task dependencies — phase 1</title><path d="M 308 105.795 L 332 105.795 L 332 37.85 L 356 37.85" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="356,37.85 348,41.45 348,34.25" fill="currentColor" stroke="none"/><path d="M 308 113.55 L 356 113.55" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="356,113.55 348,117.15 348,109.95" fill="currentColor" stroke="none"/><path d="M 308 121.305 L 332 121.305 L 332 189.25 L 356 189.25" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="356,189.25 348,192.85 348,185.65" fill="currentColor" stroke="none"/><rect x="133.824" y="87.7" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="220.912" y="108.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T19</tspan></text><text x="220.912" y="123.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Issues model</tspan></text><rect x="356" y="12" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="443.088" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T20</tspan></text><text x="443.088" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Issue and inbox commands</tspan></text><rect x="356" y="87.7" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="443.088" y="108.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T21</tspan></text><text x="443.088" y="123.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Critique format</tspan></text><rect x="356" y="163.4" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="443.088" y="184.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T22</tspan></text><text x="443.088" y="199.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Masked stages</tspan></text><rect x="133.824" y="163.4" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="220.912" y="184.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T23</tspan></text><text x="220.912" y="199.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Diff deltas</tspan></text><rect x="133.824" y="239.1" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="220.912" y="260.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T24</tspan></text><text x="220.912" y="275.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>CLI leftovers</tspan></text><rect x="133.824" y="314.8" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="220.912" y="336.033" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T25</tspan></text><text x="220.912" y="350.883" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Bridge on the codec</tspan></text><rect x="133.824" y="390.5" width="174.176" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="220.912" y="411.733" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T26</tspan></text><text x="220.912" y="426.583" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Style and palette edit</tspan></text></svg></figure>
-<p><strong>Phase 2</strong> — T27, T33, T28, T29, T30, T31, T32 (with T20, T21, T22, T23, T25 from earlier phases)</p>
-<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 465.605" role="img" aria-labelledby="ds71dd337420-title"><title id="ds71dd337420-title">Task dependencies — phase 2</title><path d="M 210.411 61.621 L 210.411 79.621 L 315.735 79.621 L 315.735 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="315.735,109.621 312.135,101.621 319.335,101.621" fill="currentColor" stroke="none"/><path d="M 332 61.621 L 332 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="332,109.621 328.4,101.621 335.6,101.621" fill="currentColor" stroke="none"/><path d="M 464.432 61.621 L 464.432 85.621 L 348.265 85.621 L 348.265 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="348.265,109.621 344.665,101.621 351.865,101.621" fill="currentColor" stroke="none"/><path d="M 332 159.242 L 332 207.242" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="332,207.242 328.4,199.242 335.6,199.242" fill="currentColor" stroke="none"/><path d="M 315.735 256.863 L 315.735 280.863 L 243.712 280.863 L 243.712 304.863" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="243.712,304.863 240.112,296.863 247.312,296.863" fill="currentColor" stroke="none"/><path d="M 332 256.863 L 332 286.863 L 376.144 286.863 L 376.144 304.863" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="376.144,304.863 372.544,296.863 379.744,296.863" fill="currentColor" stroke="none"/><path d="M 596.865 61.621 L 596.865 207.242 L 519.42 207.242 L 519.42 304.863" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="519.42,304.863 515.82,296.863 523.02,296.863" fill="currentColor" stroke="none"/><path d="M 348.265 256.863 L 348.265 274.863 L 497.733 274.863 L 497.733 304.863" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="497.733,304.863 494.133,296.863 501.333,296.863" fill="currentColor" stroke="none"/><path d="M 243.712 354.484 L 243.712 378.484 L 359.879 378.484 L 359.879 402.484" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="359.879,402.484 356.279,394.484 363.479,394.484" fill="currentColor" stroke="none"/><path d="M 376.144 354.484 L 376.144 402.484" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="376.144,402.484 372.544,394.484 379.744,394.484" fill="currentColor" stroke="none"/><path d="M 508.577 354.484 L 508.577 378.484 L 392.409 378.484 L 392.409 402.484" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="392.409,402.484 388.809,394.484 396.009,394.484" fill="currentColor" stroke="none"/><path d="M 199.568 61.621 L 199.568 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="199.568,109.621 195.968,101.621 203.168,101.621" fill="currentColor" stroke="none"/><path d="M 321.157 61.621 L 321.157 91.621 L 215.832 91.621 L 215.832 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="215.832,109.621 212.232,101.621 219.432,101.621" fill="currentColor" stroke="none"/><path d="M 67.135 61.621 L 67.135 85.621 L 183.303 85.621 L 183.303 109.621" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="183.303,109.621 179.703,101.621 186.903,101.621" fill="currentColor" stroke="none"/><rect x="145.351" y="12" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.568" y="32.447" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T20</tspan></text><text x="199.568" y="46.257" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="277.784" y="12" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="32.447" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T21</tspan></text><text x="332" y="46.257" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="12.919" y="12" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="67.135" y="32.447" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T22</tspan></text><text x="67.135" y="46.257" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="410.216" y="12" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="464.432" y="32.447" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T23</tspan></text><text x="464.432" y="46.257" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="542.649" y="12" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="596.865" y="32.447" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T25</tspan></text><text x="596.865" y="46.257" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="277.784" y="109.621" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="130.068" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T27</tspan></text><text x="332" y="143.878" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer server</tspan></text><rect x="277.784" y="207.242" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="227.689" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T28</tspan></text><text x="332" y="241.499" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer Look</tspan></text><rect x="189.495" y="304.863" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="243.712" y="325.31" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T29</tspan></text><text x="243.712" y="339.12" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer Compare</tspan></text><rect x="321.928" y="304.863" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="376.144" y="325.31" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T30</tspan></text><text x="376.144" y="339.12" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer Mark</tspan></text><rect x="454.36" y="304.863" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="508.577" y="325.31" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T31</tspan></text><text x="508.577" y="339.12" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer Play</tspan></text><rect x="321.928" y="402.484" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="376.144" y="422.931" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T32</tspan></text><text x="376.144" y="436.741" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Viewer polish</tspan></text><rect x="145.351" y="109.621" width="108.432" height="49.621" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.568" y="130.068" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T33</tspan></text><text x="199.568" y="143.878" font-family="'DejaVu Sans', sans-serif" font-size="10.23" fill="currentColor" text-anchor="middle"><tspan>Plugin v0 skills</tspan></text></svg></figure></div>
+<div class="sec-body"><figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 206.6" role="img" aria-labelledby="ds0c94c56daf-title"><title id="ds0c94c56daf-title">Task dependencies — phases</title><path d="M 332 78.55 L 332 126.55" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="332,126.55 328.4,118.55 335.6,118.55" fill="currentColor" stroke="none"/><rect x="252.475" y="12" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 1</tspan></text><text x="332" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T52, T53, T54, T60, T55,</tspan></text><text x="332" y="62.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T56, T57,…</tspan></text><rect x="252.475" y="126.55" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 2</tspan></text><text x="332" y="162.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T58, T61, T64, T66, T62,</tspan></text><text x="332" y="177.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T63, T65</tspan></text></svg></figure>
+<p><strong>Phase 1</strong> — T52, T53, T54, T60, T55, T56, T57, T59</p>
+<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 376.3" role="img" aria-labelledby="ds01f6c0dd5d-title"><title id="ds01f6c0dd5d-title">Task dependencies — phase 1</title><path d="M 325.82 63.7 L 325.82 87.7 L 350.899 87.7 L 350.899 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,111.7 347.299,103.7 354.499,103.7" fill="currentColor" stroke="none"/><path d="M 350.899 163.4 L 350.899 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,211.4 347.299,203.4 354.499,203.4" fill="currentColor" stroke="none"/><path d="M 331.82 263.1 L 331.82 287.1 L 199.705 287.1 L 199.705 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="199.705,311.1 196.105,303.1 203.305,303.1" fill="currentColor" stroke="none"/><path d="M 350.899 263.1 L 350.899 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,311.1 347.299,303.1 354.499,303.1" fill="currentColor" stroke="none"/><path d="M 369.979 263.1 L 369.979 287.1 L 502.094 287.1 L 502.094 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="502.094,311.1 498.494,303.1 505.694,303.1" fill="currentColor" stroke="none"/><path d="M 161.906 63.7 L 161.906 87.7 L 186.985 87.7 L 186.985 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="186.985,111.7 183.385,103.7 190.585,103.7" fill="currentColor" stroke="none"/><path d="M 300.381 63.7 L 300.381 87.7 L 212.424 87.7 L 212.424 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="212.424,111.7 208.824,103.7 216.024,103.7" fill="currentColor" stroke="none"/><rect x="98.308" y="12" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="161.906" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T52</tspan></text><text x="161.906" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Screens review</tspan></text><rect x="249.503" y="12" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="313.101" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T53</tspan></text><text x="313.101" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Project model v2</tspan></text><rect x="287.302" y="111.7" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T54</tspan></text><text x="350.899" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Asset model v2</tspan></text><rect x="287.302" y="211.4" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="232.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T55</tspan></text><text x="350.899" y="247.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Advice log</tspan></text><rect x="136.107" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.705" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T56</tspan></text><text x="199.705" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Promote rejections</tspan></text><rect x="287.302" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T57</tspan></text><text x="350.899" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Flow CLI + MCP</tspan></text><rect x="438.497" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="502.094" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T59</tspan></text><text x="502.094" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>pw wait + hook</tspan></text><rect x="136.107" y="111.7" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.705" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T60</tspan></text><text x="199.705" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>App shell</tspan></text></svg></figure>
+<p><strong>Phase 2</strong> — T58, T61, T64, T66, T62, T63, T65 (with T57, T59, T60 from earlier phases)</p>
+<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 476" role="img" aria-labelledby="ds06304a10c6-title"><title id="ds06304a10c6-title">Task dependencies — phase 2</title><path d="M 241.77 63.7 L 241.77 87.7 L 92.754 87.7 L 92.754 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="92.754,111.7 89.154,103.7 96.354,103.7" fill="currentColor" stroke="none"/><path d="M 288.252 63.7 L 288.252 69.7 L 539.195 69.7 L 539.195 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="539.195,111.7 535.595,103.7 542.795,103.7" fill="currentColor" stroke="none"/><path d="M 565.018 63.7 L 565.018 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="565.018,111.7 561.418,103.7 568.618,103.7" fill="currentColor" stroke="none"/><path d="M 92.754 163.4 L 92.754 193.4 L 334.962 193.4 L 334.962 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="334.962,211.4 331.362,203.4 338.562,203.4" fill="currentColor" stroke="none"/><path d="M 405.217 63.7 L 405.217 105.7 L 322.43 105.7 L 322.43 181.4 L 354.33 181.4 L 354.33 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="354.33,211.4 350.73,203.4 357.93,203.4" fill="currentColor" stroke="none"/><path d="M 552.107 163.4 L 552.107 181.4 L 373.697 181.4 L 373.697 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="373.697,211.4 370.097,203.4 377.297,203.4" fill="currentColor" stroke="none"/><path d="M 354.33 263.1 L 354.33 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="354.33,311.1 350.73,303.1 357.93,303.1" fill="currentColor" stroke="none"/><path d="M 272.758 63.7 L 272.758 81.7 L 386.077 81.7 L 386.077 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="386.077,111.7 382.477,103.7 389.677,103.7" fill="currentColor" stroke="none"/><path d="M 431.04 63.7 L 431.04 93.7 L 411.901 93.7 L 411.901 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="411.901,111.7 408.301,103.7 415.501,103.7" fill="currentColor" stroke="none"/><path d="M 363.748 362.8 L 363.748 410.8" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="363.748,410.8 360.148,402.8 367.348,402.8" fill="currentColor" stroke="none"/><path d="M 398.989 163.4 L 398.989 193.4 L 430.053 193.4 L 430.053 386.8 L 389.571 386.8 L 389.571 410.8" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="389.571,410.8 385.971,402.8 393.171,402.8" fill="currentColor" stroke="none"/><path d="M 245.871 63.7 L 245.871 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="245.871,111.7 242.271,103.7 249.471,103.7" fill="currentColor" stroke="none"/><rect x="200.452" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="265.011" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T57</tspan></text><text x="265.011" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="28.195" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="92.754" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T58</tspan></text><text x="92.754" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Version retention</tspan></text><rect x="353.57" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="418.129" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T59</tspan></text><text x="418.129" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="506.688" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="571.246" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T60</tspan></text><text x="571.246" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="487.548" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="552.107" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T61</tspan></text><text x="552.107" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Project screen</tspan></text><rect x="289.771" y="211.4" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="354.33" y="232.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T62</tspan></text><text x="354.33" y="247.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Asset screen</tspan></text><rect x="289.771" y="311.1" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="354.33" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T63</tspan></text><text x="354.33" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>In-app first run</tspan></text><rect x="334.43" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="398.989" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T64</tspan></text><text x="398.989" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Agent instructions</tspan></text><rect x="312.1" y="410.8" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="376.659" y="432.033" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T65</tspan></text><text x="376.659" y="446.883" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Migrate + clean up</tspan></text><rect x="181.312" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="245.871" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T66</tspan></text><text x="245.871" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Windows core CI</tspan></text></svg></figure></div>
 <div class="note" data-for="s-plan-dependency-graph"><label class="note-head" for="n-s-plan-dependency-graph"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Dependency graph</span></label><textarea class="note-ta" data-key="s-plan-dependency-graph" id="n-s-plan-dependency-graph" data-label="Dependency graph" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l2" id="s-plan-risks" data-ref="PLAN › Risks" data-label="Risks" data-part="Plan">
-<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Risks</span></h3>
-<div class="sec-body"><table>
-<thead>
-<tr>
-<th>Risk</th>
-<th>Likelihood</th>
-<th>Impact</th>
-<th>Mitigation</th>
-<th>Rollback</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Viewer write endpoints reachable from another site (CSRF, DNS rebinding)</td>
-<td>Med</td>
-<td>High</td>
-<td>Bind 127.0.0.1, check <code>Host</code>, per-run token header, no CORS</td>
-<td>Start read-only (<code>--read-only</code>)</td>
-</tr>
-<tr>
-<td><code>masks@2</code> breaks existing workspaces</td>
-<td>Low</td>
-<td>Med</td>
-<td>Read <code>@1</code> forever; upgrade on first write; fixture test</td>
-<td>Writer can emit <code>@1</code> again</td>
-</tr>
-<tr>
-<td>Playwright in CI is slow or flaky</td>
-<td>Med</td>
-<td>Low</td>
-<td>One Chromium, <code>--trace off</code>, e2e in its own job; unit tests cover the API</td>
-<td>Mark e2e job non-blocking while fixing</td>
-</tr>
-<tr>
-<td>Masked stages leak changes at mask edges</td>
-<td>Med</td>
-<td>Med</td>
-<td>Gate measures pixels changed outside the mask = 0</td>
-<td>Revert the version; history keeps the parent</td>
-</tr>
-<tr>
-<td>Viewer grows into an editor</td>
-<td>Low</td>
-<td>Med</td>
-<td>Spec rule: never edits pixels; review checks the API has no pixel writes</td>
-<td>—</td>
-</tr>
-</tbody>
-</table></div>
-<div class="note" data-for="s-plan-risks"><label class="note-head" for="n-s-plan-risks"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Risks</span></label><textarea class="note-ta" data-key="s-plan-risks" id="n-s-plan-risks" data-label="Risks" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l2" id="s-plan-evidence-log" data-ref="PLAN › Evidence log" data-label="Evidence log" data-part="Plan">
 <h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Evidence log</span></h3>
@@ -670,9 +634,8 @@ envelope, mirrored in MCP): <code>issue add|list|resolve</code>, <code>critique 
 <article class="sec l2" id="s-plan-sign-off" data-ref="PLAN › Sign-off" data-label="Sign-off" data-part="Plan">
 <h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Sign-off</span></h3>
 <div class="sec-body"><ul>
-<li>[ ] Design reviewed by the owner</li>
-<li>[ ] Contracts agreed (API table above, <code>masks@2</code>, <code>critique.md</code>)</li>
-<li>[ ] Migration strategy validated (<code>masks@1</code> read forever)</li>
+<li>[ ] Plan approved by the owner</li>
+<li>[ ] Screens approved (T52)</li>
 <li>[ ] Ready for execution</li>
 </ul></div>
 <div class="note" data-for="s-plan-sign-off"><label class="note-head" for="n-s-plan-sign-off"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Sign-off</span></label><textarea class="note-ta" data-key="s-plan-sign-off" id="n-s-plan-sign-off" data-label="Sign-off" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
