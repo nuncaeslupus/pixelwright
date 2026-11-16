@@ -167,7 +167,7 @@ setInterval(poll, 2000);
 // -- shared chrome ------------------------------------------------------------------
 function rightTools() {
   return `${btn("theme", "Light or dark theme", "T", icon("theme"))}
-    ${btn("keys", "Keyboard shortcuts", "?", icon("keys"))}
+    ${btn("keys", "Help and keyboard shortcuts", "?", icon("keys"))}
     ${btn("inbox", "Inbox: what happened while you were away", "I", icon("bell") + (state.inbox.length ? '<span class="dot"></span>' : ""), "ib" + (state.pop === "inbox" ? " on" : ""), 'id="bell"')}`;
 }
 
@@ -594,20 +594,67 @@ app.addEventListener("change", (ev) => {
 
 // -- keyboard ---------------------------------------------------------------------------
 const SHORTCUTS = {
-  list: [["Ctrl+K", "Menu: every command"], ["Enter", "Open the focused asset"], ["/", "Find by name"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
+  list: [["Ctrl+K", "Menu: every command"], ["Enter", "Open the focused asset"], ["/", "Find by name"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This help"]],
   asset: [["A", "Approve"], ["R", "Reject"], ["Ctrl+Z", "Undo the last decision"], ["← →", "Previous or next version"],
     ["L C M P", "Look, Compare, Mark, Play"], ["1 2 3", "Issues, Checks, History"], ["H", "Show or hide the side panel"],
     ["V", "Next view (Color, Gray, Values, Silhouette, 25% thumb)"], ["G", "Pixel grid"], ["+ −", "Zoom"], ["Esc", "Close or go back"],
-    ["Ctrl+K", "Menu: every command"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This list"]],
+    ["Ctrl+K", "Menu: every command"], ["I", "Inbox"], ["T", "Light or dark theme"], ["?", "This help"]],
 };
+
+// Help: where this window sits in the loop, and what it does and does not do. The rows
+// below are literal markup from our own source, so they are not escaped. The wording
+// tracks `docs/guide/how-it-works.md`; change both together.
+const LOOP = [
+  ["1 · Sketch", "You draw the composition. <code>pw attach &lt;id&gt; sketch.png --as sketch</code>"],
+  ["2 · Paint", "An image model paints 1-4 candidates. Their pixels are still fake. <code>pw generate</code>"],
+  ["3 · Real pixels", "Find the grid, map to the palette, drop the specks. <code>pw snap</code> <code>pw quantize</code> <code>pw clean</code>"],
+  ["4 · Measure", "The rules a machine can measure, and where they fail. <code>pw check</code>"],
+  ["5 · Review", "<b>You are here.</b> Read the critique, compare against the last good version, mark what is wrong."],
+  ["6 · Fix", "Repaint a marked region, redo a step inside it, or retouch it in Aseprite. <code>pw regen-region</code>"],
+  ["7 · Approve", "<code>pw approve</code>, then <code>pw export</code> to the game."],
+];
+
+const WINDOW = [
+  ["Nothing here edits an image", "This window shows versions and records what you say about them. An image changes only when a <code>pw</code> command or Aseprite writes a new version."],
+  ["Approve and Reject are always there", "Every version is a decision waiting to be made, so the pair never goes away. Reject asks what should change; <code>Ctrl+Z</code> undoes the last decision."],
+  ["How many versions", "No limit. Every step writes a new one and nothing is overwritten."],
+  ["Who changes things", "You mark and decide. A provider paints, <code>pw</code> commands transform, Claude critiques. None of them approves."],
+  ["Look, Compare, Mark, Play", "One image · two of them side by side, onion, swipe or difference · draw a region and file it as an issue · play an animation."],
+  ["Seeing old and new together", "Compare, then Side by side. Both images share one zoom and one scroll, so they magnify together."],
+  ["Marking something to be looked at", "Mark draws a region and saves it as an issue, with a rule and a note. Checks and Claude file issues the same way."],
+];
+
+const WORDS = [
+  ["asset", "one game image - a background, a sprite"],
+  ["version", "one image of an asset (<span class=\"mono\">v0001</span>, <span class=\"mono\">v0002</span>...); every step makes a new one"],
+  ["stage", "where a version stands: draft, approved, rejected, final (exported)"],
+  ["check", "an automatic measurement against a rule; <code>✓</code> pass, <code>!</code> warn, <code>✕</code> fail"],
+  ["critique", "Claude's written review of a version, one section per complaint"],
+  ["issue", "a region that needs fixing, drawn by you or filed by a check or a critique"],
+  ["style guide", "the palette, rules and references every asset follows"],
+  ["provider", "the image model that paints: replay (offline), comfyui (local GPU) or a paid API"],
+];
 
 function showKeys() {
   const table = (rows) => `<table>${rows.map(([k, d]) => `<tr><td>${esc(k)}</td><td>${esc(d)}</td></tr>`).join("")}</table>`;
+  const rich = (rows) => `<table class="help">${rows.map(([k, d]) => `<tr><td>${k}</td><td>${d}</td></tr>`).join("")}</table>`;
   const mode = modes[state.route.mode];
   const extra = state.route.asset && mode.shortcuts ? `<h4>${esc(mode.label)}</h4>${table(mode.shortcuts)}` : "";
-  keysDialog.innerHTML = `<h3>Keyboard shortcuts</h3>${extra}${state.route.asset && mode.shortcuts ? "<h4>Everywhere</h4>" : ""}${table(SHORTCUTS[state.route.asset ? "asset" : "list"])}
+  const rules = Object.entries(RULES).map(([id, name]) => [`<span class="mono">${esc(id)}</span>`, esc(name)]);
+  keysDialog.innerHTML = `<h3 tabindex="-1">Help</h3>
+    <p>pixelwright turns a sketch into game-ready pixel art. An image model paints, code makes
+    the pixels real and measures them, Claude reviews like an art director, you decide. This
+    window is the deciding part.</p>
+    <h4>The loop</h4>${rich(LOOP)}
+    <h4>This window</h4>${rich(WINDOW)}
+    <h4>Words</h4>${rich(WORDS)}
+    <h4>Rule codes</h4>${rich(rules)}
+    <h4>Keyboard shortcuts</h4>${extra}${state.route.asset && mode.shortcuts ? "<h4>Everywhere</h4>" : ""}${table(SHORTCUTS[state.route.asset ? "asset" : "list"])}
     <form method="dialog" style="text-align:right;margin-top:12px"><button class="btn" title="Close (Esc)">Close</button></form>`;
   keysDialog.showModal();
+  // Long enough to scroll: the Close button would otherwise take focus and open it at the end.
+  keysDialog.scrollTop = 0;
+  keysDialog.querySelector("h3").focus();
 }
 
 document.addEventListener("keydown", (ev) => {
