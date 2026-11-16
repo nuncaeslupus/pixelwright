@@ -12,7 +12,7 @@
 **Ticket / PR**: product re-specification (what & why)
 **Author**: Claude (for the repository owner)
 **Revision**: 2
-**Status**: draft
+**Status**: approved (2026-11-16, revision 2) — without annotations
 **Revision log**:
 - r1 — first draft, from the re-specification brainstorm (decisions D-1 to D-10 below). Replaces the
   pipeline specification, archived at `status/archive/specification-v1-pipeline.md`.
@@ -306,11 +306,132 @@ and its screens, then a reuse map of M0–M3 code.
 | D-12 | "Keep all versions" is a project setting, on by default; off keeps input, first, starred and final | agreed | 2026-11-16 |
 | D-13 | Palettes form a library; groups set defaults, assets may override or use several. Versions are plain PNG; delta storage only if measured size demands it | agreed | 2026-11-16 |
 
-
-> Sections 5–6 (contracts, risks) are appended by `design`.
-
 <!-- -->
 
 > **✎ Notes** · `SPEC §4`
+> _(your notes here — replace this line)_
+
+## §5 Contracts
+
+### API contracts
+
+#### Project file `pixelwright.toml`
+
+```toml
+[project]
+name = "my-game-art"
+keep_all_versions = true          # D-12; false keeps input, v001, starred and final
+export = "export"                 # relative or absolute; may point into an engine project
+
+[canvas]                          # project default, overridden by group.toml / asset.toml
+width = 320
+height = 180
+
+[palettes]
+default = "main"                  # names of style/palettes/<name>.gpl
+
+[rules]                           # rule id -> "error" | "warn" | "off"
+"R-PIX-4" = "warn"
+```
+
+`group.toml` (optional, any folder under `assets/`) may set `palette`, `palettes` and `[canvas]`.
+The nearest folder wins: asset, then each parent group, then the project.
+
+#### Asset file `asset.toml`
+
+```toml
+kind = "background"               # background | sprite | prop | animation | effect | tileset
+brief = "Harbour at night, two moored boats, lamp light"
+palettes = ["night"]              # optional override
+state = "working"                 # new | working | approved
+chosen = "v004"                   # version copied to final.png on approval
+starred = ["v001", "v003"]
+```
+
+#### Advice log `advice.jsonl` (append-only)
+
+Each line is either a new advice entry or a state event for one:
+
+```json
+{"id": "a-7f3c", "at": "2026-11-16T15:00:00Z", "version": "v002",
+ "author": "script", "target": null, "kind": "rule", "rule": "R-PIX-4",
+ "region": {"box": [40, 60, 12, 8]}, "message": "Orphan pixels in the hull",
+ "fix": {"op": "clean", "args": {"region": [40, 60, 12, 8]}}, "state": "pending"}
+{"id": "a-7f3c", "at": "2026-11-16T15:02:00Z", "event": "state", "state": "accepted",
+ "by": "person", "result_version": "v003"}
+{"id": "a-8a01", "at": "2026-11-16T15:03:00Z", "version": "v003",
+ "author": "person", "target": "ai", "kind": "request",
+ "region": {"mask": "masks/m1.png"}, "message": "Outline too thick here", "state": "pending"}
+```
+
+- `author`: `script` | `ai` | `person`. `target`: `ai` marks a request (D-6).
+- `kind`: `rule` | `critique` | `note` | `request`.
+- `state`: `pending` → `accepted` | `rejected` (with `reason`) | `done` (request answered).
+- `fix` is optional; accepting advice that has one runs it through `pw` and writes a new version.
+- A rejection with `promote: true` adds its reason to `style/rules.toml`, and `pw check` stops
+  raising that advice for the scope given (asset, group or project).
+
+#### CLI (`pw <command> --json`, existing result envelope kept)
+
+| Step | Command | Effect |
+|---|---|---|
+| — | `pw init [dir]` | Create a project folder |
+| 1 | `pw add <group/asset> --from <image> [--brief "..."]` | Create the asset, copy the image into `inputs/` |
+| 2 | `pw normalize <asset> [--input <file>]` | Size, palette, grid, clean-up → new version |
+| 3 | `pw check <asset> [--version v]` | Rule checks → `script` advice |
+| 4–5 | `pw advice list|accept|reject|request|done <asset> [id]` | Read and change advice; accept runs the fix |
+| 5 | `pw star <asset> <version>` | Keep a version under `keep_all_versions = false` |
+| 6 | `pw approve <asset> [version]` | Write `final.png`, copy it to the export path, prune if set |
+| bridge | `pw wait [--timeout s]` | Block until a pending request exists in the project; print it as JSON; exit 0 |
+| app | `pw open [dir]` | Open the app on a project |
+| optional | `pw generate`, `pw aseprite` | Providers and the Aseprite bridge, as today |
+
+`pw status` prints, for each asset, its state and the single next step with its actor.
+
+<!-- -->
+
+> **✎ Notes** · `SPEC › API contracts`
+> _(your notes here — replace this line)_
+
+### Inter-service contracts
+
+| Caller | Callee | Protocol | Contract | Failure handling |
+|--------|--------|----------|----------|-----------------|
+| App (pywebview window) | Core | In-process Python API exposed to the page (`js_api`) | Same functions the CLI calls; JSON in and out | Errors are shown inline next to the action, never as a transient toast |
+| AI session | Core | `pw` CLI (JSON envelope) or MCP | Commands above | Non-zero exit with an error object |
+| App | AI session | Files: `advice.jsonl` request entries | `pw wait` wakes the AI | Requests stay pending until handled; the app shows them as waiting |
+| Core | Aseprite | Existing bridge | Open a version, save back as a new version | Unchanged |
+| Core | Providers | Existing provider interface | Optional input source | Unchanged |
+
+<!-- -->
+
+> **✎ Notes** · `SPEC › Inter-service contracts`
+> _(your notes here — replace this line)_
+
+### Database migrations
+
+| Service | Database | Change | Reversible | Forward-compatible |
+|---------|----------|--------|------------|-------------------|
+| Core | Workspace files (M0–M3) | `pw migrate` converts `asset.yaml` → `asset.toml`, `history.jsonl` + issues → `advice.jsonl`, roles/stages config → `pixelwright.toml` v2 | yes (old files kept as `.bak`) | no; the owner's test assets only |
+
+<!-- -->
+
+> **✎ Notes** · `SPEC › Database migrations`
+> _(your notes here — replace this line)_
+
+## §6 Risks & Validation
+
+| Risk | Likelihood | Impact | Mitigation | Validation |
+|------|-----------|--------|------------|------------|
+| The rework grows into a second rewrite | Med | High | Reuse map in the plan; core image functions are not touched | Plan review: each task names what it reuses |
+| pywebview (WebKitGTK) freezes on Wayland + NVIDIA | Med | Med | Set `WEBKIT_DISABLE_DMABUF_RENDERER=1` by default on Linux | Manual run on the owner's machine |
+| `pw wait` misses or double-delivers a request | Low | Med | Requests are only closed by an explicit `done` event; `pw wait` returns every pending request | Unit test with concurrent writers |
+| Pruning removes a version the person wanted | Low | High | Pruning only when the setting is off, never touches starred, first or final versions; prune lists before deleting | Unit test on retention |
+| The app still needs explaining | Med | High | One flow, one next step per asset, first run on a sample project; screens reviewed before building | Owner's first-run judgement (success criterion 1) |
+| Core picks up Linux-only code | Low | Med | Windows CI job on the core tests | CI |
+
+<!-- -->
+
+> **✎ Notes** · `SPEC §6`
 > _(your notes here — replace this line)_
 

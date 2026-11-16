@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="8c3127bb4fe46592576d5cb3eff8f28eac926b89df00f0a0b2917113fbee6aff">
-<title>Pixelwright — Specification (annotatable)</title>
+<meta name="arsenal-source-sha256" content="cf4a15f1cf64aab2473bf2da013f557b556f6ac29b9eb3cc3100e866c6a15b96">
+<title>Pixelwright — Plan (annotatable)</title>
 <style>
 :root{
   --bg:#fbfaf7;--fg:#1d1c1a;--muted:#5f5c56;--line:#e3ded4;
@@ -193,7 +193,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <body>
 <div class="topbar">
   <div class="wrap">
-    <div class="brand">Pixelwright — Specification<small>annotatable reader · 2026-11-16</small></div>
+    <div class="brand">Pixelwright — Plan<small>annotatable reader · 2026-11-16</small></div>
     <span class="savestate ok" id="savestate">✓ Auto-saving</span>
     <button class="btn" id="btn-import">Import</button>
     <button class="btn primary" id="btn-export">Save / Export</button>
@@ -204,7 +204,7 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 
 <div class="wrap">
   <div class="hero">
-    <h1>Pixelwright — Specification</h1>
+    <h1>Pixelwright — Plan</h1>
     <p>Read at your own pace and leave a note on any point you want to discuss.</p>
   </div>
   <details class="help">
@@ -219,547 +219,426 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
   </details>
   <details class="toc"><summary>Contents</summary>
 <ul class="toc-flat">
-<li><a href="#s-spec-intro">Preamble &amp; scope</a></li>
-<li><a href="#s-spec-1">§1 Problem statement</a></li>
-<li><a href="#s-spec-2">§2 Systems &amp; Impact</a></li>
-<li class="sub"><a href="#s-spec-2-1">§2.1 Concepts</a></li>
-<li class="sub"><a href="#s-spec-2-2">§2.2 The flow</a></li>
-<li class="sub"><a href="#s-spec-2-3">§2.3 Inside and outside</a></li>
-<li class="sub"><a href="#s-spec-2-4">§2.4 Folder layout (starting point, adaptable)</a></li>
-<li class="sub"><a href="#s-spec-2-5">§2.5 Systems affected</a></li>
-<li><a href="#s-spec-3">§3 Options</a></li>
-<li class="sub"><a href="#s-spec-option-a-keep-the-current-shape">Option A: Keep the current shape, add a guided mode (Conservative)</a></li>
-<li class="sub"><a href="#s-spec-option-b-one-flow-around-a-proje">Option B: One flow around a project folder, desktop app for decisions (Recommended)</a></li>
-<li class="sub"><a href="#s-spec-option-c-aseprite-plugin-as-the">Option C: Aseprite plugin as the only interface</a></li>
-<li class="sub"><a href="#s-spec-comparison">Comparison</a></li>
-<li><a href="#s-spec-4">§4 Recommendation</a></li>
+<li><a href="#s-plan-intro">Preamble &amp; scope</a></li>
+<li><a href="#s-plan-technical-solution">Technical solution</a></li>
+<li class="sub"><a href="#s-plan-architecture-overview">Architecture overview</a></li>
+<li class="sub"><a href="#s-plan-data-flow">Data flow</a></li>
+<li class="sub"><a href="#s-plan-state-changes">State changes</a></li>
+<li class="sub"><a href="#s-plan-technology-choices">Technology choices</a></li>
+<li class="sub"><a href="#s-plan-reuse-map-m0-m3">Reuse map (M0–M3)</a></li>
+<li class="sub"><a href="#s-plan-out-of-scope">Out of scope</a></li>
+<li><a href="#s-plan-implementation-tasks">Implementation tasks</a></li>
+<li class="sub"><a href="#s-plan-task-details">Task details</a></li>
+<li class="sub"><a href="#s-plan-dependency-graph">Dependency graph</a></li>
+<li><a href="#s-plan-evidence-log">Evidence log</a></li>
+<li><a href="#s-plan-sign-off">Sign-off</a></li>
 </ul>
 </details>
   <section class="part">
-<article class="sec l2" id="s-spec-intro" data-ref="SPEC · intro" data-label="Preamble &amp; scope" data-part="Specification">
+<article class="sec l2" id="s-plan-intro" data-ref="PLAN · intro" data-label="Preamble &amp; scope" data-part="Plan">
 <h3 class="sec-h"><span class="chip">overview</span><span class="sec-title">Preamble &amp; scope</span></h3>
 <div class="sec-body"><p><strong>Date</strong>: 2026-11-16<br />
-<strong>Ticket / PR</strong>: product re-specification (what &amp; why)<br />
+<strong>Specification</strong>: <code>status/specification.md</code><br />
 <strong>Author</strong>: Claude (for the repository owner)<br />
-<strong>Revision</strong>: 2<br />
+<strong>Revision</strong>: 1<br />
 <strong>Status</strong>: draft<br />
 <strong>Revision log</strong>:
-- r1 — first draft, from the re-specification brainstorm (decisions D-1 to D-10 below). Replaces the
-  pipeline specification, archived at <code>status/archive/specification-v1-pipeline.md</code>.
-- r2 — applied <code>pixelwright-spec-v1-2026-11-16-1656-notes.md</code> (3 notes): any AI agent as the
-  AI actor, with Claude's tools used first; keeping every version is a setting, on by default;
-  palettes per asset or group; plain PNG versions with delta storage deferred (D-11 to D-13)</p>
+- r1 — first draft</p>
 <blockquote>
-<p>Review record. Each round of reviewer notes makes a new revision: bump
-<strong>Revision</strong>, add a log line naming the export it applied, and commit that
-export beside this file in the same commit. On approval set <strong>Status</strong> to
-<code>approved (YYYY-MM-DD, revision N)</code>.</p>
-</blockquote>
-<p>This revision covers <strong>what pixelwright is and why</strong> (sections 1–4). How it is built (pywebview
-details, queue format, rule engine) comes in sections 5–6 from <code>design</code>, and what to reuse from
-the M0–M3 code is decided after that.</p></div>
-<div class="note" data-for="s-spec-intro"><label class="note-head" for="n-s-spec-intro"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC · intro</span></label><textarea class="note-ta" data-key="s-spec-intro" id="n-s-spec-intro" data-label="Preamble &amp; scope" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+<p>Review record, kept the way the spec keeps its own: each round of notes bumps
+<strong>Revision</strong> with a log line naming the <code>&lt;repo&gt;-plan-v&lt;N&gt;-&lt;date&gt;-notes.md</code>
+export it applied, committed beside this file in the same commit. Approval is
+<code>approved (YYYY-MM-DD, revision N)</code>, plus <code>— without annotations</code> when there
+were none.</p>
+</blockquote></div>
+<div class="note" data-for="s-plan-intro"><label class="note-head" for="n-s-plan-intro"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN · intro</span></label><textarea class="note-ta" data-key="s-plan-intro" id="n-s-plan-intro" data-label="Preamble &amp; scope" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
-<article class="sec l2" id="s-spec-1" data-ref="SPEC §1" data-label="§1 Problem statement" data-part="Specification">
-<h3 class="sec-h"><span class="chip">§1</span><span class="sec-title">Problem statement</span></h3>
-<div class="sec-body"><p>The M0–M3 build works piece by piece: CLI <code>pw</code>, providers, rule checks, a web viewer with four
-modes, an Aseprite bridge and Claude skills. As a product, though, it does not explain itself.
-After using it, the owner could not say what it is for, how it attaches to a real game project,
-which steps are done by scripts, which by AI and which by a person, or in what order the
-viewer's modes are meant to be used. A long help menu did not fix that, because the problem is
-the product's shape, not its documentation. pixelwright should do one job: <strong>take any image (an
-AI output, a hand sketch, a photo, someone else's art) and turn it into game-ready pixel art for
-a given project's style, in escalating steps (scripts, then an AI agent, then the person),
-keeping its history.</strong> Where the first image came from does not matter; improving it is the point.</p>
-<p><strong>Who uses it</strong>: one person making the art for a game. An AI agent does the reading, critiquing
-and fixing. The agent is not fixed: anything that can run <code>pw</code> and read images will do. Claude
-(Claude Code or Claude Desktop, on the person's own subscription) is the first-class one, and
-pixelwright uses its tools where they help, such as background waiting for app requests. There
-is no API key, so the app never calls an AI itself. Below, "AI" means that agent.</p>
-<p><strong>Success criteria (measurable)</strong>:</p>
+<article class="sec l2 bare" id="s-plan-technical-solution" data-ref="PLAN › Technical solution" data-label="Technical solution" data-part="Plan">
+<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Technical solution</span></h3>
+</article>
+<article class="sec l3" id="s-plan-architecture-overview" data-ref="PLAN › Architecture overview" data-label="Architecture overview" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Architecture overview</span></h4>
+<div class="sec-body"><p>Three layers, one flow (spec §2.2):</p>
 <ul>
-<li>[ ] A first-time user, given only the app, can state in one sentence what it does and name the
-  next step at every screen without the help text (judged by the owner on a first run of a new
-  build).</li>
-<li>[ ] Every step of the flow (section 2.2) names exactly one actor (script, AI or person) and
-  one place it runs (app, <code>pw</code>, AI session, Aseprite); no step is reachable by more than one main
-  path (judged by review of the flow table against the app).</li>
-<li>[ ] A project is an ordinary folder: deleting the app leaves every input, version, advice entry
-  and final image readable as plain files (<code>png</code>, <code>toml</code>, <code>jsonl</code>), verified by a test that
-  opens a project with no app installed.</li>
-<li>[ ] No version is ever overwritten. With "keep all versions" on (the default),
-  <code>versions_written == versions_on_disk</code> after any sequence of accept/reject/edit actions; with it
-  off, the input, the first version, every starred version and the final are still kept (tests).</li>
-<li>[ ] Opening an existing project folder of 50 assets shows the asset list in <code>&lt;= 2 s</code> on the
-  owner's Linux machine.</li>
-<li>[ ] Normalising one 320×180 input (resize, palette, grid, clean-up) takes <code>&lt;= 5 s</code> without the
-  AI.</li>
-<li>[ ] A request left in the app reaches a listening AI session within <code>&lt;= 10 s</code>, and costs no
-  AI usage while nothing is pending (test with <code>pw wait</code>).</li>
-<li>[ ] Approving an asset copies its final image to the project's configured export path, which
-  can point anywhere, including inside a game engine's project (test).</li>
-<li>[ ] The app and core run on Linux; nothing in the core depends on Linux-only libraries, so a
-  Windows build needs packaging work only (checked by running the core test suite on Windows
-  in CI).</li>
+<li><strong>Core (Python library + <code>pw</code>)</strong> owns every file in a project: the project, group and asset
+  files, versions, the advice log, normalising, checks, export and <code>pw wait</code>. Everything an AI
+  or the app does goes through it.</li>
+<li><strong>App</strong> is a pywebview window started by <code>pw open</code>. The page is plain HTML/JS/CSS, as today.
+  It calls the core in-process through pywebview's <code>js_api</code>, so there is no HTTP server, port or
+  token. It has two screens: <strong>Project</strong> (assets by group, each with its state and next step)
+  and <strong>Asset</strong> (the image in the centre, a strip of versions, before/after, advice on the
+  image, and the actions accept, reject, request, star, approve and open in Aseprite).</li>
+<li><strong>Agent instructions</strong>: Claude skills for steps 0 and 4 and for the bridge, plus <code>AGENTS.md</code>
+  for other agents.</li>
 </ul></div>
-<div class="note" data-for="s-spec-1"><label class="note-head" for="n-s-spec-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §1</span></label><textarea class="note-ta" data-key="s-spec-1" id="n-s-spec-1" data-label="§1 Problem statement" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+<div class="note" data-for="s-plan-architecture-overview"><label class="note-head" for="n-s-plan-architecture-overview"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Architecture overview</span></label><textarea class="note-ta" data-key="s-plan-architecture-overview" id="n-s-plan-architecture-overview" data-label="Architecture overview" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
-<article class="sec l2 bare" id="s-spec-2" data-ref="SPEC §2" data-label="§2 Systems &amp; Impact" data-part="Specification">
-<h3 class="sec-h"><span class="chip">§2</span><span class="sec-title">Systems &amp; Impact</span></h3>
+<article class="sec l3" id="s-plan-data-flow" data-ref="PLAN › Data flow" data-label="Data flow" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Data flow</span></h4>
+<div class="sec-body"><p>Person or AI → <code>pw add</code> (inputs) → <code>pw normalize</code> (v001) → <code>pw check</code> (script advice) → AI loop
+via <code>pw advice</code> / fix ops (ai advice, new versions) → app (person accepts or rejects, or leaves a
+request) → <code>pw wait</code> wakes the AI → … → <code>pw approve</code> (final + export).</p></div>
+<div class="note" data-for="s-plan-data-flow"><label class="note-head" for="n-s-plan-data-flow"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Data flow</span></label><textarea class="note-ta" data-key="s-plan-data-flow" id="n-s-plan-data-flow" data-label="Data flow" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
-<article class="sec l3" id="s-spec-2-1" data-ref="SPEC §2.1" data-label="§2.1 Concepts" data-part="Specification">
-<h4 class="sec-h"><span class="chip">§2.1</span><span class="sec-title">Concepts</span></h4>
+<article class="sec l3" id="s-plan-state-changes" data-ref="PLAN › State changes" data-label="State changes" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">State changes</span></h4>
 <div class="sec-body"><table>
 <thead>
 <tr>
-<th>Concept</th>
-<th>What it is</th>
-<th>On disk</th>
+<th>Service</th>
+<th>Database</th>
+<th>Change</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Project</strong></td>
-<td>The art for one game. Holds the style: a palette library, canvas sizes, rules, references, export path.</td>
-<td>A folder with <code>pixelwright.toml</code> and <code>style/</code></td>
+<td>Core</td>
+<td>Project folder</td>
+<td>CREATE</td>
+<td><code>pixelwright.toml</code> v2, <code>group.toml</code>, <code>asset.toml</code>, <code>advice.jsonl</code>, <code>final.png</code></td>
 </tr>
 <tr>
-<td><strong>Palette</strong></td>
-<td>A named colour set. A game uses several (backgrounds, characters, a night variant). A group sets a default palette; an asset may override it or use more than one.</td>
-<td><code>style/palettes/*.gpl</code></td>
+<td>Core</td>
+<td>Project folder</td>
+<td>UPDATE</td>
+<td><code>versions/</code> gains a file per change; <code>asset.toml</code> state, chosen and starred</td>
 </tr>
 <tr>
-<td><strong>Asset</strong></td>
-<td>One piece of final art: a background, sprite, portrait or animation.</td>
-<td>A subfolder under <code>assets/</code></td>
-</tr>
-<tr>
-<td><strong>Group</strong></td>
-<td>Related assets (a scene, a character, all backgrounds). Can set defaults such as the palette or canvas size.</td>
-<td>Parent folders (optional <code>group.toml</code>), plus optional tags</td>
-</tr>
-<tr>
-<td><strong>Input</strong></td>
-<td>Any image the asset starts from or borrows from.</td>
-<td><code>inputs/</code></td>
-</tr>
-<tr>
-<td><strong>Version</strong></td>
-<td>Every change makes a new image; none is ever overwritten. Old versions are the history ("this is what the character first looked like"). A project setting, "keep all versions" (on by default), can be turned off to keep only the input, the first version, starred versions and the final.</td>
-<td><code>versions/v001.png</code>, … (plus <code>.aseprite</code> when edited by hand)</td>
-</tr>
-<tr>
-<td><strong>Advice</strong></td>
-<td>One observation on one version: what is wrong, where (region), why (rule or reason), proposed fix, author (script, AI, person), state (pending, accepted, rejected + reason).</td>
-<td>One line in <code>advice.jsonl</code></td>
-</tr>
-<tr>
-<td><strong>Request</strong></td>
-<td>A piece of advice addressed to the AI from the app ("look at this outline").</td>
-<td>Advice with author <code>person</code>, target <code>ai</code>, state <code>pending</code></td>
-</tr>
-<tr>
-<td><strong>Final</strong></td>
-<td>The approved version, copied to the export path.</td>
-<td><code>final.png</code></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Storage of versions.</strong> Versions are plain indexed PNG files, readable by any tool. Pixel art
-compresses well: a 320×180 indexed PNG is typically a few KB, so a thousand versions are tens of
-MB. Delta storage (keeping only the changed pixels against the previous version) is possible and
-is deferred: <code>design</code> measures real sizes, and deltas are added only if a project grows past a
-set budget, still without losing plain-file readability of the final and starred versions.</p>
-<p>Accepting advice applies its fix and creates a new version. Rejecting advice with a reason is
-recorded, and that reason can be promoted to a project style rule, so the same advice is not
-given again.</p></div>
-<div class="note" data-for="s-spec-2-1"><label class="note-head" for="n-s-spec-2-1"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.1</span></label><textarea class="note-ta" data-key="s-spec-2-1" id="n-s-spec-2-1" data-label="§2.1 Concepts" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-2-2" data-ref="SPEC §2.2" data-label="§2.2 The flow" data-part="Specification">
-<h4 class="sec-h"><span class="chip">§2.2</span><span class="sec-title">The flow</span></h4>
-<div class="sec-body"><table>
-<thead>
-<tr>
-<th>#</th>
-<th>Step</th>
-<th>Actor</th>
-<th>Where</th>
-<th>In → Out</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>Define the style (once per project)</td>
-<td>Person + AI, in conversation</td>
-<td>AI session</td>
-<td>References, intent → <code>pixelwright.toml</code>, <code>style/</code></td>
-</tr>
-<tr>
-<td>1</td>
-<td>Brief + starting image</td>
-<td>Person (or the AI generates one, optional)</td>
-<td>App, AI session, or dropping files in <code>inputs/</code></td>
-<td>Text + image → <code>inputs/</code></td>
-</tr>
-<tr>
-<td>2</td>
-<td>Normalise</td>
-<td>Scripts</td>
-<td><code>pw</code></td>
-<td>Input → <code>v001</code> (size, palette, grid, clean-up)</td>
-</tr>
-<tr>
-<td>3</td>
-<td>Check rules</td>
-<td>Scripts</td>
-<td><code>pw</code></td>
-<td>Version → advice by <code>script</code></td>
-</tr>
-<tr>
-<td>4</td>
-<td>Critique and fix</td>
-<td>AI, in a bounded loop</td>
-<td>AI session using <code>pw</code></td>
-<td>Version + advice + brief → advice by <code>ai</code> + new versions</td>
-</tr>
-<tr>
-<td>5</td>
-<td>Decide</td>
-<td><strong>Person</strong></td>
-<td><strong>App</strong></td>
-<td>Before/after + advice → accept / reject / own notes / request to the AI / open in Aseprite</td>
-</tr>
-<tr>
-<td>6</td>
-<td>Approve and export</td>
-<td>Person decides, scripts copy</td>
-<td>App or <code>pw</code></td>
-<td>Version → <code>final.png</code> + copy at export path</td>
-</tr>
-</tbody>
-</table>
-<p>Steps 3–5 repeat until the person approves. A round moves up a step only when the cheaper one
-was not enough: scripts always run; the AI runs when rule advice remains or the person asks;
-hand editing in Aseprite is the last resort.</p>
-<p><strong>The AI bridge.</strong> The app cannot call an AI, so requests wait in the asset's advice log. The AI
-picks them up in one of two ways:
-- <strong>Listening.</strong> In an open session, the AI runs <code>pw wait</code> in the background. It blocks until a
-  request appears, then returns; the AI handles the request and starts listening again. Claude
-  Code supports this directly through its background tasks.
-- <strong>On demand.</strong> The person says "check pending". With Claude, a session-start hook also says
-  how many requests are waiting.</p></div>
-<div class="note" data-for="s-spec-2-2"><label class="note-head" for="n-s-spec-2-2"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.2</span></label><textarea class="note-ta" data-key="s-spec-2-2" id="n-s-spec-2-2" data-label="§2.2 The flow" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-2-3" data-ref="SPEC §2.3" data-label="§2.3 Inside and outside" data-part="Specification">
-<h4 class="sec-h"><span class="chip">§2.3</span><span class="sec-title">Inside and outside</span></h4>
-<div class="sec-body"><p><strong>Inside pixelwright:</strong>
-- Project and asset structure
-- Normalising
-- Rules and advice
-- Versions
-- The app
-- Export
-- The request queue
-- Agent instructions that teach the flow (Claude skills first; a plain <code>AGENTS.md</code> for other agents)</p>
-<p><strong>Outside (plugged in, optional):</strong>
-- Image-generation models (providers)
-- Aseprite, for hand editing
-- The AI agent, as the conversation
-- The game engine, which only receives files at the export path</p></div>
-<div class="note" data-for="s-spec-2-3"><label class="note-head" for="n-s-spec-2-3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.3</span></label><textarea class="note-ta" data-key="s-spec-2-3" id="n-s-spec-2-3" data-label="§2.3 Inside and outside" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-2-4" data-ref="SPEC §2.4" data-label="§2.4 Folder layout (starting point, adaptable)" data-part="Specification">
-<h4 class="sec-h"><span class="chip">§2.4</span><span class="sec-title">Folder layout (starting point, adaptable)</span></h4>
-<div class="sec-body"><pre><code>my-game-art/                    project
-  pixelwright.toml              style + export path
-  style/                        palettes/*.gpl, references, style notes
-  assets/
-    scenes/                     group (optional group.toml: default palette, size)
-      harbour-night/            asset
-      asset.toml                brief, state, chosen version
-      inputs/
-      versions/                 v001.png v002.png ...
-      advice.jsonl
-      final.png
-  export/                       default export path; may point into the engine project instead
-</code></pre></div>
-<div class="note" data-for="s-spec-2-4"><label class="note-head" for="n-s-spec-2-4"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.4</span></label><textarea class="note-ta" data-key="s-spec-2-4" id="n-s-spec-2-4" data-label="§2.4 Folder layout (starting point, adaptable)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-2-5" data-ref="SPEC §2.5" data-label="§2.5 Systems affected" data-part="Specification">
-<h4 class="sec-h"><span class="chip">§2.5</span><span class="sec-title">Systems affected</span></h4>
-<div class="sec-body"><table>
-<thead>
-<tr>
-<th>System</th>
-<th>Type</th>
-<th>Role</th>
-<th>Needs changes?</th>
-<th>Impact</th>
-<th>Severity</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Core library + CLI <code>pw</code></td>
-<td>Primary</td>
-<td>Project/asset model, normalise, rules, versions, advice, export, <code>pw wait</code></td>
-<td>Yes</td>
-<td>Workspace model changes to project-folder + asset-folder; advice log is new</td>
-<td>High</td>
-</tr>
-<tr>
-<td>App (today: <code>pw view</code> web viewer)</td>
-<td>Primary</td>
-<td>Browse a project, decide on advice, approve</td>
-<td>Yes</td>
-<td>Becomes a desktop window (pywebview) that opens a project folder; the four modes are replaced by the one flow</td>
-<td>High</td>
-</tr>
-<tr>
-<td>Agent instructions (<code>plugin/</code>)</td>
-<td>Dependent</td>
-<td>Teach the AI the flow and the queue</td>
-<td>Yes</td>
-<td>Rewritten around steps 0, 4 and the bridge</td>
-<td>Med</td>
-</tr>
-<tr>
-<td>Providers</td>
-<td>Dependent</td>
-<td>Optional source of starting images</td>
-<td>Validate only</td>
-<td>Become one input source among others</td>
-<td>Low</td>
-</tr>
-<tr>
-<td>Aseprite bridge</td>
-<td>Dependent</td>
-<td>Hand editing as the last step</td>
-<td>Validate only</td>
-<td>Opens a version, saves a new one</td>
-<td>Low</td>
-</tr>
-<tr>
-<td><code>pw tour</code> and help text</td>
-<td>UI</td>
-<td>First-run explanation</td>
-<td>Yes</td>
-<td>Replaced by an in-app first run on a sample project</td>
-<td>Med</td>
-</tr>
-<tr>
-<td>Game engine</td>
-<td>External</td>
-<td>Receives final images</td>
-<td>No</td>
-<td>Undecided; only an export path is needed now</td>
-<td>Low</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Risk if nothing changes</strong>: the tool keeps working but stays unused, because its owner cannot
-fit it into making the game.</p></div>
-<div class="note" data-for="s-spec-2-5"><label class="note-head" for="n-s-spec-2-5"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.5</span></label><textarea class="note-ta" data-key="s-spec-2-5" id="n-s-spec-2-5" data-label="§2.5 Systems affected" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l2 bare" id="s-spec-3" data-ref="SPEC §3" data-label="§3 Options" data-part="Specification">
-<h3 class="sec-h"><span class="chip">§3</span><span class="sec-title">Options</span></h3>
-</article>
-<article class="sec l3" id="s-spec-option-a-keep-the-current-shape" data-ref="SPEC › Option A: Keep the current shape, add a guided mode (Conservative)" data-label="Option A: Keep the current shape, add a guided mode (Conservative)" data-part="Specification">
-<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option A: Keep the current shape, add a guided mode (Conservative)</span></h4>
-<div class="sec-body"><ul>
-<li><strong>Description</strong>: Leave the CLI, workspace and four-mode web viewer as they are, and add an
-  in-app guided walkthrough on top.</li>
-<li><strong>Scope</strong>: Viewer only.</li>
-<li><strong>Effort</strong>: Small</li>
-<li><strong>Tradeoffs</strong>: Cheapest, but treats a shape problem as a documentation problem, which the help
-  menu already showed does not work.</li>
-<li><strong>Compatibility</strong>: Full.</li>
-</ul></div>
-<div class="note" data-for="s-spec-option-a-keep-the-current-shape"><label class="note-head" for="n-s-spec-option-a-keep-the-current-shape"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option A: Keep the current shape, add a guided mode (Conservative)</span></label><textarea class="note-ta" data-key="s-spec-option-a-keep-the-current-shape" id="n-s-spec-option-a-keep-the-current-shape" data-label="Option A: Keep the current shape, add a guided mode (Conservative)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-option-b-one-flow-around-a-proje" data-ref="SPEC › Option B: One flow around a project folder, desktop app for decisions (Recommended)" data-label="Option B: One flow around a project folder, desktop app for decisions (Recommended)" data-part="Specification">
-<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option B: One flow around a project folder, desktop app for decisions (Recommended)</span></h4>
-<div class="sec-body"><ul>
-<li><strong>Description</strong>: Re-centre everything on the project-folder / asset-folder model and the
-  six-step flow. The core (<code>pw</code>) does every automatic step. The AI works through <code>pw</code> from its
-  own session and the request queue. The app is a pywebview desktop window that opens a project
-  folder, used to brief, decide and approve.</li>
-<li><strong>Scope</strong>: Core model, app, skills, first-run; providers and the Aseprite bridge mostly kept.</li>
-<li><strong>Effort</strong>: Large</li>
-<li><strong>Tradeoffs</strong>: Fixes the root cause and makes the AI/script/person split visible; costs a
-  rework of the viewer and the workspace model.</li>
-<li><strong>Compatibility</strong>: Breaks the M0–M3 workspace layout; no external users, so no migration is
-  needed beyond the owner's test assets.</li>
-</ul></div>
-<div class="note" data-for="s-spec-option-b-one-flow-around-a-proje"><label class="note-head" for="n-s-spec-option-b-one-flow-around-a-proje"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option B: One flow around a project folder, desktop app for decisions (Recommended)</span></label><textarea class="note-ta" data-key="s-spec-option-b-one-flow-around-a-proje" id="n-s-spec-option-b-one-flow-around-a-proje" data-label="Option B: One flow around a project folder, desktop app for decisions (Recommended)" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-option-c-aseprite-plugin-as-the" data-ref="SPEC › Option C: Aseprite plugin as the only interface" data-label="Option C: Aseprite plugin as the only interface" data-part="Specification">
-<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option C: Aseprite plugin as the only interface</span></h4>
-<div class="sec-body"><ul>
-<li><strong>Description</strong>: Drop the app; show advice and approve inside Aseprite.</li>
-<li><strong>Scope</strong>: Core + Aseprite plugin.</li>
-<li><strong>Effort</strong>: Medium</li>
-<li><strong>Tradeoffs</strong>: No new app, but Aseprite's plugin UI is too limited for browsing a project and
-  comparing versions, and it ties the tool to one editor.</li>
-<li><strong>Compatibility</strong>: Breaks the viewer.</li>
-</ul></div>
-<div class="note" data-for="s-spec-option-c-aseprite-plugin-as-the"><label class="note-head" for="n-s-spec-option-c-aseprite-plugin-as-the"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option C: Aseprite plugin as the only interface</span></label><textarea class="note-ta" data-key="s-spec-option-c-aseprite-plugin-as-the" id="n-s-spec-option-c-aseprite-plugin-as-the" data-label="Option C: Aseprite plugin as the only interface" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
-</article>
-<article class="sec l3" id="s-spec-comparison" data-ref="SPEC › Comparison" data-label="Comparison" data-part="Specification">
-<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Comparison</span></h4>
-<div class="sec-body"><table>
-<thead>
-<tr>
-<th></th>
-<th>Option A</th>
-<th>Option B</th>
-<th>Option C</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Effort</td>
-<td>Small</td>
-<td>Large</td>
-<td>Medium</td>
-</tr>
-<tr>
-<td>Risk</td>
-<td>High (does not fix the problem)</td>
-<td>Medium</td>
-<td>Medium</td>
-</tr>
-<tr>
-<td>Completeness</td>
-<td>Low</td>
-<td>High</td>
-<td>Medium</td>
-</tr>
-<tr>
-<td>Compatibility</td>
-<td>Full</td>
-<td>Breaks workspace layout</td>
-<td>Breaks viewer</td>
-</tr>
-<tr>
-<td>Maintenance</td>
-<td>Grows (two shapes)</td>
-<td>One shape</td>
-<td>Editor-bound</td>
+<td>Core</td>
+<td>Project folder</td>
+<td>DELETE</td>
+<td>Only on approve with <code>keep_all_versions = false</code>: unstarred middle versions</td>
 </tr>
 </tbody>
 </table></div>
-<div class="note" data-for="s-spec-comparison"><label class="note-head" for="n-s-spec-comparison"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Comparison</span></label><textarea class="note-ta" data-key="s-spec-comparison" id="n-s-spec-comparison" data-label="Comparison" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+<div class="note" data-for="s-plan-state-changes"><label class="note-head" for="n-s-plan-state-changes"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › State changes</span></label><textarea class="note-ta" data-key="s-plan-state-changes" id="n-s-plan-state-changes" data-label="State changes" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
-<article class="sec l2" id="s-spec-4" data-ref="SPEC §4" data-label="§4 Recommendation" data-part="Specification">
-<h3 class="sec-h"><span class="chip">§4</span><span class="sec-title">Recommendation</span></h3>
-<div class="sec-body"><p><strong>Recommended option</strong>: Option B. It is the only option that answers the original problem
-(what it is for, who does each step, where it runs), and the core, providers and Aseprite
-bridge carry over.</p>
-<p><strong>Immediate next action</strong>: After this spec is approved, run <code>design</code> for sections 5–6: the
-project/asset/advice file formats, the <code>pw</code> commands of the flow, <code>pw wait</code>, the pywebview app
-and its screens, then a reuse map of M0–M3 code.</p>
-<p><strong>Open questions</strong>:
-- [ ] Game engine: a short survey of adventure-game and general engines after this spec; until
-  then only a configurable export path (D-4).
-- [ ] App sub-name: plain "pixelwright", or a sub-name such as "pixelwright Desk" (minor; the
-  owner accepts either).</p>
-<p><strong>Decisions log</strong> (carried from the brainstorm):</p>
-<table>
+<article class="sec l3" id="s-plan-technology-choices" data-ref="PLAN › Technology choices" data-label="Technology choices" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Technology choices</span></h4>
+<div class="sec-body"><table>
 <thead>
 <tr>
-<th>ID</th>
-<th>Decision</th>
-<th>Status</th>
+<th>Choice</th>
+<th>Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pywebview (≥ 5)</td>
+<td>Native window from Python, reuses the HTML/JS UI, runs on Linux (WebKitGTK) and Windows (WebView2) (D-10)</td>
+</tr>
+<tr>
+<td><code>tomllib</code> + <code>tomli-w</code></td>
+<td>TOML for every human-readable file (spec criterion: plain <code>png</code>/<code>toml</code>/<code>jsonl</code>)</td>
+</tr>
+<tr>
+<td>Polling in <code>pw wait</code> (1 s)</td>
+<td>Portable across Linux and Windows; inotify is not needed at this scale</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-plan-technology-choices"><label class="note-head" for="n-s-plan-technology-choices"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Technology choices</span></label><textarea class="note-ta" data-key="s-plan-technology-choices" id="n-s-plan-technology-choices" data-label="Technology choices" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-plan-reuse-map-m0-m3" data-ref="PLAN › Reuse map (M0–M3)" data-label="Reuse map (M0–M3)" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Reuse map (M0–M3)</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Fate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core/</code> (quantize, snap, clean, palette, color, image, checks)</td>
+<td><strong>Keep</strong> as is; normalise and fix ops call it</td>
+</tr>
+<tr>
+<td><code>core/providers/</code>, <code>bench/</code></td>
+<td><strong>Keep</strong>; optional input source and its benchmark</td>
+</tr>
+<tr>
+<td><code>io/</code> (png, palette_io, aseprite)</td>
+<td><strong>Keep</strong></td>
+</tr>
+<tr>
+<td><code>workspace/asset.py</code> (immutable versions, append-only log, masks)</td>
+<td><strong>Adapt</strong> to <code>asset.toml</code> + <code>advice.jsonl</code></td>
+</tr>
+<tr>
+<td><code>workspace/config.py</code>, <code>style.py</code>, <code>workspace.py</code></td>
+<td><strong>Adapt</strong>: palette library, groups, export path, retention; drop roles and stages</td>
+</tr>
+<tr>
+<td><code>workspace/next_step.py</code></td>
+<td><strong>Adapt</strong> into <code>pw status</code>'s next step per asset</td>
+</tr>
+<tr>
+<td><code>workspace/critique.py</code>, <code>budget.py</code></td>
+<td><strong>Adapt</strong> critique into AI advice; keep budget</td>
+</tr>
+<tr>
+<td><code>cli/</code></td>
+<td><strong>Adapt</strong> to the flow commands; keep the registry and JSON envelope</td>
+</tr>
+<tr>
+<td><code>mcp/server.py</code></td>
+<td><strong>Adapt</strong> to the same commands</td>
+</tr>
+<tr>
+<td><code>viewer/server.py</code> + static (Look/Compare/Mark/Play)</td>
+<td><strong>Replace</strong> by the app; compare, mark and play code is reused inside the Asset screen</td>
+</tr>
+<tr>
+<td><code>viewer/static/blind.*</code></td>
+<td><strong>Keep</strong> for the benchmark only</td>
+</tr>
+<tr>
+<td><code>cli/tour.py</code>, <code>fixtures/tour.py</code></td>
+<td><strong>Replace</strong> by the in-app first run on a sample project</td>
+</tr>
+<tr>
+<td><code>plugin/skills/</code></td>
+<td><strong>Rewrite</strong> for the flow; keep the Aseprite plugin</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-plan-reuse-map-m0-m3"><label class="note-head" for="n-s-plan-reuse-map-m0-m3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Reuse map (M0–M3)</span></label><textarea class="note-ta" data-key="s-plan-reuse-map-m0-m3" id="n-s-plan-reuse-map-m0-m3" data-label="Reuse map (M0–M3)" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-plan-out-of-scope" data-ref="PLAN › Out of scope" data-label="Out of scope" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Out of scope</span></h4>
+<div class="sec-body"><ul>
+<li>Game-engine integration beyond the export path (D-4)</li>
+<li>Delta storage of versions (D-13)</li>
+<li>Windows packaging (only the core tests run on Windows)</li>
+<li>New check rules or providers</li>
+</ul></div>
+<div class="note" data-for="s-plan-out-of-scope"><label class="note-head" for="n-s-plan-out-of-scope"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Out of scope</span></label><textarea class="note-ta" data-key="s-plan-out-of-scope" id="n-s-plan-out-of-scope" data-label="Out of scope" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-plan-implementation-tasks" data-ref="PLAN › Implementation tasks" data-label="Implementation tasks" data-part="Plan">
+<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Implementation tasks</span></h3>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>T#</th>
+<th>Description</th>
+<th>Service</th>
+<th>Size</th>
+<th>Depends</th>
+<th>Gate</th>
+<th>Tests</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T52</td>
+<td>Screens review</td>
+<td>docs</td>
+<td>M</td>
+<td>—</td>
+<td>owner approves the screens in the reader</td>
+<td>none (review artifact)</td>
+</tr>
+<tr>
+<td>T53</td>
+<td>Project model v2</td>
+<td>core</td>
+<td>M</td>
+<td>—</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_settings_asset_in_group_uses_group_palette</code> in <code>tests/test_project.py</code> — an asset under a group with <code>palette = "night"</code> resolves to the night palette</td>
+</tr>
+<tr>
+<td>T54</td>
+<td>Asset model v2</td>
+<td>core</td>
+<td>M</td>
+<td>T53</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_asset_files_plain_without_app_readable</code> in <code>tests/test_asset_model.py</code> — every file in an asset parses with <code>tomllib</code>, <code>json</code> and Pillow alone</td>
+</tr>
+<tr>
+<td>T55</td>
+<td>Advice log</td>
+<td>core</td>
+<td>M</td>
+<td>T54</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_advice_accept_with_fix_writes_new_version</code> in <code>tests/test_advice.py</code> — accepting advice with a fix adds exactly one version and links it</td>
+</tr>
+<tr>
+<td>T56</td>
+<td>Promote rejections</td>
+<td>core</td>
+<td>S</td>
+<td>T55</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_check_promoted_rejection_not_raised_again</code> in <code>tests/test_advice.py</code> — the same rule on the same scope yields no new advice</td>
+</tr>
+<tr>
+<td>T57</td>
+<td>Flow CLI + MCP</td>
+<td>cli</td>
+<td>L</td>
+<td>T55</td>
+<td><code>normalize_seconds &lt;= 5</code></td>
+<td><code>test_normalize_320x180_under_budget</code> in <code>tests/test_flow_cli.py</code> — normalising a 320×180 fixture takes at most 5 s</td>
+</tr>
+<tr>
+<td>T58</td>
+<td>Version retention</td>
+<td>core</td>
+<td>S</td>
+<td>T57</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_prune_setting_off_keeps_protected_versions</code> in <code>tests/test_retention.py</code> — after approve only protected versions remain; with the setting on, none are removed</td>
+</tr>
+<tr>
+<td>T59</td>
+<td>pw wait + hook</td>
+<td>core</td>
+<td>M</td>
+<td>T55</td>
+<td><code>wait_latency_seconds &lt;= 10</code></td>
+<td><code>test_wait_request_written_returns_within_latency</code> in <code>tests/test_wait.py</code> — a request written by another process ends <code>pw wait</code> within 10 s</td>
+</tr>
+<tr>
+<td>T60</td>
+<td>App shell</td>
+<td>app</td>
+<td>M</td>
+<td>T52, T53</td>
+<td><code>open_50_assets_seconds &lt;= 2</code></td>
+<td><code>test_project_list_50_assets_under_budget</code> in <code>tests/test_app_api.py</code> — the app API lists a 50-asset project in at most 2 s</td>
+</tr>
+<tr>
+<td>T61</td>
+<td>Project screen</td>
+<td>app</td>
+<td>M</td>
+<td>T60, T57</td>
+<td><code>e2e_failed == 0</code></td>
+<td><code>test_project_screen_shows_next_step</code> in <code>tests/e2e/test_project_screen.py</code> — each asset card shows one next step</td>
+</tr>
+<tr>
+<td>T62</td>
+<td>Asset screen</td>
+<td>app</td>
+<td>L</td>
+<td>T61, T58, T59</td>
+<td><code>e2e_failed == 0</code></td>
+<td><code>test_asset_screen_request_creates_pending_advice</code> in <code>tests/e2e/test_asset_screen.py</code> — a request made in the app appears as pending advice with target <code>ai</code></td>
+</tr>
+<tr>
+<td>T63</td>
+<td>In-app first run</td>
+<td>app</td>
+<td>M</td>
+<td>T62</td>
+<td>owner states what the app does and the next step at each screen without help text</td>
+<td><code>test_first_launch_opens_sample_project</code> in <code>tests/e2e/test_first_run.py</code> — first launch with no recent projects opens the sample</td>
+</tr>
+<tr>
+<td>T64</td>
+<td>Agent instructions</td>
+<td>plugin</td>
+<td>M</td>
+<td>T57, T59</td>
+<td><code>skills_invalid == 0</code></td>
+<td><code>test_skills_reference_existing_commands</code> in <code>tests/test_skills.py</code> — every <code>pw</code> command named in a skill exists</td>
+</tr>
+<tr>
+<td>T65</td>
+<td>Migrate + clean up</td>
+<td>core</td>
+<td>M</td>
+<td>T63, T64</td>
+<td><code>tests_failed == 0</code></td>
+<td><code>test_migrate_m3_workspace_preserves_versions</code> in <code>tests/test_migrate.py</code> — every old version is present and readable after migration</td>
+</tr>
+<tr>
+<td>T66</td>
+<td>Windows core CI</td>
+<td>ci</td>
+<td>S</td>
+<td>T57</td>
+<td><code>windows_core_tests_failed == 0</code></td>
+<td>none (CI job)</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-plan-implementation-tasks"><label class="note-head" for="n-s-plan-implementation-tasks"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Implementation tasks</span></label><textarea class="note-ta" data-key="s-plan-implementation-tasks" id="n-s-plan-implementation-tasks" data-label="Implementation tasks" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-plan-task-details" data-ref="PLAN › Task details" data-label="Task details" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Task details</span></h4>
+<div class="sec-body"><ul>
+<li><strong>T52 Screens review</strong>: Screens review: annotated mock-ups of the Project and Asset screens and the first run, in the reader</li>
+<li><strong>T53 Project model v2</strong>: Project model v2: <code>pixelwright.toml</code> (palette library, export path, <code>keep_all_versions</code>, rules), <code>group.toml</code>, nearest-folder resolution</li>
+<li><strong>T54 Asset model v2</strong>: Asset model v2: <code>asset.toml</code>, <code>inputs/</code>, star, chosen, <code>final.png</code>; readable with no app</li>
+<li><strong>T55 Advice log</strong>: Advice log: schema, append, state events, accept runs fix into a new version, reject with reason</li>
+<li><strong>T56 Promote rejections</strong>: Promote a rejection reason to <code>style/rules.toml</code>; <code>pw check</code> stops raising it in scope</li>
+<li><strong>T57 Flow CLI + MCP</strong>: Flow CLI + MCP: <code>init</code>, <code>add</code>, <code>normalize</code>, <code>check</code>, <code>advice</code>, <code>star</code>, <code>approve</code> (+ export), <code>status</code> with next step</li>
+<li><strong>T58 Version retention</strong>: Retention: <code>keep_all_versions = false</code> prunes on approve, never input, v001, starred or final</li>
+<li><strong>T59 pw wait + hook</strong>: <code>pw wait</code> + Claude session-start hook that reports pending requests</li>
+<li><strong>T60 App shell</strong>: App shell: <code>pw open</code>, pywebview window, open folder, recent projects, DMABUF default on Linux</li>
+<li><strong>T61 Project screen</strong>: Project screen: assets by group, state, next step and actor</li>
+<li><strong>T62 Asset screen</strong>: Asset screen: image, versions strip, before/after, advice on image, accept, reject, request to AI, star, approve, open in Aseprite</li>
+<li><strong>T63 In-app first run</strong>: First run: sample project opened on first launch, guided in the app (replaces <code>pw tour</code>)</li>
+<li><strong>T64 Agent instructions</strong>: Agent instructions: rewrite Claude skills (style, critique-and-fix loop, listen with <code>pw wait</code>) and add <code>AGENTS.md</code></li>
+<li><strong>T65 Migrate + clean up</strong>: <code>pw migrate</code> for M0–M3 workspaces; remove the four-mode viewer, <code>pw tour</code> and stages; update docs</li>
+<li><strong>T66 Windows core CI</strong>: Windows CI job running the core tests</li>
+</ul>
+<p><strong>Status legend</strong>: ☐ not started · ◐ in progress · ☑ merged<br />
+<strong>Merge order</strong>: T52 and T53 first; then T54 → T55; then T56, T57, T59 in parallel; T58, T60, T66; then T61 → T62 → T63; T64; T65 last<br />
+<strong>Branch pattern</strong>: <code>pw-T&lt;N&gt;-description</code> from the default branch</p></div>
+<div class="note" data-for="s-plan-task-details"><label class="note-head" for="n-s-plan-task-details"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Task details</span></label><textarea class="note-ta" data-key="s-plan-task-details" id="n-s-plan-task-details" data-label="Task details" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l3" id="s-plan-dependency-graph" data-ref="PLAN › Dependency graph" data-label="Dependency graph" data-part="Plan">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Dependency graph</span></h4>
+<div class="sec-body"><figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 206.6" role="img" aria-labelledby="ds0c94c56daf-title"><title id="ds0c94c56daf-title">Task dependencies — phases</title><path d="M 332 78.55 L 332 126.55" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="332,126.55 328.4,118.55 335.6,118.55" fill="currentColor" stroke="none"/><rect x="252.475" y="12" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 1</tspan></text><text x="332" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T52, T53, T54, T60, T55,</tspan></text><text x="332" y="62.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T56, T57,…</tspan></text><rect x="252.475" y="126.55" width="159.051" height="66.55" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="332" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">Phase 2</tspan></text><text x="332" y="162.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T58, T61, T64, T66, T62,</tspan></text><text x="332" y="177.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>T63, T65</tspan></text></svg></figure>
+<p><strong>Phase 1</strong> — T52, T53, T54, T60, T55, T56, T57, T59</p>
+<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 376.3" role="img" aria-labelledby="ds01f6c0dd5d-title"><title id="ds01f6c0dd5d-title">Task dependencies — phase 1</title><path d="M 325.82 63.7 L 325.82 87.7 L 350.899 87.7 L 350.899 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,111.7 347.299,103.7 354.499,103.7" fill="currentColor" stroke="none"/><path d="M 350.899 163.4 L 350.899 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,211.4 347.299,203.4 354.499,203.4" fill="currentColor" stroke="none"/><path d="M 331.82 263.1 L 331.82 287.1 L 199.705 287.1 L 199.705 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="199.705,311.1 196.105,303.1 203.305,303.1" fill="currentColor" stroke="none"/><path d="M 350.899 263.1 L 350.899 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="350.899,311.1 347.299,303.1 354.499,303.1" fill="currentColor" stroke="none"/><path d="M 369.979 263.1 L 369.979 287.1 L 502.094 287.1 L 502.094 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="502.094,311.1 498.494,303.1 505.694,303.1" fill="currentColor" stroke="none"/><path d="M 161.906 63.7 L 161.906 87.7 L 186.985 87.7 L 186.985 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="186.985,111.7 183.385,103.7 190.585,103.7" fill="currentColor" stroke="none"/><path d="M 300.381 63.7 L 300.381 87.7 L 212.424 87.7 L 212.424 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="212.424,111.7 208.824,103.7 216.024,103.7" fill="currentColor" stroke="none"/><rect x="98.308" y="12" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="161.906" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T52</tspan></text><text x="161.906" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Screens review</tspan></text><rect x="249.503" y="12" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="313.101" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T53</tspan></text><text x="313.101" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Project model v2</tspan></text><rect x="287.302" y="111.7" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T54</tspan></text><text x="350.899" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Asset model v2</tspan></text><rect x="287.302" y="211.4" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="232.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T55</tspan></text><text x="350.899" y="247.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Advice log</tspan></text><rect x="136.107" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.705" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T56</tspan></text><text x="199.705" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Promote rejections</tspan></text><rect x="287.302" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="350.899" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T57</tspan></text><text x="350.899" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Flow CLI + MCP</tspan></text><rect x="438.497" y="311.1" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="502.094" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T59</tspan></text><text x="502.094" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>pw wait + hook</tspan></text><rect x="136.107" y="111.7" width="127.195" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="199.705" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T60</tspan></text><text x="199.705" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>App shell</tspan></text></svg></figure>
+<p><strong>Phase 2</strong> — T58, T61, T64, T66, T62, T63, T65 (with T57, T59, T60 from earlier phases)</p>
+<figure class="drawspec"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-0.75 -0.75 665.5 476" role="img" aria-labelledby="ds06304a10c6-title"><title id="ds06304a10c6-title">Task dependencies — phase 2</title><path d="M 241.77 63.7 L 241.77 87.7 L 92.754 87.7 L 92.754 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="92.754,111.7 89.154,103.7 96.354,103.7" fill="currentColor" stroke="none"/><path d="M 288.252 63.7 L 288.252 69.7 L 539.195 69.7 L 539.195 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="539.195,111.7 535.595,103.7 542.795,103.7" fill="currentColor" stroke="none"/><path d="M 565.018 63.7 L 565.018 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="565.018,111.7 561.418,103.7 568.618,103.7" fill="currentColor" stroke="none"/><path d="M 92.754 163.4 L 92.754 193.4 L 334.962 193.4 L 334.962 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="334.962,211.4 331.362,203.4 338.562,203.4" fill="currentColor" stroke="none"/><path d="M 405.217 63.7 L 405.217 105.7 L 322.43 105.7 L 322.43 181.4 L 354.33 181.4 L 354.33 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="354.33,211.4 350.73,203.4 357.93,203.4" fill="currentColor" stroke="none"/><path d="M 552.107 163.4 L 552.107 181.4 L 373.697 181.4 L 373.697 211.4" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="373.697,211.4 370.097,203.4 377.297,203.4" fill="currentColor" stroke="none"/><path d="M 354.33 263.1 L 354.33 311.1" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="354.33,311.1 350.73,303.1 357.93,303.1" fill="currentColor" stroke="none"/><path d="M 272.758 63.7 L 272.758 81.7 L 386.077 81.7 L 386.077 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="386.077,111.7 382.477,103.7 389.677,103.7" fill="currentColor" stroke="none"/><path d="M 431.04 63.7 L 431.04 93.7 L 411.901 93.7 L 411.901 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="411.901,111.7 408.301,103.7 415.501,103.7" fill="currentColor" stroke="none"/><path d="M 363.748 362.8 L 363.748 410.8" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="363.748,410.8 360.148,402.8 367.348,402.8" fill="currentColor" stroke="none"/><path d="M 398.989 163.4 L 398.989 193.4 L 430.053 193.4 L 430.053 386.8 L 389.571 386.8 L 389.571 410.8" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="389.571,410.8 385.971,402.8 393.171,402.8" fill="currentColor" stroke="none"/><path d="M 245.871 63.7 L 245.871 111.7" fill="none" stroke="currentColor" stroke-width="1.5"/><polygon points="245.871,111.7 242.271,103.7 249.471,103.7" fill="currentColor" stroke="none"/><rect x="200.452" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="265.011" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T57</tspan></text><text x="265.011" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="28.195" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="92.754" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T58</tspan></text><text x="92.754" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Version retention</tspan></text><rect x="353.57" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="418.129" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T59</tspan></text><text x="418.129" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="506.688" y="12" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="571.246" y="33.233" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T60</tspan></text><text x="571.246" y="48.083" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>phase 1</tspan></text><rect x="487.548" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="552.107" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T61</tspan></text><text x="552.107" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Project screen</tspan></text><rect x="289.771" y="211.4" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="354.33" y="232.633" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T62</tspan></text><text x="354.33" y="247.483" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Asset screen</tspan></text><rect x="289.771" y="311.1" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="354.33" y="332.333" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T63</tspan></text><text x="354.33" y="347.183" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>In-app first run</tspan></text><rect x="334.43" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="398.989" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T64</tspan></text><text x="398.989" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Agent instructions</tspan></text><rect x="312.1" y="410.8" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="376.659" y="432.033" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T65</tspan></text><text x="376.659" y="446.883" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Migrate + clean up</tspan></text><rect x="181.312" y="111.7" width="129.118" height="51.7" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="245.871" y="132.933" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan font-weight="bold">T66</tspan></text><text x="245.871" y="147.783" font-family="'DejaVu Sans', sans-serif" font-size="11" fill="currentColor" text-anchor="middle"><tspan>Windows core CI</tspan></text></svg></figure></div>
+<div class="note" data-for="s-plan-dependency-graph"><label class="note-head" for="n-s-plan-dependency-graph"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Dependency graph</span></label><textarea class="note-ta" data-key="s-plan-dependency-graph" id="n-s-plan-dependency-graph" data-label="Dependency graph" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-plan-evidence-log" data-ref="PLAN › Evidence log" data-label="Evidence log" data-part="Plan">
+<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Evidence log</span></h3>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>T#</th>
+<th>Gate</th>
+<th>Measured</th>
+<th>Command</th>
+<th>SHA</th>
+<th>Env</th>
 <th>Date</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>D-1</td>
-<td>The viewer-validator is a separate tool with its own name</td>
-<td>superseded by D-8</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-2</td>
-<td>The input's origin does not matter; the value is turning any image into game-ready pixel art</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-3</td>
-<td>Improvement escalates: scripts always, then Claude, then the person by hand</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-4</td>
-<td>The game engine is undecided; pixelwright only exports to a configurable path</td>
-<td>open (research)</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-5</td>
-<td>The folder layout is a starting point and stays adaptable; old versions are always kept as the history</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-6</td>
-<td>The app reaches Claude through a request queue; Claude listens with <code>pw wait</code> or checks on demand</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-7</td>
-<td>Integration with other tools of the owner (e.g. a script editor) is out of scope for now</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-8</td>
-<td>pixelwright is the whole product (core, skills, app), and the app is also called pixelwright</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-9</td>
-<td>A project is a folder; an asset is a subfolder with its own history</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-10</td>
-<td>The app is a pywebview desktop window; Linux first, Windows kept possible</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-11</td>
-<td>The AI actor is any agent that can run <code>pw</code>; Claude is first-class and its tools (background waiting, hooks, skills) are used where they help</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-12</td>
-<td>"Keep all versions" is a project setting, on by default; off keeps input, first, starred and final</td>
-<td>agreed</td>
-<td>2026-11-16</td>
-</tr>
-<tr>
-<td>D-13</td>
-<td>Palettes form a library; groups set defaults, assets may override or use several. Versions are plain PNG; delta storage only if measured size demands it</td>
-<td>agreed</td>
-<td>2026-11-16</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
-</table>
-<blockquote>
-<p>Sections 5–6 (contracts, risks) are appended by <code>design</code>.</p>
-</blockquote></div>
-<div class="note" data-for="s-spec-4"><label class="note-head" for="n-s-spec-4"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §4</span></label><textarea class="note-ta" data-key="s-spec-4" id="n-s-spec-4" data-label="§4 Recommendation" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</table></div>
+<div class="note" data-for="s-plan-evidence-log"><label class="note-head" for="n-s-plan-evidence-log"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Evidence log</span></label><textarea class="note-ta" data-key="s-plan-evidence-log" id="n-s-plan-evidence-log" data-label="Evidence log" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
+</article>
+<article class="sec l2" id="s-plan-sign-off" data-ref="PLAN › Sign-off" data-label="Sign-off" data-part="Plan">
+<h3 class="sec-h"><span class="chip">▸</span><span class="sec-title">Sign-off</span></h3>
+<div class="sec-body"><ul>
+<li>[ ] Plan approved by the owner</li>
+<li>[ ] Screens approved (T52)</li>
+<li>[ ] Ready for execution</li>
+</ul></div>
+<div class="note" data-for="s-plan-sign-off"><label class="note-head" for="n-s-plan-sign-off"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">PLAN › Sign-off</span></label><textarea class="note-ta" data-key="s-plan-sign-off" id="n-s-plan-sign-off" data-label="Sign-off" data-part="Plan" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 </section>
 </div>
@@ -782,7 +661,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
 <script>var SPEC_SEED_NOTES={};</script>
 <script>
 (function(){
-  var NS = 'pixelwright-spec-v2:';
+  var NS = 'pixelwright-plan-v1:';
   // A reviewed copy (--bake) shows only the notes it was built with: nothing from
   // this browser's storage, nothing editable.
   var BAKED = false;
@@ -964,7 +843,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
   function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
   function stamp(){var d=new Date();return today()+'-'+pad(d.getHours())+pad(d.getMinutes());}
   // Named like the reader, <repo>-<doc>-v<N>-<YYYY-MM-DD-HHMM>-notes.md, stamped at export.
-  function exportName(){return 'pixelwright-spec-v2-'+stamp()+'-notes.md';}
+  function exportName(){return 'pixelwright-plan-v1-'+stamp()+'-notes.md';}
 
   function buildExport(){
     var byPart={},order=[],data={},n=0;
@@ -978,7 +857,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
       byPart[part].push({label:t.dataset.label,ref:t.dataset.ref||keyFromDom(t.dataset.key,t),
                          quote:t.closest('.bnote')?(t.dataset.quote||''):null,note:t.value});
     });
-    var lines=['# Specification notes','','_Exported '+today()+' · '+n+' note'+(n===1?'':'s')+'._','',
+    var lines=['# Plan notes','','_Exported '+today()+' · '+n+' note'+(n===1?'':'s')+'._','',
       '> Send this file back to continue the review. Notes are embedded as data at the bottom','> so importing this file restores them in the reader.',''];
     order.forEach(function(part){
       lines.push('## '+part,'');
@@ -990,7 +869,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
       });
     });
     // Which page wrote this, so an import into a different page can say so.
-    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v2 -->');
+    lines.push('<!-- SPEC-NOTES-DOC pixelwright-plan-v1 -->');
     lines.push('<!-- SPEC-NOTES-DATA');
     lines.push(JSON.stringify(data));
     lines.push('-->');
@@ -1090,8 +969,8 @@ and its screens, then a reuse map of M0–M3 code.</p>
       }catch(err){obj=null;}
       if(!obj){toast('Could not read notes from that file');return;}
       var dm=/^<!-- SPEC-NOTES-DOC (\S+) -->/m.exec(txt);
-      if(dm&&dm[1]!=='pixelwright-spec-v2'&&
-         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v2). Import anyway?'))return;
+      if(dm&&dm[1]!=='pixelwright-plan-v1'&&
+         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-plan-v1). Import anyway?'))return;
       var r=applyData(obj);
       toast('Imported '+r.applied+' note'+(r.applied===1?'':'s')+
             (r.skipped?' ('+r.skipped+' skipped — not text)':''));
