@@ -25,11 +25,11 @@ The screens of the new app (spec §2.2, plan T52), drawn as a static mockup (`st
 ## S00 · Ground rules for every screen
 
 - **Two places only**: a project (its assets) and one asset. Settings and the start screen sit outside the flow.
-- **Who is next is always visible.** Every asset says its next step and who does it: you (orange), the AI (teal) or the scripts (amber). Advice, versions and markers use the same three colours.
+- **Who is next is always visible.** Every asset says its next step and who does it: you (orange), the AI (teal) or the scripts (amber). Issues, versions and markers use the same three colours.
 - **The AI status is always in the top bar**: "AI listening" when a session is waiting with `pw wait`, otherwise "No AI session: requests wait".
 - **Words.** An **issue** is something wrong or improvable in one or more areas, raised by the scripts, the AI or you. A **fix** is a proposed solution to an issue, always computed as a candidate image you can look at before deciding. You accept a fix (it becomes the next version), reject it (with a reason) or reply (the AI revises it). An issue nobody can fix automatically says so and offers Aseprite.
 - **Two tools only**, as a switch: ✋ Move (drag pans) and ⬚ Select (drag marks areas).
-- **Authors are named, not only coloured**: a legend in the top bar, and each piece of advice starts with Scripts, AI or You.
+- **Authors are named, not only coloured**: a legend in the top bar, and each issue starts with Scripts, AI or You.
 - **The logo is a placeholder** (wordmark only) until the logo task.
 - Pixels only in the image; soft chrome; light and dark themes.
 
