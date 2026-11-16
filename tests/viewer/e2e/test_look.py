@@ -106,3 +106,16 @@ def test_views_include_a_quarter_size_thumb(page: Any, viewer: Viewer) -> None:
     page.wait_for_timeout(300)
     small = page.evaluate("document.getElementById('cv').width")
     assert small < full and small % 16 == 0
+
+
+def test_help_explains_the_loop_and_the_rule_codes(page: Any) -> None:
+    page.locator("body").click()
+    page.keyboard.press("?")
+    keys = page.locator("#keys")
+    expect(keys).to_be_visible()
+    # The loop, with this window placed in it, and the codes spelled out.
+    expect(keys).to_contain_text("You are here")
+    expect(keys).to_contain_text("Nothing here edits an image")
+    expect(keys).to_contain_text("R-PIX-3")
+    expect(keys).to_contain_text("Orphan pixels and specks")
+    expect(keys).to_contain_text("Keyboard shortcuts")
