@@ -11,11 +11,14 @@
 **Date**: 2026-11-16
 **Ticket / PR**: product re-specification (what & why)
 **Author**: Claude (for the repository owner)
-**Revision**: 1
+**Revision**: 2
 **Status**: draft
 **Revision log**:
 - r1 — first draft, from the re-specification brainstorm (decisions D-1 to D-10 below). Replaces the
   pipeline specification, archived at `status/archive/specification-v1-pipeline.md`.
+- r2 — applied `pixelwright-spec-v1-2026-11-16-1656-notes.md` (3 notes): any AI agent as the
+  AI actor, with Claude's tools used first; keeping every version is a setting, on by default;
+  palettes per asset or group; plain PNG versions with delta storage deferred (D-11 to D-13)
 
 > Review record. Each round of reviewer notes makes a new revision: bump
 > **Revision**, add a log line naming the export it applied, and commit that
@@ -36,36 +39,39 @@ the M0–M3 code is decided after that.
 The M0–M3 build works piece by piece: CLI `pw`, providers, rule checks, a web viewer with four
 modes, an Aseprite bridge and Claude skills. As a product, though, it does not explain itself.
 After using it, the owner could not say what it is for, how it attaches to a real game project,
-which steps are done by scripts, which by Claude and which by a person, or in what order the
+which steps are done by scripts, which by AI and which by a person, or in what order the
 viewer's modes are meant to be used. A long help menu did not fix that, because the problem is
 the product's shape, not its documentation. pixelwright should do one job: **take any image (an
 AI output, a hand sketch, a photo, someone else's art) and turn it into game-ready pixel art for
-a given project's style, in escalating steps (scripts, then Claude, then the person), keeping
-every version.** Where the first image came from does not matter; improving it is the point.
+a given project's style, in escalating steps (scripts, then an AI agent, then the person),
+keeping its history.** Where the first image came from does not matter; improving it is the point.
 
-**Who uses it**: one person making the art for a game. Claude does the reading, critiquing and
-fixing through the person's own Claude subscription (Claude Code or Claude Desktop); there is
-no API key, so the app never calls Claude itself.
+**Who uses it**: one person making the art for a game. An AI agent does the reading, critiquing
+and fixing. The agent is not fixed: anything that can run `pw` and read images will do. Claude
+(Claude Code or Claude Desktop, on the person's own subscription) is the first-class one, and
+pixelwright uses its tools where they help, such as background waiting for app requests. There
+is no API key, so the app never calls an AI itself. Below, "AI" means that agent.
 
 **Success criteria (measurable)**:
 
 - [ ] A first-time user, given only the app, can state in one sentence what it does and name the
   next step at every screen without the help text (judged by the owner on a first run of a new
   build).
-- [ ] Every step of the flow (section 2.2) names exactly one actor (script, Claude or person) and
-  one place it runs (app, `pw`, Claude, Aseprite); no step is reachable by more than one main
+- [ ] Every step of the flow (section 2.2) names exactly one actor (script, AI or person) and
+  one place it runs (app, `pw`, AI session, Aseprite); no step is reachable by more than one main
   path (judged by review of the flow table against the app).
 - [ ] A project is an ordinary folder: deleting the app leaves every input, version, advice entry
   and final image readable as plain files (`png`, `toml`, `jsonl`), verified by a test that
   opens a project with no app installed.
-- [ ] No version is ever overwritten: `versions_written == versions_on_disk` after any sequence
-  of accept/reject/edit actions (test).
+- [ ] No version is ever overwritten. With "keep all versions" on (the default),
+  `versions_written == versions_on_disk` after any sequence of accept/reject/edit actions; with it
+  off, the input, the first version, every starred version and the final are still kept (tests).
 - [ ] Opening an existing project folder of 50 assets shows the asset list in `<= 2 s` on the
   owner's Linux machine.
-- [ ] Normalising one 320×180 input (resize, palette, grid, clean-up) takes `<= 5 s` without
-  Claude.
-- [ ] A request left in the app reaches a listening Claude session within `<= 10 s`, and costs no
-  Claude usage while nothing is pending (test with `pw wait`).
+- [ ] Normalising one 320×180 input (resize, palette, grid, clean-up) takes `<= 5 s` without the
+  AI.
+- [ ] A request left in the app reaches a listening AI session within `<= 10 s`, and costs no
+  AI usage while nothing is pending (test with `pw wait`).
 - [ ] Approving an asset copies its final image to the project's configured export path, which
   can point anywhere, including inside a game engine's project (test).
 - [ ] The app and core run on Linux; nothing in the core depends on Linux-only libraries, so a
@@ -83,14 +89,21 @@ no API key, so the app never calls Claude itself.
 
 | Concept | What it is | On disk |
 |---|---|---|
-| **Project** | The art for one game. Holds the style: palette, canvas sizes, rules, references, export path. | A folder with `pixelwright.toml` and `style/` |
+| **Project** | The art for one game. Holds the style: a palette library, canvas sizes, rules, references, export path. | A folder with `pixelwright.toml` and `style/` |
+| **Palette** | A named colour set. A game uses several (backgrounds, characters, a night variant). A group sets a default palette; an asset may override it or use more than one. | `style/palettes/*.gpl` |
 | **Asset** | One piece of final art: a background, sprite, portrait or animation. | A subfolder under `assets/` |
-| **Group** | Related assets (a scene, a character). | Parent folders, plus optional tags |
+| **Group** | Related assets (a scene, a character, all backgrounds). Can set defaults such as the palette or canvas size. | Parent folders (optional `group.toml`), plus optional tags |
 | **Input** | Any image the asset starts from or borrows from. | `inputs/` |
-| **Version** | Every change makes a new image; none is ever overwritten. Old versions are the history ("this is what the character first looked like"). | `versions/v001.png`, … (plus `.aseprite` when edited by hand) |
-| **Advice** | One observation on one version: what is wrong, where (region), why (rule or reason), proposed fix, author (script, Claude, person), state (pending, accepted, rejected + reason). | One line in `advice.jsonl` |
-| **Request** | A piece of advice addressed to Claude from the app ("Claude, look at this outline"). | Advice with author `person`, target `claude`, state `pending` |
+| **Version** | Every change makes a new image; none is ever overwritten. Old versions are the history ("this is what the character first looked like"). A project setting, "keep all versions" (on by default), can be turned off to keep only the input, the first version, starred versions and the final. | `versions/v001.png`, … (plus `.aseprite` when edited by hand) |
+| **Advice** | One observation on one version: what is wrong, where (region), why (rule or reason), proposed fix, author (script, AI, person), state (pending, accepted, rejected + reason). | One line in `advice.jsonl` |
+| **Request** | A piece of advice addressed to the AI from the app ("look at this outline"). | Advice with author `person`, target `ai`, state `pending` |
 | **Final** | The approved version, copied to the export path. | `final.png` |
+
+**Storage of versions.** Versions are plain indexed PNG files, readable by any tool. Pixel art
+compresses well: a 320×180 indexed PNG is typically a few KB, so a thousand versions are tens of
+MB. Delta storage (keeping only the changed pixels against the previous version) is possible and
+is deferred: `design` measures real sizes, and deltas are added only if a project grows past a
+set budget, still without losing plain-file readability of the final and starred versions.
 
 Accepting advice applies its fix and creates a new version. Rejecting advice with a reason is
 recorded, and that reason can be promoted to a project style rule, so the same advice is not
@@ -105,24 +118,25 @@ given again.
 
 | # | Step | Actor | Where | In → Out |
 |---|---|---|---|---|
-| 0 | Define the style (once per project) | Person + Claude, in conversation | Claude | References, intent → `pixelwright.toml`, `style/` |
-| 1 | Brief + starting image | Person (or Claude generates one, optional) | App, Claude, or dropping files in `inputs/` | Text + image → `inputs/` |
+| 0 | Define the style (once per project) | Person + AI, in conversation | AI session | References, intent → `pixelwright.toml`, `style/` |
+| 1 | Brief + starting image | Person (or the AI generates one, optional) | App, AI session, or dropping files in `inputs/` | Text + image → `inputs/` |
 | 2 | Normalise | Scripts | `pw` | Input → `v001` (size, palette, grid, clean-up) |
 | 3 | Check rules | Scripts | `pw` | Version → advice by `script` |
-| 4 | Critique and fix | Claude, in a bounded loop | Claude using `pw` | Version + advice + brief → advice by `claude` + new versions |
-| 5 | Decide | **Person** | **App** | Before/after + advice → accept / reject / own notes / request to Claude / open in Aseprite |
+| 4 | Critique and fix | AI, in a bounded loop | AI session using `pw` | Version + advice + brief → advice by `ai` + new versions |
+| 5 | Decide | **Person** | **App** | Before/after + advice → accept / reject / own notes / request to the AI / open in Aseprite |
 | 6 | Approve and export | Person decides, scripts copy | App or `pw` | Version → `final.png` + copy at export path |
 
 Steps 3–5 repeat until the person approves. A round moves up a step only when the cheaper one
-was not enough: scripts always run; Claude runs when rule advice remains or the person asks;
+was not enough: scripts always run; the AI runs when rule advice remains or the person asks;
 hand editing in Aseprite is the last resort.
 
-**The Claude bridge.** The app cannot call Claude, so requests wait in the asset's advice log.
-Claude picks them up in one of two ways:
-- **Listening.** In an open Claude session, Claude runs `pw wait` in the background. It blocks
-  until a request appears, then returns; Claude handles the request and starts listening again.
-- **On demand.** The person says "check pending", and a session-start hook tells Claude how many
-  requests are waiting.
+**The AI bridge.** The app cannot call an AI, so requests wait in the asset's advice log. The AI
+picks them up in one of two ways:
+- **Listening.** In an open session, the AI runs `pw wait` in the background. It blocks until a
+  request appears, then returns; the AI handles the request and starts listening again. Claude
+  Code supports this directly through its background tasks.
+- **On demand.** The person says "check pending". With Claude, a session-start hook also says
+  how many requests are waiting.
 
 <!-- -->
 
@@ -139,12 +153,12 @@ Claude picks them up in one of two ways:
 - The app
 - Export
 - The request queue
-- Claude skills that teach the flow
+- Agent instructions that teach the flow (Claude skills first; a plain `AGENTS.md` for other agents)
 
 **Outside (plugged in, optional):**
 - Image-generation models (providers)
 - Aseprite, for hand editing
-- Claude, as the conversation
+- The AI agent, as the conversation
 - The game engine, which only receives files at the export path
 
 <!-- -->
@@ -157,9 +171,10 @@ Claude picks them up in one of two ways:
 ```
 my-game-art/                    project
   pixelwright.toml              style + export path
-  style/                        palette.gpl, references, style notes
+  style/                        palettes/*.gpl, references, style notes
   assets/
-    scenes/harbour-night/       asset (parent folders are groups)
+    scenes/                     group (optional group.toml: default palette, size)
+      harbour-night/            asset
       asset.toml                brief, state, chosen version
       inputs/
       versions/                 v001.png v002.png ...
@@ -179,7 +194,7 @@ my-game-art/                    project
 |---|---|---|---|---|---|
 | Core library + CLI `pw` | Primary | Project/asset model, normalise, rules, versions, advice, export, `pw wait` | Yes | Workspace model changes to project-folder + asset-folder; advice log is new | High |
 | App (today: `pw view` web viewer) | Primary | Browse a project, decide on advice, approve | Yes | Becomes a desktop window (pywebview) that opens a project folder; the four modes are replaced by the one flow | High |
-| Claude skills (`plugin/`) | Dependent | Teach Claude the flow and the queue | Yes | Rewritten around steps 0, 4 and the bridge | Med |
+| Agent instructions (`plugin/`) | Dependent | Teach the AI the flow and the queue | Yes | Rewritten around steps 0, 4 and the bridge | Med |
 | Providers | Dependent | Optional source of starting images | Validate only | Become one input source among others | Low |
 | Aseprite bridge | Dependent | Hand editing as the last step | Validate only | Opens a version, saves a new one | Low |
 | `pw tour` and help text | UI | First-run explanation | Yes | Replaced by an in-app first run on a sample project | Med |
@@ -213,7 +228,7 @@ fit it into making the game.
 ### Option B: One flow around a project folder, desktop app for decisions (Recommended)
 
 - **Description**: Re-centre everything on the project-folder / asset-folder model and the
-  six-step flow. The core (`pw`) does every automatic step. Claude works through `pw` from its
+  six-step flow. The core (`pw`) does every automatic step. The AI works through `pw` from its
   own session and the request queue. The app is a pywebview desktop window that opens a project
   folder, used to brief, decide and approve.
 - **Scope**: Core model, app, skills, first-run; providers and the Aseprite bridge mostly kept.
@@ -287,6 +302,9 @@ and its screens, then a reuse map of M0–M3 code.
 | D-8 | pixelwright is the whole product (core, skills, app), and the app is also called pixelwright | agreed | 2026-11-16 |
 | D-9 | A project is a folder; an asset is a subfolder with its own history | agreed | 2026-11-16 |
 | D-10 | The app is a pywebview desktop window; Linux first, Windows kept possible | agreed | 2026-11-16 |
+| D-11 | The AI actor is any agent that can run `pw`; Claude is first-class and its tools (background waiting, hooks, skills) are used where they help | agreed | 2026-11-16 |
+| D-12 | "Keep all versions" is a project setting, on by default; off keeps input, first, starred and final | agreed | 2026-11-16 |
+| D-13 | Palettes form a library; groups set defaults, assets may override or use several. Versions are plain PNG; delta storage only if measured size demands it | agreed | 2026-11-16 |
 
 
 > Sections 5–6 (contracts, risks) are appended by `design`.

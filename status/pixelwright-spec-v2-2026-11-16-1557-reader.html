@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="arsenal-source-sha256" content="438836b6647ce05a3e7305c445e77e38059fd5a746176bdb190fd7fa382d0607">
+<meta name="arsenal-source-sha256" content="8c3127bb4fe46592576d5cb3eff8f28eac926b89df00f0a0b2917113fbee6aff">
 <title>Pixelwright — Specification (annotatable)</title>
 <style>
 :root{
@@ -241,11 +241,14 @@ body.baked .bn-btn,body.baked #warnbar{display:none!important}
 <div class="sec-body"><p><strong>Date</strong>: 2026-11-16<br />
 <strong>Ticket / PR</strong>: product re-specification (what &amp; why)<br />
 <strong>Author</strong>: Claude (for the repository owner)<br />
-<strong>Revision</strong>: 1<br />
+<strong>Revision</strong>: 2<br />
 <strong>Status</strong>: draft<br />
 <strong>Revision log</strong>:
 - r1 — first draft, from the re-specification brainstorm (decisions D-1 to D-10 below). Replaces the
-  pipeline specification, archived at <code>status/archive/specification-v1-pipeline.md</code>.</p>
+  pipeline specification, archived at <code>status/archive/specification-v1-pipeline.md</code>.
+- r2 — applied <code>pixelwright-spec-v1-2026-11-16-1656-notes.md</code> (3 notes): any AI agent as the
+  AI actor, with Claude's tools used first; keeping every version is a setting, on by default;
+  palettes per asset or group; plain PNG versions with delta storage deferred (D-11 to D-13)</p>
 <blockquote>
 <p>Review record. Each round of reviewer notes makes a new revision: bump
 <strong>Revision</strong>, add a log line naming the export it applied, and commit that
@@ -262,34 +265,37 @@ the M0–M3 code is decided after that.</p></div>
 <div class="sec-body"><p>The M0–M3 build works piece by piece: CLI <code>pw</code>, providers, rule checks, a web viewer with four
 modes, an Aseprite bridge and Claude skills. As a product, though, it does not explain itself.
 After using it, the owner could not say what it is for, how it attaches to a real game project,
-which steps are done by scripts, which by Claude and which by a person, or in what order the
+which steps are done by scripts, which by AI and which by a person, or in what order the
 viewer's modes are meant to be used. A long help menu did not fix that, because the problem is
 the product's shape, not its documentation. pixelwright should do one job: <strong>take any image (an
 AI output, a hand sketch, a photo, someone else's art) and turn it into game-ready pixel art for
-a given project's style, in escalating steps (scripts, then Claude, then the person), keeping
-every version.</strong> Where the first image came from does not matter; improving it is the point.</p>
-<p><strong>Who uses it</strong>: one person making the art for a game. Claude does the reading, critiquing and
-fixing through the person's own Claude subscription (Claude Code or Claude Desktop); there is
-no API key, so the app never calls Claude itself.</p>
+a given project's style, in escalating steps (scripts, then an AI agent, then the person),
+keeping its history.</strong> Where the first image came from does not matter; improving it is the point.</p>
+<p><strong>Who uses it</strong>: one person making the art for a game. An AI agent does the reading, critiquing
+and fixing. The agent is not fixed: anything that can run <code>pw</code> and read images will do. Claude
+(Claude Code or Claude Desktop, on the person's own subscription) is the first-class one, and
+pixelwright uses its tools where they help, such as background waiting for app requests. There
+is no API key, so the app never calls an AI itself. Below, "AI" means that agent.</p>
 <p><strong>Success criteria (measurable)</strong>:</p>
 <ul>
 <li>[ ] A first-time user, given only the app, can state in one sentence what it does and name the
   next step at every screen without the help text (judged by the owner on a first run of a new
   build).</li>
-<li>[ ] Every step of the flow (section 2.2) names exactly one actor (script, Claude or person) and
-  one place it runs (app, <code>pw</code>, Claude, Aseprite); no step is reachable by more than one main
+<li>[ ] Every step of the flow (section 2.2) names exactly one actor (script, AI or person) and
+  one place it runs (app, <code>pw</code>, AI session, Aseprite); no step is reachable by more than one main
   path (judged by review of the flow table against the app).</li>
 <li>[ ] A project is an ordinary folder: deleting the app leaves every input, version, advice entry
   and final image readable as plain files (<code>png</code>, <code>toml</code>, <code>jsonl</code>), verified by a test that
   opens a project with no app installed.</li>
-<li>[ ] No version is ever overwritten: <code>versions_written == versions_on_disk</code> after any sequence
-  of accept/reject/edit actions (test).</li>
+<li>[ ] No version is ever overwritten. With "keep all versions" on (the default),
+  <code>versions_written == versions_on_disk</code> after any sequence of accept/reject/edit actions; with it
+  off, the input, the first version, every starred version and the final are still kept (tests).</li>
 <li>[ ] Opening an existing project folder of 50 assets shows the asset list in <code>&lt;= 2 s</code> on the
   owner's Linux machine.</li>
-<li>[ ] Normalising one 320×180 input (resize, palette, grid, clean-up) takes <code>&lt;= 5 s</code> without
-  Claude.</li>
-<li>[ ] A request left in the app reaches a listening Claude session within <code>&lt;= 10 s</code>, and costs no
-  Claude usage while nothing is pending (test with <code>pw wait</code>).</li>
+<li>[ ] Normalising one 320×180 input (resize, palette, grid, clean-up) takes <code>&lt;= 5 s</code> without the
+  AI.</li>
+<li>[ ] A request left in the app reaches a listening AI session within <code>&lt;= 10 s</code>, and costs no
+  AI usage while nothing is pending (test with <code>pw wait</code>).</li>
 <li>[ ] Approving an asset copies its final image to the project's configured export path, which
   can point anywhere, including inside a game engine's project (test).</li>
 <li>[ ] The app and core run on Linux; nothing in the core depends on Linux-only libraries, so a
@@ -314,8 +320,13 @@ no API key, so the app never calls Claude itself.</p>
 <tbody>
 <tr>
 <td><strong>Project</strong></td>
-<td>The art for one game. Holds the style: palette, canvas sizes, rules, references, export path.</td>
+<td>The art for one game. Holds the style: a palette library, canvas sizes, rules, references, export path.</td>
 <td>A folder with <code>pixelwright.toml</code> and <code>style/</code></td>
+</tr>
+<tr>
+<td><strong>Palette</strong></td>
+<td>A named colour set. A game uses several (backgrounds, characters, a night variant). A group sets a default palette; an asset may override it or use more than one.</td>
+<td><code>style/palettes/*.gpl</code></td>
 </tr>
 <tr>
 <td><strong>Asset</strong></td>
@@ -324,8 +335,8 @@ no API key, so the app never calls Claude itself.</p>
 </tr>
 <tr>
 <td><strong>Group</strong></td>
-<td>Related assets (a scene, a character).</td>
-<td>Parent folders, plus optional tags</td>
+<td>Related assets (a scene, a character, all backgrounds). Can set defaults such as the palette or canvas size.</td>
+<td>Parent folders (optional <code>group.toml</code>), plus optional tags</td>
 </tr>
 <tr>
 <td><strong>Input</strong></td>
@@ -334,18 +345,18 @@ no API key, so the app never calls Claude itself.</p>
 </tr>
 <tr>
 <td><strong>Version</strong></td>
-<td>Every change makes a new image; none is ever overwritten. Old versions are the history ("this is what the character first looked like").</td>
+<td>Every change makes a new image; none is ever overwritten. Old versions are the history ("this is what the character first looked like"). A project setting, "keep all versions" (on by default), can be turned off to keep only the input, the first version, starred versions and the final.</td>
 <td><code>versions/v001.png</code>, … (plus <code>.aseprite</code> when edited by hand)</td>
 </tr>
 <tr>
 <td><strong>Advice</strong></td>
-<td>One observation on one version: what is wrong, where (region), why (rule or reason), proposed fix, author (script, Claude, person), state (pending, accepted, rejected + reason).</td>
+<td>One observation on one version: what is wrong, where (region), why (rule or reason), proposed fix, author (script, AI, person), state (pending, accepted, rejected + reason).</td>
 <td>One line in <code>advice.jsonl</code></td>
 </tr>
 <tr>
 <td><strong>Request</strong></td>
-<td>A piece of advice addressed to Claude from the app ("Claude, look at this outline").</td>
-<td>Advice with author <code>person</code>, target <code>claude</code>, state <code>pending</code></td>
+<td>A piece of advice addressed to the AI from the app ("look at this outline").</td>
+<td>Advice with author <code>person</code>, target <code>ai</code>, state <code>pending</code></td>
 </tr>
 <tr>
 <td><strong>Final</strong></td>
@@ -354,6 +365,11 @@ no API key, so the app never calls Claude itself.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>Storage of versions.</strong> Versions are plain indexed PNG files, readable by any tool. Pixel art
+compresses well: a 320×180 indexed PNG is typically a few KB, so a thousand versions are tens of
+MB. Delta storage (keeping only the changed pixels against the previous version) is possible and
+is deferred: <code>design</code> measures real sizes, and deltas are added only if a project grows past a
+set budget, still without losing plain-file readability of the final and starred versions.</p>
 <p>Accepting advice applies its fix and creates a new version. Rejecting advice with a reason is
 recorded, and that reason can be promoted to a project style rule, so the same advice is not
 given again.</p></div>
@@ -375,15 +391,15 @@ given again.</p></div>
 <tr>
 <td>0</td>
 <td>Define the style (once per project)</td>
-<td>Person + Claude, in conversation</td>
-<td>Claude</td>
+<td>Person + AI, in conversation</td>
+<td>AI session</td>
 <td>References, intent → <code>pixelwright.toml</code>, <code>style/</code></td>
 </tr>
 <tr>
 <td>1</td>
 <td>Brief + starting image</td>
-<td>Person (or Claude generates one, optional)</td>
-<td>App, Claude, or dropping files in <code>inputs/</code></td>
+<td>Person (or the AI generates one, optional)</td>
+<td>App, AI session, or dropping files in <code>inputs/</code></td>
 <td>Text + image → <code>inputs/</code></td>
 </tr>
 <tr>
@@ -403,16 +419,16 @@ given again.</p></div>
 <tr>
 <td>4</td>
 <td>Critique and fix</td>
-<td>Claude, in a bounded loop</td>
-<td>Claude using <code>pw</code></td>
-<td>Version + advice + brief → advice by <code>claude</code> + new versions</td>
+<td>AI, in a bounded loop</td>
+<td>AI session using <code>pw</code></td>
+<td>Version + advice + brief → advice by <code>ai</code> + new versions</td>
 </tr>
 <tr>
 <td>5</td>
 <td>Decide</td>
 <td><strong>Person</strong></td>
 <td><strong>App</strong></td>
-<td>Before/after + advice → accept / reject / own notes / request to Claude / open in Aseprite</td>
+<td>Before/after + advice → accept / reject / own notes / request to the AI / open in Aseprite</td>
 </tr>
 <tr>
 <td>6</td>
@@ -424,14 +440,15 @@ given again.</p></div>
 </tbody>
 </table>
 <p>Steps 3–5 repeat until the person approves. A round moves up a step only when the cheaper one
-was not enough: scripts always run; Claude runs when rule advice remains or the person asks;
+was not enough: scripts always run; the AI runs when rule advice remains or the person asks;
 hand editing in Aseprite is the last resort.</p>
-<p><strong>The Claude bridge.</strong> The app cannot call Claude, so requests wait in the asset's advice log.
-Claude picks them up in one of two ways:
-- <strong>Listening.</strong> In an open Claude session, Claude runs <code>pw wait</code> in the background. It blocks
-  until a request appears, then returns; Claude handles the request and starts listening again.
-- <strong>On demand.</strong> The person says "check pending", and a session-start hook tells Claude how many
-  requests are waiting.</p></div>
+<p><strong>The AI bridge.</strong> The app cannot call an AI, so requests wait in the asset's advice log. The AI
+picks them up in one of two ways:
+- <strong>Listening.</strong> In an open session, the AI runs <code>pw wait</code> in the background. It blocks until a
+  request appears, then returns; the AI handles the request and starts listening again. Claude
+  Code supports this directly through its background tasks.
+- <strong>On demand.</strong> The person says "check pending". With Claude, a session-start hook also says
+  how many requests are waiting.</p></div>
 <div class="note" data-for="s-spec-2-2"><label class="note-head" for="n-s-spec-2-2"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.2</span></label><textarea class="note-ta" data-key="s-spec-2-2" id="n-s-spec-2-2" data-label="§2.2 The flow" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
 <article class="sec l3" id="s-spec-2-3" data-ref="SPEC §2.3" data-label="§2.3 Inside and outside" data-part="Specification">
@@ -444,11 +461,11 @@ Claude picks them up in one of two ways:
 - The app
 - Export
 - The request queue
-- Claude skills that teach the flow</p>
+- Agent instructions that teach the flow (Claude skills first; a plain <code>AGENTS.md</code> for other agents)</p>
 <p><strong>Outside (plugged in, optional):</strong>
 - Image-generation models (providers)
 - Aseprite, for hand editing
-- Claude, as the conversation
+- The AI agent, as the conversation
 - The game engine, which only receives files at the export path</p></div>
 <div class="note" data-for="s-spec-2-3"><label class="note-head" for="n-s-spec-2-3"><span class="note-ico" aria-hidden="true">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2.3</span></label><textarea class="note-ta" data-key="s-spec-2-3" id="n-s-spec-2-3" data-label="§2.3 Inside and outside" data-part="Specification" rows="1" placeholder="Add a note on this section…"></textarea></div>
 </article>
@@ -456,9 +473,10 @@ Claude picks them up in one of two ways:
 <h4 class="sec-h"><span class="chip">§2.4</span><span class="sec-title">Folder layout (starting point, adaptable)</span></h4>
 <div class="sec-body"><pre><code>my-game-art/                    project
   pixelwright.toml              style + export path
-  style/                        palette.gpl, references, style notes
+  style/                        palettes/*.gpl, references, style notes
   assets/
-    scenes/harbour-night/       asset (parent folders are groups)
+    scenes/                     group (optional group.toml: default palette, size)
+      harbour-night/            asset
       asset.toml                brief, state, chosen version
       inputs/
       versions/                 v001.png v002.png ...
@@ -499,9 +517,9 @@ Claude picks them up in one of two ways:
 <td>High</td>
 </tr>
 <tr>
-<td>Claude skills (<code>plugin/</code>)</td>
+<td>Agent instructions (<code>plugin/</code>)</td>
 <td>Dependent</td>
-<td>Teach Claude the flow and the queue</td>
+<td>Teach the AI the flow and the queue</td>
 <td>Yes</td>
 <td>Rewritten around steps 0, 4 and the bridge</td>
 <td>Med</td>
@@ -564,7 +582,7 @@ fit it into making the game.</p></div>
 <h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option B: One flow around a project folder, desktop app for decisions (Recommended)</span></h4>
 <div class="sec-body"><ul>
 <li><strong>Description</strong>: Re-centre everything on the project-folder / asset-folder model and the
-  six-step flow. The core (<code>pw</code>) does every automatic step. Claude works through <code>pw</code> from its
+  six-step flow. The core (<code>pw</code>) does every automatic step. The AI works through <code>pw</code> from its
   own session and the request queue. The app is a pywebview desktop window that opens a project
   folder, used to brief, decide and approve.</li>
 <li><strong>Scope</strong>: Core model, app, skills, first-run; providers and the Aseprite bridge mostly kept.</li>
@@ -718,6 +736,24 @@ and its screens, then a reuse map of M0–M3 code.</p>
 <td>agreed</td>
 <td>2026-11-16</td>
 </tr>
+<tr>
+<td>D-11</td>
+<td>The AI actor is any agent that can run <code>pw</code>; Claude is first-class and its tools (background waiting, hooks, skills) are used where they help</td>
+<td>agreed</td>
+<td>2026-11-16</td>
+</tr>
+<tr>
+<td>D-12</td>
+<td>"Keep all versions" is a project setting, on by default; off keeps input, first, starred and final</td>
+<td>agreed</td>
+<td>2026-11-16</td>
+</tr>
+<tr>
+<td>D-13</td>
+<td>Palettes form a library; groups set defaults, assets may override or use several. Versions are plain PNG; delta storage only if measured size demands it</td>
+<td>agreed</td>
+<td>2026-11-16</td>
+</tr>
 </tbody>
 </table>
 <blockquote>
@@ -746,7 +782,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
 <script>var SPEC_SEED_NOTES={};</script>
 <script>
 (function(){
-  var NS = 'pixelwright-spec-v1:';
+  var NS = 'pixelwright-spec-v2:';
   // A reviewed copy (--bake) shows only the notes it was built with: nothing from
   // this browser's storage, nothing editable.
   var BAKED = false;
@@ -928,7 +964,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
   function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
   function stamp(){var d=new Date();return today()+'-'+pad(d.getHours())+pad(d.getMinutes());}
   // Named like the reader, <repo>-<doc>-v<N>-<YYYY-MM-DD-HHMM>-notes.md, stamped at export.
-  function exportName(){return 'pixelwright-spec-v1-'+stamp()+'-notes.md';}
+  function exportName(){return 'pixelwright-spec-v2-'+stamp()+'-notes.md';}
 
   function buildExport(){
     var byPart={},order=[],data={},n=0;
@@ -954,7 +990,7 @@ and its screens, then a reuse map of M0–M3 code.</p>
       });
     });
     // Which page wrote this, so an import into a different page can say so.
-    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v1 -->');
+    lines.push('<!-- SPEC-NOTES-DOC pixelwright-spec-v2 -->');
     lines.push('<!-- SPEC-NOTES-DATA');
     lines.push(JSON.stringify(data));
     lines.push('-->');
@@ -1054,8 +1090,8 @@ and its screens, then a reuse map of M0–M3 code.</p>
       }catch(err){obj=null;}
       if(!obj){toast('Could not read notes from that file');return;}
       var dm=/^<!-- SPEC-NOTES-DOC (\S+) -->/m.exec(txt);
-      if(dm&&dm[1]!=='pixelwright-spec-v1'&&
-         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v1). Import anyway?'))return;
+      if(dm&&dm[1]!=='pixelwright-spec-v2'&&
+         !confirm('That file holds notes for '+dm[1]+', not for this page (pixelwright-spec-v2). Import anyway?'))return;
       var r=applyData(obj);
       toast('Imported '+r.applied+' note'+(r.applied===1?'':'s')+
             (r.skipped?' ('+r.skipped+' skipped — not text)':''));
