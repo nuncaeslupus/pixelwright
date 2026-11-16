@@ -1,7 +1,9 @@
 # pixelwright — app screens (M4)
 
-**Revision**: 1
+**Revision**: 2
 **Status**: draft
+**Revision log**:
+- r2 — applied `pixelwright-screens-v1-2026-11-16-1748-notes.md` (8 notes + thread question): no logo yet, shorter start screen, Open… takes a folder or any image in a project, author legend and author names, request box says where it goes, fit/zoom/pan with linked before/after, Mark an area moved into the request box, group ⋯ and Asset settings for overrides, sort order, advice history
 
 The screens of the new app (spec §2.2, plan T52), drawn as a static mockup (`status/screens/mockup.html`,
 `#s01` … `#s10`, add `,dark` for dark mode) before anything is built. The art is a placeholder.
@@ -12,23 +14,25 @@ The screens of the new app (spec §2.2, plan T52), drawn as a static mockup (`st
 - **Who is next is always visible.** Every asset says its next step and who does it: you (orange), the AI (teal) or the scripts (amber). Advice, versions and markers use the same three colours.
 - **The AI status is always in the top bar**: "AI listening" when a session is waiting with `pw wait`, otherwise "No AI session: requests wait".
 - **No modes.** The asset screen has one view of the image, with a Before / after switch; marking an area is a button, not a mode.
+- **Authors are named, not only coloured**: a legend in the top bar, and each piece of advice starts with Scripts, AI or You.
+- **The logo is a placeholder** (wordmark only) until the logo task.
 - Pixels only in the image; soft chrome; light and dark themes.
 
 ## S01 · Start
 
-Shown when no project is open. One sentence says what the tool does, one line shows the flow, and there are three ways in. The sample project starts the guided first run.
+Shown when no project is open: one sentence and three ways in. A project is a folder; **Open…** accepts the folder or any image inside it (pixelwright finds the nearest `pixelwright.toml` and opens that asset). The sample project starts the guided first run.
 
 ![Start](shots/s01.png)
 
 ## S02 · Project
 
-All the assets of a project, by group (sub-folders). Each card shows its state and its single next step with the actor. "Waiting on" counts what each actor owes. Dropping an image anywhere creates an asset (flow step 1).
+All the assets of a project, by group (sub-folders). Each card shows its state and its single next step with the actor. "Waiting on" counts what each actor owes. Dropping an image anywhere creates an asset (flow step 1). **Order**: assets waiting on you first, then by last change; the Sort menu also offers name. A group's ⋯ menu sets its defaults (canvas size, palette).
 
 ![Project](shots/s02.png)
 
 ## S03 · Asset
 
-The image in the centre with numbered advice markers; the versions strip below (input → v001 …, author of each, ★ = starred); advice on the right with Accept / Reject… / Show. Below it: ask the AI, and the one final action, Approve and export (step 6).
+The image in the centre with numbered advice markers; the versions strip below (input → v001 …, author of each, ★ = starred); advice on the right with Accept / Reject… / Show. **Pending advice stays on top; accepted and rejected advice folds into History** at the bottom. Below it: the request box and the one final action, Approve and export (step 6). The image fits the window; scroll zooms, drag moves, zoom sits bottom right.
 
 ![Asset](shots/s03.png)
 
@@ -40,19 +44,19 @@ Reject asks why. The reason can become a style rule for this asset, its group or
 
 ## S05 · A request to the AI
 
-You mark an area (dashed) and ask. The request appears in the advice list; its status shows when the AI picked it up. The AI answers with new advice or a new version.
+The conversation with the AI stays in its own session (Claude Code or Desktop). The app only leaves a request: you mark an area (dashed) and send. A session that is listening (`pw wait`) wakes, works on it, and its answer arrives here as new advice or a new version; the request shows when it was picked up. With no session listening, it waits.
 
 ![Request to the AI](shots/s05.png)
 
 ## S06 · Before / after
 
-The previous and the current version side by side, at the same zoom.
+The previous and the current version side by side. Both start fitted; zoom and drag are linked, so both sides always show the same area.
 
 ![Before / after](shots/s06.png)
 
 ## S07 · Project settings
 
-Palette library (groups set a default), default canvas, export path (can point into the game engine's project), "Keep all versions" (on by default), and the style rules, including the ones learnt from rejections.
+Palette library (groups set a default), default canvas, export path (can point into the game engine's project), "Keep all versions" (on by default), and the style rules, including the ones learnt from rejections. The canvas here is the project default; a group overrides it from its ⋯ menu and an asset from ⓘ Asset settings.
 
 ![Project settings](shots/s07.png)
 

@@ -49,7 +49,7 @@ canvas { image-rendering:pixelated; display:block; }
 .chip.ok { background:color-mix(in srgb,var(--ok) 22%,var(--panel)); }
 .next { font-size:12.5px; display:flex; align-items:center; gap:6px; }
 .av { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; flex:none; }
-.a-you { background:var(--you); } .a-ai { background:var(--ai); } .a-script { background:var(--script); }
+.a-you { background:var(--you); } .t-you{color:var(--you)} .t-ai{color:var(--ai)} .t-script{color:var(--script)} .a-ai { background:var(--ai); } .a-script { background:var(--script); }
 .drop { border:1.5px dashed var(--line); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--dim); min-height:190px; font-size:13px; }
 /* asset screen */
 .work { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
@@ -60,6 +60,10 @@ canvas { image-rendering:pixelated; display:block; }
 .canvasbox { flex:1; background:var(--canvas); position:relative; display:flex; align-items:center; justify-content:center; gap:24px; }
 .mk { position:absolute; width:22px; height:22px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
 .box { position:absolute; border:2px solid; border-radius:3px; }
+.legend { display:inline-flex; align-items:center; gap:6px; color:var(--dim); margin-right:6px; }
+.zoom { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:var(--panel); padding:4px 6px; border-radius:10px; box-shadow:var(--shadow); }
+.hint { position:absolute; left:12px; bottom:12px; color:#fff; opacity:.8; }
+.hist { margin-top:auto; padding:10px; border-top:1px solid var(--line); color:var(--dim); }
 .lbl { position:absolute; top:10px; font-size:12px; background:var(--panel); padding:2px 10px; border-radius:10px; box-shadow:var(--shadow); }
 .strip { display:flex; gap:8px; padding:10px 12px; align-items:flex-end; overflow:hidden; }
 .ver { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11.5px; color:var(--dim); }
@@ -141,8 +145,8 @@ const P=new URLSearchParams(location.hash.slice(1).replace(/,/g,"&"));
 const S=location.hash.slice(1).split(",")[0]||"s01";
 if(location.hash.includes("dark"))document.documentElement.dataset.theme="dark";
 const AV={you:'<span class="av a-you">Y</span>',ai:'<span class="av a-ai">AI</span>',script:'<span class="av a-script">S</span>'};
-function topbar(crumb,ai=true){return `<div class="top"><div class="row"><div class="brand"><div class="logo"></div>pixelwright</div><span class="dim">/</span>${crumb}</div>
-<div class="row"><span class="status"><span class="led ${ai?"":"off"}"></span>${ai?"AI listening":"No AI session: requests wait"}</span>${ai?`<span class="btn flat sm">⚙ Project</span>`:""}</div></div>`;}
+function topbar(crumb,ai=true){return `<div class="top"><div class="row"><div class="brand">pixelwright</div><span class="dim">/</span>${crumb}</div>
+<div class="row"><span class="legend small">${AV.you} You ${AV.ai} AI ${AV.script} Scripts</span><span class="status"><span class="led ${ai?"":"off"}"></span>${ai?"AI listening":"No AI session: requests wait"}</span>${ai?`<span class="btn flat sm">⚙ Project</span>`:""}</div></div>`;}
 const assets=[
  ["harbour-night","scenes","wip",scene,11,1,"You: decide on 3 pieces of advice","you"],
  ["harbour-day","scenes","wip",scene,12,0,"AI: answering your request","ai"],
@@ -156,13 +160,13 @@ const stateTxt={new:"New",wip:"Working",ok:"Approved"};
 function projectScreen(){
   const groups=[["All assets",7],["scenes",4],["characters",2],["props",1]];
   return topbar('<b>my-game-art</b> <span class="dim small mono">~/art/my-game-art</span>')+`<div class="body">
-  <div class="card side"><div class="h">Groups</div>${groups.map((g,i)=>`<div class="navi ${i==0?"on":""}"><span>${g[0]}</span><span class="n">${g[1]}</span></div>`).join("")}
+  <div class="card side"><div class="h">Groups</div>${groups.map((g,i)=>`<div class="navi ${i==0?"on":""}"><span>${g[0]}</span><span class="n">${i?"⋯ ":""}${g[1]}</span></div>`).join("")}
    <div class="h" style="margin-top:14px">Waiting on</div>
    <div class="navi"><span class="next">${AV.you} You</span><span class="n">2</span></div>
    <div class="navi"><span class="next">${AV.ai} AI</span><span class="n">2</span></div>
    <div class="navi"><span class="next">${AV.script} Scripts</span><span class="n">1</span></div></div>
   <div class="card main"><div class="row" style="justify-content:space-between"><div><b style="font-size:16px">All assets</b> <span class="dim small">· 7</span></div>
-   <div class="row"><span class="btn ghost sm">Show: all states ▾</span><span class="btn pri sm">+ New asset</span></div></div>
+   <div class="row"><span class="btn ghost sm">Sort: needs you first ▾</span><span class="btn ghost sm">Show: all states ▾</span><span class="btn pri sm">+ New asset</span></div></div>
    <div class="grid" id="grid"></div></div></div>`;}
 function fillGrid(){const g=document.getElementById("grid");if(!g)return;
   assets.forEach(a=>{const d=document.createElement("div");d.className="asset";
@@ -179,26 +183,27 @@ function adviceList(mode){
    ["ai","2","The moon reflection is too regular; break it into 3 uneven strokes","AI critique · fix ready (new version)",true],
    ["script","3","Isolated pixel in the sky reads as noise","Rule: orphan pixels (R-PIX-4) · fix: remove",true],
   ];
-  let h=items.map((it,i)=>`<div class="adv ${i===(mode==="reject"?2:1)?"sel":""}"><span class="av a-${it[0]}">${it[1]}</span><div><div class="msg">${it[2]}</div><div class="why">${it[3]}</div>
+  let h=items.map((it,i)=>`<div class="adv ${i===(mode==="reject"?2:1)?"sel":""}"><span class="av a-${it[0]}">${it[1]}</span><div><div class="msg">${it[2]}</div><div class="why"><b class="t-${it[0]}">${{script:"Scripts",ai:"AI",you:"You"}[it[0]]}</b> · ${it[3]}</div>
    ${mode==="reject"&&i===2?`<div class="reject"><b>Why reject?</b><div class="field txt">Stars are meant to be single pixels in this style</div>
    <span class="chk"><span class="cb on">✓</span>Remember this as a style rule for</span>
    <div class="row" style="gap:14px;padding-left:23px"><span class="chk"><span class="rad"></span>asset</span><span class="chk"><span class="rad on"></span>scenes</span><span class="chk"><span class="rad"></span>project</span></div>
    <div class="row"><span class="btn no sm">Reject</span><span class="btn flat sm">Cancel</span></div></div>`:
    `<div class="acts"><span class="btn pri sm">Accept</span><span class="btn ghost sm">Reject…</span><span class="btn flat sm">Show</span></div>`}</div></div>`).join("");
-  if(mode==="request")h+=`<div class="adv sel"><span class="av a-you">4</span><div><div class="msg">Outline of the right boat is too thick here</div><div class="why">Your request to the AI · area marked</div><div class="wait" style="margin-top:6px"><span class="led"></span>Sent · the AI picked it up 4 s ago</div></div></div>`;
+  if(mode==="request")h+=`<div class="adv sel"><span class="av a-you">4</span><div><div class="msg">Outline of the right boat is too thick here</div><div class="why"><b class="t-you">You</b> · request to the AI · area marked</div><div class="wait" style="margin-top:6px"><span class="led"></span>Sent · the AI picked it up 4 s ago</div></div></div>`;
+  h+=`<div class="hist small">▸ History · 5 accepted, 1 rejected</div>`;
   return h;}
 function assetScreen(mode){
   const right=mode==="compare"?"before":"";
   return topbar('<span class="btn flat sm">← scenes</span> <b>harbour-night</b> <span class="chip wip">Working</span>')+`<div class="body">
   <div class="card work"><div class="cbar"><div class="seg"><span class="${mode==="compare"?"":"on"}">Image</span><span class="${mode==="compare"?"on":""}">Before / after</span></div>
-   <div class="row"><span class="btn ghost sm">✎ Mark an area</span><span class="btn ghost sm">Open in Aseprite</span><span class="dim small">400%</span></div></div>
-   <div class="canvasbox" id="cbox"></div>${versions("v004")}</div>
+   <div class="row"><span class="btn ghost sm">ⓘ Asset settings</span><span class="btn ghost sm">Open in Aseprite</span></div></div>
+   <div class="canvasbox" id="cbox"><div class="zoom"><span class="btn flat sm">−</span><span class="small">${mode==="compare"?"Fit · linked":"Fit"}</span><span class="btn flat sm">+</span></div><div class="hint small">Scroll to zoom · drag to move${mode==="compare"?" · both sides move together":""}</div></div>${versions("v004")}</div>
   <div class="card panel"><div class="hd"><b>Advice on v004</b><span class="dim small">3 pending</span></div>
    <div class="list">${adviceList(mode)}</div>
-   <div class="ask"><div class="field ${mode==="request"?"":""}">Ask the AI about this version…</div><div class="row" style="justify-content:space-between"><span class="dim small">Tip: mark an area first</span><span class="btn ai sm">Send to AI</span></div></div>
+   <div class="ask"><div class="field">Ask the AI about this version…</div><div class="row" style="justify-content:space-between"><span class="btn ghost sm">✎ Mark an area</span><span class="btn ai sm">Send to AI</span></div><span class="dim small">Goes to your AI session (Claude Code, listening). Its answer appears in this list.</span></div>
    <div style="padding:0 12px 12px"><div class="btn pri" style="width:100%;justify-content:center">Approve v004 and export</div></div></div></div>`;}
 function fillAsset(mode){const b=document.getElementById("cbox");if(!b)return;
-  if(mode==="compare"){[["v003",0],["v004",1]].forEach(([t,v])=>{const w=document.createElement("div");w.style.position="relative";w.append(cv(scene,11,v,3));const l=document.createElement("span");l.className="lbl";l.style.left="8px";l.textContent=t;w.append(l);b.append(w);});}
+  if(mode==="compare"){[["v003",0],["v004",1]].forEach(([t,v])=>{const w=document.createElement("div");w.style.position="relative";w.append(cv(scene,11,v,2.6));const l=document.createElement("span");l.className="lbl";l.style.left="8px";l.textContent=t;w.append(l);b.append(w);});}
   else{const w=document.createElement("div");w.style.position="relative";w.append(cv(scene,11,1,4.4));
     const mk=(n,c,l,t)=>{const m=document.createElement("span");m.className="mk a-"+c;m.textContent=n;m.style.left=l+"px";m.style.top=t+"px";w.append(m);};
     mk(1,"script",330,250);mk(2,"ai",520,265);mk(3,"script",125,85);
@@ -207,11 +212,10 @@ function fillAsset(mode){const b=document.getElementById("cbox");if(!b)return;
     b.append(w);}
   document.querySelectorAll(".ver .t").forEach((t,i)=>t.append(cv(scene,11,i<2?0:1,0.5)));}
 function startScreen(){return topbar('<span class="dim">no project open</span>',false)+`<div class="center"><div class="card start">
-  <div><b style="font-size:20px">Turn any image into game-ready pixel art</b><div class="dim">A project is a folder on your disk. Each asset inside it keeps its inputs, every version and the advice given on it.</div></div>
-  <div class="flow"><b>Bring an image</b> → scripts clean it → an AI critiques and fixes → <b>you decide</b> → approve and export</div>
-  <div class="choices"><div class="choice"><b>Open a project folder…</b><span class="dim small">A folder with pixelwright.toml</span></div>
-   <div class="choice"><b>New project…</b><span class="dim small">Pick a folder, a canvas size and palettes</span></div>
-   <div class="choice" style="box-shadow:0 0 0 2px var(--ai)"><b>Try the sample project</b><span class="dim small">A guided first run, about 3 minutes</span></div></div>
+  <div><b style="font-size:20px">Turn any image into game-ready pixel art</b></div>
+  <div class="choices"><div class="choice"><b>Open…</b><span class="dim small">A project folder, or any image inside one</span></div>
+   <div class="choice"><b>New project…</b><span class="dim small">Pick a folder and a canvas size</span></div>
+   <div class="choice" style="box-shadow:0 0 0 2px var(--ai)"><b>Try the sample project</b><span class="dim small">Guided, about 3 minutes</span></div></div>
   <div><div class="dim small" style="margin:0 10px 4px">Recent</div>
    <div class="recent h"><span>my-game-art</span><span class="dim small mono">~/art/my-game-art</span></div>
    <div class="recent"><span>jam-tests</span><span class="dim small mono">~/dev/jam-tests/art</span></div></div></div></div>`;}
@@ -227,7 +231,7 @@ function settings(){return topbar('<b>my-game-art</b> <span class="dim">/</span>
   <div class="sec"><h3>Palettes</h3><span class="dim small">A library of palettes. Groups pick a default; an asset can override it or use several.</span>
    ${[["main",["#22262b","#6b4a3a","#e9d8a6","#f2a541","#5b8c85","#2c3470"],"default"],["night",NIGHT.slice(0,8),"group scenes"],["characters",["#2b1d1d","#f0c39a","#3d6b8c","#6c2f2f","#e9d8a6","#1d2b3d"],"group characters"]].map(p=>`<div class="pal"><b style="width:86px">${p[0]}</b><span class="sw">${p[1].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="dim small" style="margin-left:auto">${p[2]}</span></div>`).join("")}
    <span class="btn ghost sm" style="align-self:flex-start">+ Import palette (.gpl, .hex, .png)</span></div>
-  <div class="sec"><h3>Canvas</h3><div class="row"><span class="field txt mono">320</span>×<span class="field txt mono">180</span><span class="dim small">default · groups and assets can override</span></div>
+  <div class="sec"><h3>Canvas</h3><div class="row"><span class="field txt mono">320</span>×<span class="field txt mono">180</span><span class="dim small">default · a group overrides it from its ⋯ menu, an asset from ⓘ Asset settings</span></div>
    <h3 style="margin-top:10px">Export</h3><div class="field txt mono">../game/assets/art</div><span class="dim small">Approved images are copied here. Can point inside your engine's project.</span>
    <h3 style="margin-top:10px">History</h3><span class="chk"><span class="cb on">✓</span>Keep all versions</span><span class="dim small">When off, pixelwright keeps the input, the first version, starred versions and the final.</span>
    <h3 style="margin-top:10px">Style rules</h3><span class="dim small">14 rules on · 2 learnt from your rejections</span><span class="btn ghost sm" style="align-self:flex-start">Review rules…</span></div></div></div>`;}
