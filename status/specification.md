@@ -4,7 +4,7 @@
 **Ticket / PR**: product re-specification (what & why)
 **Author**: Claude (for the repository owner)
 **Revision**: 2
-**Status**: draft
+**Status**: approved (2026-11-16, revision 2) — without annotations
 **Revision log**:
 - r1 — first draft, from the re-specification brainstorm (decisions D-1 to D-10 below). Replaces the
   pipeline specification, archived at `status/archive/specification-v1-pipeline.md`.
