@@ -4,7 +4,8 @@
 scripts normalise it into a version. `repaint` inpaints an issue's areas and proposes the
 result as a fix. Settings come from `pixelwright.toml`: `[providers.<name>]` (provider
 options), `[presets.<name>]` (preamble, negative, scale, params), `[defaults]` (provider
-per kind) and `[budget] monthly_usd`. Reference images live in `style/references/`.
+per kind) and `[budget] monthly_usd`. Every prompt carries the game's style kit
+(`pixelwright.style`): palette, canvas, preamble, rules and reference images.
 """
 
 from __future__ import annotations
@@ -26,9 +27,9 @@ from pixelwright.core.image import RGBImage
 from pixelwright.io.png import encode_png
 from pixelwright.issues import IssueLog
 from pixelwright.project import Project
+from pixelwright.style import style_kit
 
 DEFAULT_SCALE = 4  # painters work at a multiple of the canvas; normalise brings it back
-REFERENCES_DIR = Path("style") / "references"
 
 
 @dataclass
@@ -67,11 +68,12 @@ def _preset(project: Project, name: str) -> dict[str, Any]:
     return dict(project.extra.get("presets", {}).get(name, {}))
 
 
-def _prompt(preset: dict[str, Any], text: str) -> str:
-    prompt = " ".join(p for p in (preset.get("preamble", ""), text.strip()) if p)
-    if not prompt:
+def _prompt(asset: Asset, preset: dict[str, Any], text: str) -> str:
+    """Provider preamble, then the game's style kit, then the request."""
+    if not text.strip() and not preset.get("preamble"):
         raise AssetError("say what to paint: a prompt, or a preamble in [presets.<provider>]")
-    return prompt
+    kit = style_kit(asset).prompt(int(preset.get("scale", DEFAULT_SCALE)))
+    return " ".join(p for p in (preset.get("preamble", ""), kit, text.strip()) if p)
 
 
 def _provider(asset: Asset, name: str | None, *, key: bool = True) -> tuple[str, pv.Provider]:
@@ -101,7 +103,7 @@ def generate(
     project = asset.project
     name, prov = _provider(asset, provider, key=not dry_run)
     preset = _preset(project, name)
-    text = _prompt(preset, prompt)
+    text = _prompt(asset, preset, prompt)
     init_path: Path | None = None
     if init not in (None, "input", "none"):
         init_path = asset.version_path(str(init))
@@ -114,18 +116,15 @@ def generate(
         raise AssetError("inpaint repaints an issue: pass the issue instead")
     canvas = asset.settings().canvas
     scale = int(preset.get("scale", DEFAULT_SCALE))
-    refs = sorted((project.root / REFERENCES_DIR).glob("*.png"))
-    palette = flow.asset_palette(asset)
+    kit = style_kit(asset)
     req = pv.GenRequest(
         mode=mode,
         prompt=text,
         negative=str(preset.get("negative", "")),
         size=size or (canvas["width"] * scale, canvas["height"] * scale),
         init_image=init_path,
-        references=tuple(refs[: prov.capabilities.n_references]),
-        palette=tuple(c.hex for c in palette.colors)
-        if palette and prov.capabilities.palette_input
-        else None,
+        references=kit.references[: prov.capabilities.n_references],
+        palette=kit.colors if kit.colors and prov.capabilities.palette_input else None,
         seed=seed,
         n=n,
         params=dict(preset.get("params", {})),
@@ -189,7 +188,7 @@ def repaint(
     region = _areas_mask(issue.areas, (h, w))
     name, prov = _provider(asset, provider)
     preset = _preset(project, name)
-    text = _prompt(preset, prompt or issue.message)
+    text = _prompt(asset, preset, prompt or issue.message)
     scale = int(preset.get("scale", DEFAULT_SCALE))
     big = np.repeat(np.repeat(base, scale, axis=0), scale, axis=1)
     big_mask = np.repeat(np.repeat(region, scale, axis=0), scale, axis=1)

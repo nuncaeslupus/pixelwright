@@ -76,6 +76,7 @@ def test_cli_json_envelope_on_every_command(
     run("add", "sprites/hero", "--from", str(files / "src.png"))
     colors = run("colors", "sprites/hero")
     assert colors["data"]["groups"] and (ws / colors["outputs"][0]).is_file()
+    assert run("style", "show", "sprites")["data"]["category"] == "sprites"
     checked = run("check", "sprites/hero")
     assert checked["data"]["results"]
     run("palette", "discover", "--asset", "sprites/hero", "--colors", "3", "--name", "d")

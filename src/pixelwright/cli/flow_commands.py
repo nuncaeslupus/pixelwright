@@ -19,6 +19,7 @@ from pixelwright.core.providers import ProviderError
 from pixelwright.issues import KINDS, IssueError, IssueLog
 from pixelwright.migrate import migrate
 from pixelwright.project import PROJECT_FILE, Project, ProjectError, init_project, load_project
+from pixelwright.style import style_kit
 
 ASSET = Param("asset", help="asset path under assets/, e.g. scenes/harbour", positional=True)
 
@@ -197,6 +198,28 @@ def cmd_colors(root: Path, a: dict[str, Any]) -> Outcome:
         warnings=res.prepared.warnings,
         text="\n".join(lines),
     )
+
+
+@command(
+    "style",
+    "show the game's style kit that every generated image follows",
+    Param("action", default="show", positional=True, choices=("show",)),
+    Param("target", help="asset or category, e.g. scenes or scenes/bar", positional=True),
+)
+@_guard
+def cmd_style(root: Path, a: dict[str, Any]) -> Outcome:
+    project = _project(root)
+    target = a["target"] or (project.categories() or ["scenes"])[0]
+    kit = style_kit((project, target))
+    w, h = kit.canvas
+    lines = [
+        f"{kit.category}: {w}x{h}, palette {kit.palette} ({len(kit.colors)} colours)",
+        f"  preamble: {kit.preamble or '(none)'}",
+        *(f"  rule: {r}" for r in kit.rules),
+        f"  references: {len(kit.references)}",
+        f"  prompt: {kit.prompt(generate.DEFAULT_SCALE)}",
+    ]
+    return Outcome(data=kit.to_dict(), text="\n".join(lines))
 
 
 @command(

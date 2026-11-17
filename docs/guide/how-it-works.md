@@ -72,3 +72,23 @@ as a fix. Settings live in `pixelwright.toml`: `[providers.<name>]`, `[presets.<
 (preamble, negative, scale), `[defaults] provider = "..."` and `[budget] monthly_usd`;
 reference images go in `style/references/`. `pw cost` shows the month's spending and
 `pw doctor` what is set up. Local painting on your GPU: [comfyui.md](comfyui.md).
+
+### The game's style kit
+
+Every prompt carries the game's style, so "an empty old bar with a stage and a piano
+under spotlights" comes back already in it. The kit is the asset's palette and canvas
+(sent as hex codes and as the native size) plus, in `pixelwright.toml`:
+
+```toml
+[style]
+preamble = "Moody 90s point-and-click adventure"
+rules = ["1-px dark outlines", "light from the upper left"]
+
+[style.scenes]          # a category can override the preamble and rules
+preamble = "Night interiors, warm lamps"
+```
+
+and the images in `style/references/` and `style/references/<category>/`, sent as
+references where the provider takes them. Normalise then uses the same palette and
+canvas. `pw style show scenes` prints the kit and the exact words sent.
+
