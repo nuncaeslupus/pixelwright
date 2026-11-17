@@ -23,7 +23,8 @@ from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
 from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
-from pixelwright.core.quantize import MAX_ACCENTS, discover_palette, quantize_fixed
+from pixelwright.core.quantize import ACCENT_BOOST, MAX_ACCENTS, discover_palette, quantize_fixed
+from pixelwright.core.ramps import hue_families
 from pixelwright.core.snap import finer_canvas_grid, snap
 from pixelwright.core.sprite import background, frame, key_background, outline_reduce
 from pixelwright.io.palette_io import read_palette
@@ -407,23 +408,41 @@ def scan(project: Project) -> list[Asset]:
     return found
 
 
-def palette_from(images: list[RGBImage], n: int) -> Palette:
-    """One palette of about `n` colours (plus accents) shared by several images at pixel
-    scale: a scene set's or a cast's colours; each image counts the same, small or large."""
+def _side_by_side(
+    images: list[RGBImage],
+) -> tuple[RGBImage, npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Images in one row (transparent padding), their importance, and a per-pixel scale
+    that makes each image count the same, small or large."""
     if not images:
         raise ValueError("no images to take colours from")
     h = max(im.height for im in images)
     w = sum(im.width for im in images)
-    rgba = np.zeros((h, w, 4), np.uint8)  # side by side; the padding is transparent
+    rgba = np.zeros((h, w, 4), np.uint8)
     imp, scale = np.zeros((h, w)), np.zeros((h, w))
     x = 0
     for im in images:
         rgba[: im.height, x : x + im.width] = im.rgba
         imp[: im.height, x : x + im.width] = importance_map(im)
         opaque = max(1, int((im.rgba[..., 3] >= 128).sum()))
-        scale[: im.height, x : x + im.width] = 1e4 / opaque  # each image counts the same
+        scale[: im.height, x : x + im.width] = 1e4 / opaque
         x += im.width
-    return discover_palette(RGBImage(rgba), n, importance=imp, scale=scale)
+    return RGBImage(rgba), imp, scale
+
+
+def palette_from(images: list[RGBImage], n: int) -> Palette:
+    """One palette of about `n` colours (plus accents) shared by several images at pixel
+    scale: a scene set's or a cast's colours; each image counts the same."""
+    joined, imp, scale = _side_by_side(images)
+    return discover_palette(joined, n, importance=imp, scale=scale)
+
+
+def ramp_keys_from(images: list[RGBImage], n: int) -> dict[str, str]:
+    """Key colours for `n` ramps: the images' hue families (core.ramps.hue_families)."""
+    joined, imp, scale = _side_by_side(images)
+    opaque = joined.rgba[..., 3] >= 128
+    lab = srgb8_to_oklab(joined.rgba[..., :3][opaque])
+    weight = scale * (1 + ACCENT_BOOST * imp**2)  # small lights (fire, candles) count more
+    return hue_families(lab, weight[opaque], n)
 
 
 SWATCH = 24  # px per colour in a palette swatch

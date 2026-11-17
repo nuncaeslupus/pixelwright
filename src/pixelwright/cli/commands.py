@@ -54,10 +54,11 @@ def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
     Param("file", help="palette file (.gpl or .hex) for import"),
     Param("asset", "list", help="discover: asset paths (their newest inputs)"),
     Param("images", "list", help="discover: image files"),
-    Param("colors", "int", help="colors for discover (plus up to 8 accents)", default=16),
+    Param("colors", "int", help="discover: colours (plus up to 8 accents); ramps: hue "
+          "families taken from --asset/--images", default=16),
     Param("keys", "list", help="ramps: key colours as name=rrggbb (added to the preset)"),
-    Param("preset", help="ramps: starting set of key colours", choices=("adventure", "none"),
-          default="adventure"),
+    Param("preset", help="ramps: starting key colours (default: adventure, or none with "
+          "--asset/--images)", choices=("adventure", "none")),
     Param("steps", "int", help="ramps: shades per key colour", default=5),
     Param("swatch", "bool", help="discover, ramps: also save style/references/palette-<name>.png"),
     Param("name", help="palette name (default: from the file or the asset)"),
@@ -76,31 +77,25 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         src = Path(a["file"])
         palette, name = read_palette(src), a["name"] or src.stem
     elif a["action"] == "ramps":
-        keys = dict(PRESETS.get(a["preset"], {}))
+        images, names = _images(root, a)
+        preset = a["preset"] or ("none" if images else "adventure")
+        keys = dict(PRESETS.get(preset, {}))
+        if images:  # one ramp per hue family of the images
+            keys |= flow.ramp_keys_from(images, a["colors"])
         for item in a["keys"] or []:
             key, _, hexa = item.partition("=")
             if not hexa:
                 raise PwError("invalid", f"--keys wants name=rrggbb, got {item!r}")
             keys[key] = hexa
         if not keys:
-            raise PwError("invalid", "palette ramps needs --keys or a --preset")
+            raise PwError("invalid", "palette ramps needs --keys, --images, --asset or a --preset")
         try:
             palette = ramp_palette(keys, a["steps"])
         except ValueError as exc:
             raise PwError("invalid", str(exc)) from exc
         name = a["name"] or "ramps"
     else:
-        images, names = [], []
-        for rel in a["asset"] or []:
-            asset = _asset(root, rel)
-            if not asset.inputs() and asset.latest() is None:
-                raise PwError("invalid", f"{asset.rel} has no image to take colours from")
-            # the raw input at pixel scale: a version already carries a palette's colours
-            images.append(flow.prepare(asset).image if asset.inputs() else _version(asset))
-            names.append(asset.name)
-        for file in a["images"] or []:
-            images.append(snap(_rgb_file(Path(file))).image)
-            names.append(Path(file).stem)
+        images, names = _images(root, a)
         if not images:
             raise PwError("invalid", "palette discover needs --asset or --images")
         palette = flow.palette_from(images, a["colors"])
@@ -114,6 +109,22 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         outputs.append(str(flow.write_swatch(palette, swatch)))
     return Outcome(outputs=outputs, data={"palette": name, "colors": len(palette)},
                    text=f"Palette {name}: {len(palette)} colours")  # fmt: skip
+
+
+def _images(root: Path, a: dict[str, Any]) -> tuple[list[RGBImage], list[str]]:
+    """The images named by --asset (newest input at pixel scale) and --images."""
+    images, names = [], []
+    for rel in a["asset"] or []:
+        asset = _asset(root, rel)
+        if not asset.inputs() and asset.latest() is None:
+            raise PwError("invalid", f"{asset.rel} has no image to take colours from")
+        # the raw input at pixel scale: a version already carries a palette's colours
+        images.append(flow.prepare(asset).image if asset.inputs() else _version(asset))
+        names.append(asset.name)
+    for file in a["images"] or []:
+        images.append(snap(_rgb_file(Path(file))).image)
+        names.append(Path(file).stem)
+    return images, names
 
 
 def _rgb_file(path: Path) -> RGBImage:
