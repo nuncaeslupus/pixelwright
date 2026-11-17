@@ -18,11 +18,14 @@ Each crop has 274-785 distinct colours (the maps mix room palettes).
   line-runs (230-670) and banding (16-100). On professional art these are false positives:
   the checks are calibrated for 16-32 colour sprites, not for dithered 256-colour scenes.
 
-## To do (not planned)
+## Fixes (same day)
 
-1. When the input is already pixel art on its grid and has at most 256 colours, keep its
-   colours exactly (no discovery and no merge), unless a project palette is set.
-2. Let discovery reach 256 colours without merging distinct VGA shades, and never move
-   white or greys to a hue.
-3. Scale the check thresholds by palette size and image area, or report them as density.
-   Use these real screens as a "should pass" fixture set, kept local only.
+1. Without a project palette, pixel art on its grid with at most 256 colours keeps them
+   exactly. The same crops quantised to 256 colours now come out identical.
+2. Discovery merges near shades only in small palettes: the separation shrinks with
+   (32 / n)², so 248 colours stay 179-256. Greys that would take a hue get a neutral entry
+   (white stays white).
+3. Above 24 palette colours the checks allow a density: orphans up to 25% of the pixels,
+   line-run pixels up to 2%, bands up to 60% of the shorter side. Measured densities are
+   similar for real VGA scenes and good Retro Diffusion output (orphans 30-215 per mille,
+   line runs 2-12 per mille). Small palettes stay strict.

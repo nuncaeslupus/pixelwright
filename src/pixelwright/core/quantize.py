@@ -116,6 +116,7 @@ ACCENT_MIN = 0.5  # importance from which a pixel counts as an accent
 ACCENT_DE = 0.06  # an accent this far (OKLab) from every palette colour gets its own
 MAX_ACCENTS = 8  # palette entries added for accents, on top of `n`
 MIN_SEPARATION = 0.03  # OKLab: palette entries closer than this are one colour (JPEG noise)
+SEPARATION_AT = 32  # palettes up to this size merge at the full separation
 MIN_SEPARATION_RGB = 10.0  # ... or this close in sRGB 0-255: OKLab's cube root spreads near-blacks
 
 
@@ -190,17 +191,19 @@ def _kmeans(
     return centers
 
 
-def _merge_close(lab: FloatArray, weight: FloatArray, centers: FloatArray) -> FloatArray:
+def _merge_close(lab: FloatArray, weight: FloatArray, centers: FloatArray, n: int) -> FloatArray:
     """Merge palette entries closer than MIN_SEPARATION (weighted by the pixels they take).
 
     Large dark areas full of JPEG noise otherwise get several near-identical blacks; a
     1-pixel outline then splits between them, its pixels look like orphans and `clean`
-    erases them."""
+    erases them. The separation shrinks for large palettes (`n` above SEPARATION_AT):
+    VGA shades a few RGB steps apart are meant there."""
+    shrink = min(1.0, SEPARATION_AT / n) ** 2
     while len(centers) > 1:
         d = np.sqrt(((centers[:, None] - centers[None, :]) ** 2).sum(axis=2))
         rgb = oklab_to_srgb8(centers).astype(np.float64)
         d_rgb = np.sqrt(((rgb[:, None] - rgb[None, :]) ** 2).sum(axis=2))
-        close = (d < MIN_SEPARATION) | (d_rgb < MIN_SEPARATION_RGB)
+        close = (d < MIN_SEPARATION * shrink) | (d_rgb < MIN_SEPARATION_RGB * shrink)
         np.fill_diagonal(close, False)
         if not close.any():
             break
@@ -211,6 +214,30 @@ def _merge_close(lab: FloatArray, weight: FloatArray, centers: FloatArray) -> Fl
         merged = (centers[i] * wi + centers[j] * wj) / max(wi + wj, 1e-12)
         centers = np.vstack([np.delete(centers, [i, j], axis=0), merged])
     return centers
+
+
+NEUTRAL = 0.02  # OKLab chroma below this is a grey, white or black
+TINTED = 0.04  # ... and a palette entry above this would tint it
+
+
+def _keep_neutrals(lab: FloatArray, weight: FloatArray, centers: FloatArray) -> FloatArray:
+    """Give greys, whites and blacks a neutral entry when their nearest one has a hue.
+
+    A small palette otherwise averages a white border into a pale green, or a white robe
+    into cyan. At most one light and one dark neutral are added."""
+    chroma = np.hypot(lab[:, 1], lab[:, 2])
+    nearest, _second = _two_nearest(lab, centers)
+    tinted = np.hypot(centers[:, 1], centers[:, 2])[nearest] > TINTED
+    hit = (chroma < NEUTRAL) & tinted
+    total = weight.sum()
+    for side in (lab[:, 0] >= 0.5, lab[:, 0] < 0.5):
+        group = hit & side
+        if weight[group].sum() >= NEUTRAL_SHARE * total:
+            centers = np.vstack([centers, np.average(lab[group], axis=0, weights=weight[group])])
+    return centers
+
+
+NEUTRAL_SHARE = 0.002  # neutrals that cover this share of the image get their own entry
 
 
 def _add_accents(image: RGBImage, importance: FloatArray, centers: FloatArray) -> FloatArray:
@@ -249,7 +276,8 @@ def discover_palette(
 
     With an `importance` map (`core.importance.importance_map`), small colours that stand
     out locally (lights, eyes, accents) weigh more, and any of them still far from every
-    entry gets its own (up to MAX_ACCENTS more than `n`). `scale` multiplies each pixel's
+    entry gets its own (up to MAX_ACCENTS more than `n`), and greys that would take a hue get
+    a neutral entry (up to 2 more). `scale` multiplies each pixel's
     weight (several images side by side, each made to count the same)."""
     if n < 1:
         raise ValueError("n must be >= 1")
@@ -261,9 +289,10 @@ def discover_palette(
     centers = _median_cut(lab, weight, n)
     if method == "kmeans":
         centers = _kmeans(lab, weight, centers, iterations)
-    centers = _merge_close(lab, weight, centers)
+    centers = _merge_close(lab, weight, centers, n)
     if importance is not None:
         centers = _add_accents(image, importance, centers)
+        centers = _keep_neutrals(lab, weight, centers)
     order = np.argsort(centers[:, 0], kind="stable")  # dark to light
     seen: list[tuple[int, int, int]] = []
     for rgb in oklab_to_srgb8(centers[order]):

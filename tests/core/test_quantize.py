@@ -85,3 +85,23 @@ def test_discover_is_deterministic_and_bounded() -> None:
     a = discover_palette(image, 8)
     assert a == discover_palette(image, 8)
     assert len(a) <= 8
+
+
+def test_large_palette_keeps_near_shades() -> None:
+    """VGA shades 4 RGB steps apart are meant: a 64-colour request keeps them apart."""
+    ramp = np.array([[(20 + 3 * i, 30 + 2 * i, 20) for i in range(64)]], np.uint8)
+    found = discover_palette(RGBImage.from_array(np.repeat(ramp, 4, axis=0)), 64)
+    assert len(found) >= 56
+
+
+def test_white_keeps_a_neutral_entry() -> None:
+    """A small palette must not turn a white border into the pale green next to it."""
+    from pixelwright.core.importance import importance_map
+
+    art = np.zeros((40, 40, 3), np.uint8)
+    art[...] = (60, 140, 50)
+    art[:20] = (180, 230, 160)
+    art[0, :] = art[:, 0] = (255, 255, 255)
+    image = RGBImage.from_array(art)
+    found = discover_palette(image, 2, importance=importance_map(image))
+    assert min(sum(abs(c - 255) for c in (col.r, col.g, col.b)) for col in found) < 12

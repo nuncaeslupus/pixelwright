@@ -101,3 +101,39 @@ def test_prompt_never_lists_palette_codes(
     dry = pw(capsys, project, "generate", "scenes/harbour", "--provider", "replay",
              "--prompt", "harbour", "--dry-run")  # fmt: skip
     assert "#" not in dry["data"]["prompt"] and "palette of about" in dry["data"]["prompt"]
+
+
+def test_rich_pixel_art_keeps_every_colour(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # 200 colours, dithered, on its grid: real VGA art, kept as drawn and not flagged
+    (project / "style" / "palettes" / "main.gpl").unlink()
+    rng = np.random.default_rng(5)
+    colours = rng.integers(0, 256, (200, 3)).astype(np.uint8)
+    cells = colours[rng.integers(0, 200, (18, 32))]
+    src = tmp_path / "vga.png"
+    Image.fromarray(np.repeat(np.repeat(cells, 3, 0), 3, 1), "RGB").save(src)
+    pw(capsys, project, "add", "scenes/vga", "--from", str(src))
+    out = pw(capsys, project, "normalize", "scenes/vga")
+    assert out["data"]["palette"].startswith("own")
+    with Image.open(out["outputs"][0]) as im:
+        assert (np.asarray(im.convert("RGB")) == cells).all()
+
+
+def test_rich_scene_texture_is_not_flagged(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # 40 colours in bands with 10% single-pixel texture: style, not stray pixels
+    (project / "style" / "palettes" / "main.gpl").unlink()
+    rng = np.random.default_rng(6)
+    colours = rng.integers(0, 256, (40, 3)).astype(np.uint8)
+    idx = np.repeat(np.arange(9) % 40, 2)[:, None].repeat(32, 1)
+    specks = rng.random(idx.shape) < 0.1
+    idx[specks] = rng.integers(9, 40, int(specks.sum()))
+    src = tmp_path / "rich.png"
+    Image.fromarray(colours[idx], "RGB").save(src)
+    pw(capsys, project, "add", "scenes/rich", "--from", str(src))
+    pw(capsys, project, "normalize", "scenes/rich")
+    pw(capsys, project, "check", "scenes/rich")
+    issues = pw(capsys, project, "issues", "scenes/rich", "list")["data"]["issues"]
+    assert not any("orphans" in i["message"] for i in issues)

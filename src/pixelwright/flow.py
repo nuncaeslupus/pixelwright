@@ -22,7 +22,7 @@ from pixelwright.core.color import srgb8_to_oklab
 from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
 from pixelwright.core.lines import regularise_lines
-from pixelwright.core.palette import Palette
+from pixelwright.core.palette import Color, Palette
 from pixelwright.core.quantize import ACCENT_BOOST, MAX_ACCENTS, discover_palette, quantize_fixed
 from pixelwright.core.ramps import hue_families
 from pixelwright.core.snap import finer_canvas_grid, snap
@@ -43,6 +43,13 @@ GLOW = 0.5  # ... nor their neighbours this important: the arms of a twinkle, no
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
 UNDERSIZE = 0.5  # ... or this much smaller, while the image itself is larger than the canvas
 NEAR = 0.15  # a grid this close to the canvas size is the canvas grid
+OWN_COLORS = 256  # pixel art on its grid with at most this many colours keeps them exactly
+# with more palette colours than RICH, dithering and texture are the style: the checks
+# allow a density of flagged pixels that real 256-colour VGA scenes reach (65-215 per
+# mille of orphans, 4-12 per mille of line-run pixels) and only very long bands
+RICH_ORPHANS = 0.25
+RICH_LINE_RUNS = 0.02
+RICH_BAND = 0.6  # of the image's shorter side
 
 
 @dataclass
@@ -236,6 +243,13 @@ def _faithful(cleaned: IndexedImage, indexed: IndexedImage, native: RGBImage) ->
     return IndexedImage(indices, cleaned.palette, cleaned.alpha)
 
 
+def _own_colors(image: RGBImage) -> list[Color]:
+    """The image's distinct opaque colours, dark to light."""
+    rgba = image.rgba.reshape(-1, 4)
+    rgb = np.unique(rgba[rgba[:, 3] >= 128][:, :3], axis=0)
+    return [Color(int(r), int(g), int(b)) for r, g, b in rgb[np.argsort(rgb.sum(axis=1))]]
+
+
 def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
     prep = prepare(asset, source)
@@ -249,6 +263,14 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
         palette = discover_palette(native, n - MAX_ACCENTS if n > 2 * MAX_ACCENTS else n,
                                    importance=imp)  # fmt: skip
         palette_name = f"discovered ({n})"
+    elif palette is None and not prep.reduced and len(own := _own_colors(native)) <= OWN_COLORS:
+        # already pixel art on its grid: its colours are meant, keep every pixel as drawn
+        warnings.append(f"palette {palette_name!r} not in style/palettes; own colours kept")
+        version = asset.add_version(_pil(quantize_fixed(native, Palette(own))[0]))
+        if asset.meta().state == "processing":
+            asset.set_state("review")
+        size = (native.width, native.height)
+        return NormalizeResult(version, prep.scale, size, f"own ({len(own)})", warnings)
     elif palette is None:
         warnings.append(f"palette {palette_name!r} not in style/palettes; colours discovered")
         colors = PAINTING_COLORS if prep.reduced else DISCOVERED_COLORS
@@ -299,10 +321,18 @@ def run_checks(asset: Asset, version: str | None = None) -> tuple[list[CheckResu
     native = _rgb(asset.version_path(version))
     palette = asset_palette(asset)
     if palette is None:
-        colors = {tuple(c) for c in native.rgba[..., :3].reshape(-1, 3).tolist()}
-        palette = discover_palette(native, max(1, min(len(colors), 256)))
+        own = _own_colors(native)
+        palette = Palette(own) if len(own) <= OWN_COLORS else discover_palette(native, OWN_COLORS)
     indexed, _ = quantize_fixed(native, palette)
-    results = [check_orphans(indexed), check_line_runs(indexed), check_banding(indexed)]
+    if len(palette) > RICH:
+        area, side = native.width * native.height, min(native.width, native.height)
+        results = [
+            check_orphans(indexed, int(area * RICH_ORPHANS)),
+            check_line_runs(indexed, int(area * RICH_LINE_RUNS)),
+            check_banding(indexed, max(12, int(side * RICH_BAND))),
+        ]
+    else:
+        results = [check_orphans(indexed), check_line_runs(indexed), check_banding(indexed)]
     log = IssueLog(asset)
     issues = raise_check_issues(log, version, results)
     for issue in issues:  # the scripts can propose a fix for jaggy lines themselves
