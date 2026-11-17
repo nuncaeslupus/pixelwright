@@ -140,5 +140,5 @@ def test_palette_discover_from_images_writes_swatch(
              "--colors", "4", "--name", "cast", "--swatch")  # fmt: skip
     swatch = project / "style" / "references" / "palette-cast.png"
     assert str(swatch) in env["outputs"]
-    found = {tuple(c) for c in np.asarray(Image.open(swatch)).reshape(-1, 3)}
+    found = {tuple(c[:3]) for c in np.asarray(Image.open(swatch)).reshape(-1, 4) if c[3]}
     assert (200, 40, 40) in found and len(found) == env["data"]["colors"]

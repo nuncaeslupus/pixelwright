@@ -120,7 +120,7 @@ MIN_SEPARATION_RGB = 10.0  # ... or this close in sRGB 0-255: OKLab's cube root 
 
 
 def _weighted_colors(
-    image: RGBImage, importance: FloatArray | None = None
+    image: RGBImage, importance: FloatArray | None = None, scale: FloatArray | None = None
 ) -> tuple[FloatArray, FloatArray]:
     """Unique opaque colours in OKLab and their weights: pixel counts, each pixel boosted
     by `1 + ACCENT_BOOST * importance^2` when an importance map is given."""
@@ -131,6 +131,8 @@ def _weighted_colors(
     per_pixel = np.ones(len(inverse))
     if importance is not None:
         per_pixel += ACCENT_BOOST * importance.reshape(-1)[opaque] ** 2
+    if scale is not None:
+        per_pixel *= scale.reshape(-1)[opaque]
     weight = np.bincount(inverse, per_pixel, len(uniq))
     return srgb8_to_oklab(uniq), weight
 
@@ -241,17 +243,19 @@ def discover_palette(
     method: str = "kmeans",
     iterations: int = 20,
     importance: FloatArray | None = None,
+    scale: FloatArray | None = None,
 ) -> Palette:
     """Build a palette of at most `n` colors for `image` (median cut, refined by k-means).
 
     With an `importance` map (`core.importance.importance_map`), small colours that stand
     out locally (lights, eyes, accents) weigh more, and any of them still far from every
-    entry gets its own (up to MAX_ACCENTS more than `n`)."""
+    entry gets its own (up to MAX_ACCENTS more than `n`). `scale` multiplies each pixel's
+    weight (several images side by side, each made to count the same)."""
     if n < 1:
         raise ValueError("n must be >= 1")
     if method not in ("kmeans", "median-cut"):
         raise ValueError("method must be 'kmeans' or 'median-cut'")
-    lab, weight = _weighted_colors(image, importance)
+    lab, weight = _weighted_colors(image, importance, scale)
     if len(lab) == 0:
         raise ValueError("image has no opaque pixels")
     centers = _median_cut(lab, weight, n)

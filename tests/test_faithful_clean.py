@@ -6,6 +6,7 @@ import numpy as np
 
 from pixelwright import flow
 from pixelwright.core.clean import clean
+from pixelwright.core.color import srgb8_to_oklab
 from pixelwright.core.image import RGBImage
 from pixelwright.core.palette import Color, Palette
 from pixelwright.core.quantize import quantize_fixed
@@ -37,3 +38,14 @@ def test_sprite_that_fits_keeps_its_pixels() -> None:
     assert (fits.image.rgba[34:, 22:42] == fig).all()  # centred, feet at the bottom
     big = flow._sprite(RGBImage(fig), (16, 16), (255, 0, 255))
     assert big.image.rgba.shape[:2] == (16, 16) and "20x30" in big.warnings[0]
+
+
+def test_shared_palette_gives_a_small_image_its_colours() -> None:
+    ramp = np.linspace(40, 220, 120).astype(np.uint8)
+    big = np.dstack([np.tile(ramp, (120, 1))] * 3 + [np.full((120, 120), 255, np.uint8)])
+    small = np.full((20, 20, 4), 255, np.uint8)
+    small[..., :3] = (180, 140, 60)
+    palette = flow.palette_from([RGBImage(big), RGBImage(small)], 6)
+    lab = srgb8_to_oklab(np.array([[c.r, c.g, c.b] for c in palette.colors], np.uint8))
+    target = srgb8_to_oklab(np.array([(180, 140, 60)], np.uint8))[0]
+    assert np.linalg.norm(lab - target, axis=1).min() < 0.03
