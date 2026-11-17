@@ -30,11 +30,12 @@ class StyleKit:
     preamble: str
     rules: tuple[str, ...]
     references: tuple[Path, ...]
+    max_colors: int | None = None  # `colors = N` instead of a palette file
 
     def prompt(self, scale: int) -> str:
         """The kit as words, put before the request."""
         w, h = self.canvas
-        parts = [self.preamble] if self.preamble else []
+        parts = [sentence(self.preamble)] if self.preamble else []
         parts.append(
             f"Pixel art, {w}x{h} pixels, each pixel drawn as a sharp {scale}x{scale} block; "
             "no anti-aliasing, no blur, no gradients between pixels."
@@ -42,7 +43,9 @@ class StyleKit:
         if self.colors:
             codes = ", ".join("#" + c for c in self.colors)
             parts.append(f"Use only these {len(self.colors)} colours: {codes}.")
-        parts += [r if r.endswith(".") else f"{r}." for r in self.rules]
+        elif self.max_colors:
+            parts.append(f"Use at most {self.max_colors} colours.")
+        parts += [sentence(r) for r in self.rules]
         return " ".join(parts)
 
     def to_dict(self) -> dict[str, Any]:
@@ -54,7 +57,14 @@ class StyleKit:
             "preamble": self.preamble,
             "rules": list(self.rules),
             "references": [str(p) for p in self.references],
+            "max_colors": self.max_colors,
         }
+
+
+def sentence(text: str) -> str:
+    """The text as a sentence: stripped, ending in . ! or ?"""
+    text = text.strip()
+    return text if not text or text[-1] in ".!?" else f"{text}."
 
 
 def _table(raw: object, where: str) -> dict[str, Any]:
@@ -83,7 +93,7 @@ def style_kit(target: Asset | tuple[Project, str]) -> StyleKit:
         raise ProjectError("pixelwright.toml: style rules must be a list of sentences")
     settings = project.settings_for(project.assets_dir / rel)
     file = project.palettes_dir / f"{settings.palette}.gpl"
-    palette = read_palette(file) if file.is_file() else None
+    palette = read_palette(file) if file.is_file() and not settings.colors else None
     refs = _images(project.root / REFERENCES_DIR / category) + _images(
         project.root / REFERENCES_DIR
     )
@@ -95,4 +105,5 @@ def style_kit(target: Asset | tuple[Project, str]) -> StyleKit:
         preamble=preamble,
         rules=tuple(rules),
         references=tuple(refs),
+        max_colors=settings.colors,
     )

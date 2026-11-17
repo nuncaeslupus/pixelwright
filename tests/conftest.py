@@ -4,6 +4,7 @@
 skipped when no browser is available)."""
 
 import json
+import os
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -79,3 +80,11 @@ def open_app(browser: Any, config_home: None) -> Iterator[Callable[[AppApi], Any
     for c in contexts:
         c.close()
     assert errors == [], errors
+
+
+@pytest.fixture(autouse=True)
+def _no_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never see real API keys from the environment (PW_<NAME>_KEY)."""
+    for name in list(os.environ):
+        if name.startswith("PW_") and name.endswith("_KEY"):
+            monkeypatch.delenv(name)

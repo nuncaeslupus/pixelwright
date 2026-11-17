@@ -27,7 +27,7 @@ from pixelwright.core.image import RGBImage
 from pixelwright.io.png import encode_png
 from pixelwright.issues import IssueLog
 from pixelwright.project import Project
-from pixelwright.style import style_kit
+from pixelwright.style import sentence, style_kit
 
 DEFAULT_SCALE = 4  # painters work at a multiple of the canvas; normalise brings it back
 
@@ -73,7 +73,7 @@ def _prompt(asset: Asset, preset: dict[str, Any], text: str) -> str:
     if not text.strip() and not preset.get("preamble"):
         raise AssetError("say what to paint: a prompt, or a preamble in [presets.<provider>]")
     kit = style_kit(asset).prompt(int(preset.get("scale", DEFAULT_SCALE)))
-    return " ".join(p for p in (preset.get("preamble", ""), kit, text.strip()) if p)
+    return " ".join(p for p in (sentence(preset.get("preamble", "")), kit, text.strip()) if p)
 
 
 def _provider(asset: Asset, name: str | None, *, key: bool = True) -> tuple[str, pv.Provider]:

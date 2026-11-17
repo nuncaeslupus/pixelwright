@@ -22,7 +22,7 @@ from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
 from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
-from pixelwright.core.quantize import discover_palette, quantize_fixed
+from pixelwright.core.quantize import MAX_ACCENTS, discover_palette, quantize_fixed
 from pixelwright.core.snap import snap
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import read_png
@@ -183,9 +183,15 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     prep = prepare(asset, source)
     native, warnings = prep.image, list(prep.warnings)
     imp = importance_map(native)
-    palette = asset_palette(asset)
-    palette_name = asset.settings().palette
-    if palette is None:
+    settings = asset.settings()
+    palette = None if settings.colors else asset_palette(asset)
+    palette_name = settings.palette
+    if settings.colors:  # `colors = N`: the input's own N colours, accents included
+        n = settings.colors
+        palette = discover_palette(native, n - MAX_ACCENTS if n > 2 * MAX_ACCENTS else n,
+                                   importance=imp)  # fmt: skip
+        palette_name = f"discovered ({n})"
+    elif palette is None:
         warnings.append(f"palette {palette_name!r} not in style/palettes; colours discovered")
         colors = PAINTING_COLORS if prep.reduced else DISCOVERED_COLORS
         palette = discover_palette(native, colors, importance=imp)

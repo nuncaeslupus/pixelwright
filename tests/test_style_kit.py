@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -80,3 +81,40 @@ def test_style_show(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
     other = pw(capsys, project, "style", "show", "props")["data"]
     assert other["preamble"] == "Moody 90s point-and-click adventure"
     assert other["references"] == []
+
+
+def test_preamble_is_a_sentence_and_inputs_folder_is_made(
+    project: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent: list[GenRequest] = []
+    real = replay.ReplayProvider.generate
+
+    def spy(self: replay.ReplayProvider, req: GenRequest) -> Any:
+        sent.append(req)
+        return real(self, req)
+
+    monkeypatch.setattr(replay.ReplayProvider, "generate", spy)
+    toml = project / "pixelwright.toml"
+    toml.write_text(toml.read_text() + '\n[presets.replay]\npreamble = "VGA era look"\n')
+    pw(capsys, project, "add", "scenes/bar", "--from", str(project / "replay" / "a.png"))
+    shutil.rmtree(project / "assets" / "scenes" / "bar" / "inputs")
+    pw(capsys, project, "generate", "scenes/bar", "--provider", "replay", "--mode",
+       "txt2img", "--prompt", "A cosy tavern")  # fmt: skip
+    assert sent[0].prompt.startswith("VGA era look. Night interiors, warm lamps.")
+
+
+def test_colors_setting_discovers_the_palette(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    rng = np.random.default_rng(3)
+    native = rng.integers(0, 256, (18, 32, 3), np.uint8)  # far more than 40 colours
+    Image.fromarray(np.repeat(np.repeat(native, 4, 0), 4, 1), "RGB").save(tmp_path / "n.png")
+    pw(capsys, project, "add", "scenes/noisy", "--from", str(tmp_path / "n.png"))
+    (project / "assets" / "scenes" / "noisy" / "asset.toml").write_text(
+        'state = "processing"\ncolors = 40\n'
+    )
+    env = pw(capsys, project, "normalize", "scenes/noisy")
+    with Image.open(env["outputs"][0]) as im:
+        assert 16 < len(im.convert("RGB").getcolors() or []) <= 40
+    shown = pw(capsys, project, "style", "show", "scenes/noisy")["data"]
+    assert shown["colors"] == [] and shown["max_colors"] == 40

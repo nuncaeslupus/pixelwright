@@ -37,6 +37,9 @@ class AssetError(ValueError):
     """An asset folder or one of its files is invalid."""
 
 
+META_KEYS = ("brief", "state", "final", "starred", "kind", "palettes")
+
+
 @dataclass
 class AssetMeta:
     brief: str = ""
@@ -136,13 +139,20 @@ class Asset:
             raise AssetError(f"{file}: {exc}") from exc
 
     def save_meta(self, meta: AssetMeta) -> None:
-        write_toml(self.path / ASSET_FILE, meta.to_dict())
+        """Write the metadata, keeping the settings it does not manage (canvas, checks,
+        colors, ...) as they are in the file."""
+        file = self.path / ASSET_FILE
+        with file.open("rb") as fh:
+            raw = tomllib.load(fh)
+        kept = {k: v for k, v in raw.items() if k not in META_KEYS}
+        write_toml(file, {**meta.to_dict(), **kept})
 
     # --- inputs and versions -------------------------------------------------
 
     def add_input(self, source: Path) -> Path:
         """Copy an image into `inputs/`, never replacing one already there."""
         dest_dir = self.path / INPUTS
+        dest_dir.mkdir(exist_ok=True)
         stem, suffix = source.stem, source.suffix.lower()
         dest = dest_dir / f"{stem}{suffix}"
         n = 2
