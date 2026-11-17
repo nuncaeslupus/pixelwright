@@ -5,6 +5,7 @@ label: "T64: Agent instructions"
 priority: 5
 deps: [t-a77f1792, t-12e402af]
 tags: [m4]
+status: merged
 ---
 
 Agent instructions: rewrite Claude skills (style, critique-and-fix loop, listen with `pw wait`) and add `AGENTS.md`
