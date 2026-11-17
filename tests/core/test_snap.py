@@ -3,6 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from PIL import Image as PILImage
+from PIL import ImageFilter
 
 from pixelwright.cli import main
 from pixelwright.core.image import IndexedImage, RGBImage
@@ -135,3 +137,27 @@ def test_a_painting_without_a_grid_is_reduced_to_the_canvas(
     env = json.loads(capsys.readouterr().out)
     assert env["data"]["reduced"] and env["data"]["size"] == [320, 180]
     assert any("reduced 1280x720 to 320x180" in w for w in env["warnings"])
+
+
+@pytest.mark.parametrize("factor", [8.6, 11.47])
+def test_snap_recovers_non_integer_scale(factor: float) -> None:
+    """Generators draw "pixels" 8.6 screen pixels wide; an integer grid would drift a
+    cell every few cells and break dither and diagonals."""
+    rng = np.random.default_rng(5)
+    colors = np.array([(30, 20, 50), (200, 80, 60), (240, 200, 120), (40, 90, 60)], np.uint8)
+    idx = rng.integers(0, 4, (30, 40))
+    yy, xx = np.mgrid[0:30, 0:40]
+    idx[:10] = np.where((yy[:10] + xx[:10]) % 2 == 0, 0, 1)  # dithered sky
+    idx[np.abs(yy - xx + 5) < 1] = 2  # a 1:1 diagonal
+    native = colors[idx]
+    big = PILImage.fromarray(native).resize(
+        (round(40 * factor), round(30 * factor)), PILImage.Resampling.NEAREST
+    )
+    big = big.filter(ImageFilter.GaussianBlur(0.6))
+    rgba = np.dstack([np.asarray(big), np.full((big.height, big.width), 255, np.uint8)])
+    result = snap(RGBImage(rgba))
+    assert result.period[0] == pytest.approx(factor, abs=0.05)
+    got = result.image.rgba[..., :3]
+    assert got.shape[:2] == (30, 40)
+    match = (np.abs(got.astype(int) - native.astype(int)).sum(axis=2) < 40).mean()
+    assert match >= 0.95

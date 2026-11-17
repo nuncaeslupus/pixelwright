@@ -115,6 +115,8 @@ ACCENT_BOOST = 40.0  # how much a fully important pixel outweighs a plain one
 ACCENT_MIN = 0.5  # importance from which a pixel counts as an accent
 ACCENT_DE = 0.06  # an accent this far (OKLab) from every palette colour gets its own
 MAX_ACCENTS = 8  # palette entries added for accents, on top of `n`
+MIN_SEPARATION = 0.03  # OKLab: palette entries closer than this are one colour (JPEG noise)
+MIN_SEPARATION_RGB = 10.0  # ... or this close in sRGB 0-255: OKLab's cube root spreads near-blacks
 
 
 def _weighted_colors(
@@ -186,6 +188,29 @@ def _kmeans(
     return centers
 
 
+def _merge_close(lab: FloatArray, weight: FloatArray, centers: FloatArray) -> FloatArray:
+    """Merge palette entries closer than MIN_SEPARATION (weighted by the pixels they take).
+
+    Large dark areas full of JPEG noise otherwise get several near-identical blacks; a
+    1-pixel outline then splits between them, its pixels look like orphans and `clean`
+    erases them."""
+    while len(centers) > 1:
+        d = np.sqrt(((centers[:, None] - centers[None, :]) ** 2).sum(axis=2))
+        rgb = oklab_to_srgb8(centers).astype(np.float64)
+        d_rgb = np.sqrt(((rgb[:, None] - rgb[None, :]) ** 2).sum(axis=2))
+        close = (d < MIN_SEPARATION) | (d_rgb < MIN_SEPARATION_RGB)
+        np.fill_diagonal(close, False)
+        if not close.any():
+            break
+        d = np.where(close, d, np.inf)
+        i, j = np.unravel_index(int(np.argmin(d)), d.shape)
+        nearest, _second = _two_nearest(lab, centers)
+        wi, wj = weight[nearest == i].sum(), weight[nearest == j].sum()
+        merged = (centers[i] * wi + centers[j] * wj) / max(wi + wj, 1e-12)
+        centers = np.vstack([np.delete(centers, [i, j], axis=0), merged])
+    return centers
+
+
 def _add_accents(image: RGBImage, importance: FloatArray, centers: FloatArray) -> FloatArray:
     """Append up to MAX_ACCENTS colours for important pixels the palette misses."""
     opaque = (image.rgba[..., 3] >= ALPHA_THRESHOLD).reshape(-1)
@@ -232,6 +257,7 @@ def discover_palette(
     centers = _median_cut(lab, weight, n)
     if method == "kmeans":
         centers = _kmeans(lab, weight, centers, iterations)
+    centers = _merge_close(lab, weight, centers)
     if importance is not None:
         centers = _add_accents(image, importance, centers)
     order = np.argsort(centers[:, 0], kind="stable")  # dark to light
