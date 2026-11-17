@@ -113,3 +113,8 @@ and lights towards yellow, plus a shared near-black and near-white. It starts fr
 `adventure` preset (skin, hair, wood, stone, metal, foliage, cloth, gold, fire); add or
 replace keys with `--keys skin-light=f0c39c moss=4f6b2e`, or `--preset none` to start
 from scratch, and `--steps 4` for shorter ramps.
+
+Or take the keys from the game's own images: `pw palette ramps --asset scenes/tavern
+sprites/innkeeper --colors 12 --name base --swatch` groups their colours into 12 hue
+families (a material's darks and lights together, small lights weighing more) and builds
+one ramp per family.

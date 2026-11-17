@@ -150,3 +150,10 @@ def test_palette_ramps_from_keys(project: Path, capsys: pytest.CaptureFixture[st
     assert env["data"]["colors"] == 3 * 2 + 2
     swatch = Image.open(project / "style" / "references" / "palette-r.png")
     assert swatch.size == (3 * 24, 3 * 24)  # a ramp per row, then the ends
+
+
+def test_palette_ramps_from_images(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    image = str(project / "replay" / "a.png")
+    env = pw(capsys, project, "palette", "ramps", "--images", image, "--colors", "2",
+             "--steps", "3", "--name", "f")  # fmt: skip
+    assert 3 <= env["data"]["colors"] <= 2 * 3 + 2  # no adventure preset with images
