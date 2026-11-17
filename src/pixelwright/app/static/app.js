@@ -381,5 +381,7 @@ document.addEventListener("pointerup", () => { if (A && A.peek) { A.peek = false
 
 window.addEventListener("pywebviewready", async () => {
   const opened = await api().list_assets();
-  opened.ok ? project() : start();
+  if (opened.ok) return project();
+  const first = await api().first_run();
+  first.ok && first.opened ? project() : start();
 });
