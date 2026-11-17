@@ -47,5 +47,5 @@ def test_hue_families_join_a_materials_darks_and_lights() -> None:
     reds = [(90, 20, 25), (170, 50, 60)]
     rgb = np.array(greens * 20 + reds * 20, np.uint8)
     keys = hue_families(srgb8_to_oklab(rgb), np.ones(len(rgb)), 2)
-    hues = sorted(lch(tuple(int(k[i : i + 2], 16) for i in (0, 2, 4)))[2] for k in keys.values())
+    hues = sorted(lch((int(k[:2], 16), int(k[2:4], 16), int(k[4:], 16)))[2] for k in keys.values())
     assert len(keys) == 2 and hues[0] < 40 and 110 < hues[1] < 160  # a red and a green
