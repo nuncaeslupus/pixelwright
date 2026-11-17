@@ -46,14 +46,15 @@ class GenerateResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def provider_config(project: Project, name: str) -> dict[str, Any]:
+def provider_config(project: Project, name: str, *, key: bool = True) -> dict[str, Any]:
+    """The provider's settings; `key=False` (a dry run) skips the API key lookup."""
     cfg = dict(project.extra.get("providers", {}).get(name, {}))
     if cfg.pop("enabled", True) is False:
         raise AssetError(f"provider {name} is disabled in pixelwright.toml")
     if name == "replay":
         cfg["folder"] = str(project.root / cfg.get("folder", "replay"))
     if pv.needs_key(name):
-        cfg["api_key"] = api_key(project.root, name)
+        cfg["api_key"] = api_key(project.root, name) if key else "dry-run"
     return cfg
 
 
@@ -73,9 +74,9 @@ def _prompt(preset: dict[str, Any], text: str) -> str:
     return prompt
 
 
-def _provider(asset: Asset, name: str | None) -> tuple[str, pv.Provider]:
+def _provider(asset: Asset, name: str | None, *, key: bool = True) -> tuple[str, pv.Provider]:
     name = name or default_provider(asset.project, asset.settings().kind)
-    return name, pv.get(name, **provider_config(asset.project, name))
+    return name, pv.get(name, **provider_config(asset.project, name, key=key))
 
 
 def generate(
@@ -98,7 +99,7 @@ def generate(
     version name.
     """
     project = asset.project
-    name, prov = _provider(asset, provider)
+    name, prov = _provider(asset, provider, key=not dry_run)
     preset = _preset(project, name)
     text = _prompt(preset, prompt)
     init_path: Path | None = None
