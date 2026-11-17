@@ -112,6 +112,7 @@ window.addEventListener("load", () => window.dispatchEvent(new Event("pywebviewr
 @pytest.fixture
 def config_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
 
 
 @pytest.fixture
