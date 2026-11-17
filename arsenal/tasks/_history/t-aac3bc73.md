@@ -5,6 +5,7 @@ label: "T58: Version retention"
 priority: 10
 deps: [t-a77f1792]
 tags: [m4]
+status: merged
 ---
 
 Retention: `keep_all_versions = false` prunes on finish, never input, v001, starred or final
