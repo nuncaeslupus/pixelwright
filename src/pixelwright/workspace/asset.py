@@ -179,7 +179,14 @@ class Asset:
                 os.mkdir(self.versions_dir / name)  # reserve the name; fails if taken
             except FileExistsError:
                 continue
-            os.rename(tmp, self.versions_dir / name)  # empty reserved dir -> replaced
+            if os.name == "nt":  # Windows cannot rename onto a directory, even an empty one
+                os.rmdir(self.versions_dir / name)
+                try:
+                    os.rename(tmp, self.versions_dir / name)
+                except FileExistsError:
+                    continue  # taken between rmdir and rename
+            else:
+                os.rename(tmp, self.versions_dir / name)  # empty reserved dir -> replaced
             self._log({"event": "step", "version": name, "step": step, "parent": parent})
             return name
         raise OSError(errno.EEXIST, "could not allocate a version name")

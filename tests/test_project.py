@@ -122,5 +122,5 @@ def test_categories_and_palettes_listed(project_root: Path) -> None:
 
 def test_absolute_export_kept(project_root: Path, tmp_path: Path) -> None:
     target = tmp_path / "engine" / "art"
-    _write(project_root / PROJECT_FILE, f'[project]\nname = "x"\nexport = "{target}"\n')
+    _write(project_root / PROJECT_FILE, f"[project]\nname = 'x'\nexport = '{target}'\n")
     assert load_project(project_root).export_dir == target
