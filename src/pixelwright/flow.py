@@ -24,6 +24,7 @@ from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
 from pixelwright.core.quantize import MAX_ACCENTS, discover_palette, quantize_fixed
 from pixelwright.core.snap import finer_canvas_grid, snap
+from pixelwright.core.sprite import background, frame, key_background, outline_reduce
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import read_png
 from pixelwright.issues import Issue, IssueLog
@@ -107,9 +108,19 @@ def _source(asset: Asset, source: Path | None) -> Path:
 def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     """Detect the pixel grid of an input, or reduce it to the canvas when it has none."""
     source_rgb = _rgb(_source(asset, source))
-    snapped = snap(source_rgb)
     canvas = asset.settings().canvas
     cw, ch = canvas["width"], canvas["height"]
+    larger = source_rgb.width > cw and source_rgb.height > ch
+    bg = background(source_rgb) if larger else None
+    keyed = key_background(source_rgb, bg) if bg else None
+    if bg and keyed is not None:  # a sprite on a flat background: key it, frame it
+        small = outline_reduce(frame(keyed, (cw, ch)), (cw, ch))
+        hexa = "#{:02x}{:02x}{:02x}".format(*bg)
+        return Prepared(small, 1, False, [
+            f"background {hexa} made transparent; figure cropped and reduced "
+            f"from {source_rgb.width}x{source_rgb.height} to {cw}x{ch}"
+        ])  # fmt: skip
+    snapped = snap(source_rgb)
     native = snapped.image
     off = abs(native.width / cw - 1) > NEAR or abs(native.height / ch - 1) > NEAR
     if off and source_rgb.width > cw * OVERSIZE and source_rgb.height > ch * OVERSIZE:

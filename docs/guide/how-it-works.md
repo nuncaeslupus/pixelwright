@@ -18,7 +18,10 @@ cleaned, each showing its next step.
    the fix: the same lines redrawn with even steps, for you to accept or reject. The app runs both as soon as an image arrives. An image with no pixel
    grid near the canvas size (a painting, a photo) is first reduced to the canvas: brush
    texture is flattened while edges are kept, and specks of 1-4 pixels left after the
-   palette are folded into the shapes around them. With
+   palette are folded into the shapes around them. A sprite painted on one flat colour
+   (image models cannot paint transparency, so ask for a magenta background) has that
+   colour made transparent and is cropped to the figure before it is reduced, keeping
+   its dark outlines. With
    no palette in the project, one is discovered: 16 colours plus up to 8 *accents*,
    small colours that stand out where they are (a lit window, the moon, an eye).
    `pw colors <asset>` shows that analysis before normalising: the colour groups, the
