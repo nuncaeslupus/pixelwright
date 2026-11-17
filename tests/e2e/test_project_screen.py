@@ -67,8 +67,3 @@ def test_review_all_new_asks_the_ai(
     page = open_app(AppApi(app_project.root))
     page.get_by_role("button", name="Review all new with AI · 2").click()
     expect(page.get_by_role("button", name="Open props/crate")).to_contain_text("Waiting on the AI")
-
-
-def test_start_screen_when_no_project(open_app: Callable[[AppApi], Any]) -> None:
-    page = open_app(AppApi())
-    expect(page.get_by_role("button", name="Open a project folder…")).to_be_visible()

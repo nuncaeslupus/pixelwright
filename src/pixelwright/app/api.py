@@ -17,7 +17,7 @@ from typing import Any
 from PIL import Image as PILImage
 
 from pixelwright import flow
-from pixelwright.app import recent
+from pixelwright.app import recent, sample
 from pixelwright.asset import Asset, AssetError, list_assets, open_asset
 from pixelwright.issues import IssueError, IssueLog
 from pixelwright.project import Project, ProjectError, find_project, load_project
@@ -61,6 +61,16 @@ class AppApi:
     @_safe
     def recent_projects(self) -> Result:
         return {"projects": [{"path": p, "name": Path(p).name} for p in recent.load_recent()]}
+
+    @_safe
+    def first_run(self) -> Result:
+        """On a first launch (nothing open, no recent project) open the sample project."""
+        if self._project is not None or recent.load_recent():
+            return {"opened": False}
+        project = sample.create_sample()
+        self._project = project
+        recent.remember(project.root)
+        return {"opened": True, "project": {"name": project.name, "path": str(project.root)}}
 
     @_safe
     def open_project(self, path: str) -> Result:
