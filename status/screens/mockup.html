@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pixelwright app mockup (M4)</title>
+<!-- Static mockup for the screens review (T52). The real app ships these OFL fonts in the package. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+:root { --bg:#eceef0; --panel:#fff; --ink:#22262b; --dim:#6c737c; --line:#dde1e5; --soft:#f2f4f6; --hover:#eef1f4;
+  --you:#d9825f; --ai:#8478c0; --script:#c4a25a; --ok:#5a9a72; --canvas:#808487;
+  --shadow:0 1px 2px rgba(20,30,40,.06),0 4px 14px rgba(20,30,40,.07);
+  --sans:"Public Sans",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace; }
+[data-theme=dark] { --bg:#18191b; --panel:#222427; --ink:#e6e8eb; --dim:#9aa1a9; --line:#33363a; --soft:#2a2c30; --hover:#2d3034;
+  --you:#e5957a; --ai:#a69be0; --script:#d2b46e; --ok:#6fae86; --canvas:#55585b; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.3); }
+* { box-sizing:border-box; }
+:root { --chk:repeating-conic-gradient(rgba(255,255,255,.05) 0 25%,transparent 0 50%) 0 0/16px 16px; }
+body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.5 var(--sans); }
+.app { height:800px; display:flex; flex-direction:column; position:relative; }
+.top { height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 14px; gap:10px; }
+.row { display:flex; align-items:center; gap:8px; }
+.brand { display:flex; align-items:center; gap:8px; font-weight:500; font-size:15px; }
+.logo { width:22px; height:22px; border-radius:6px; background:conic-gradient(var(--you) 0 25%, var(--ai) 0 50%, var(--script) 0 75%, var(--ok) 0); }
+.dim { color:var(--dim); } .small { font-size:12.5px; } .mono { font-family:var(--mono); }
+.btn { padding:7px 14px; border-radius:10px; background:var(--panel); box-shadow:var(--shadow); font-weight:500; font-size:13.5px; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.btn.flat { background:var(--soft); box-shadow:none; }
+.btn.pri { background:var(--ok); color:#fff; }
+.btn.ai { background:var(--ai); color:#fff; }
+.btn.ghost { background:none; box-shadow:inset 0 0 0 1.5px var(--line); }
+.btn.no { background:none; color:var(--you); box-shadow:inset 0 0 0 1.5px var(--you); }
+.btn.sm { padding:4px 10px; font-size:12.5px; border-radius:8px; }
+.status { display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:20px; background:var(--soft); font-size:12.5px; }
+.led { width:8px; height:8px; border-radius:50%; background:var(--ai); box-shadow:0 0 0 3px color-mix(in srgb,var(--ai) 25%,transparent); }
+.led.off { background:var(--dim); box-shadow:none; }
+.body { flex:1; display:flex; gap:10px; padding:0 10px 10px; min-height:0; }
+.card { background:var(--panel); border-radius:14px; box-shadow:var(--shadow); }
+.side { width:230px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.side .h { font-size:12px; font-weight:500; color:var(--dim); margin:6px 6px 4px; }
+.navi { display:flex; justify-content:space-between; padding:7px 10px; border-radius:9px; }
+.navi.on { background:var(--soft); font-weight:500; }
+.navi .n { color:var(--dim); font-size:12px; }
+.main { flex:1; padding:16px 18px; overflow:hidden; display:flex; flex-direction:column; gap:14px; }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.asset { border-radius:12px; background:var(--soft); overflow:hidden; display:flex; flex-direction:column; }
+.asset.hl { box-shadow:0 0 0 2px var(--ai); }
+.thumb { height:118px; background:var(--canvas) var(--chk); display:flex; align-items:center; justify-content:center; }
+canvas { image-rendering:pixelated; display:block; }
+.asset .info { padding:9px 11px 11px; display:flex; flex-direction:column; gap:5px; }
+.chip { font-size:11px; font-weight:500; padding:2px 8px; border-radius:10px; background:var(--line); }
+.chip.new { background:var(--line); } .chip.wip { background:color-mix(in srgb,var(--script) 22%,var(--panel)); }
+.chip.ok { background:color-mix(in srgb,var(--ok) 22%,var(--panel)); }
+.next { font-size:12.5px; display:flex; align-items:center; gap:6px; }
+.av { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:700; flex:none; }
+.a-you { background:var(--you); } .t-you{color:var(--you)} .t-ai{color:var(--ai)} .t-script{color:var(--script)} .a-ai { background:var(--ai); } .a-script { background:var(--script); }
+.drop { text-align:center; padding:10px; border:1.5px dashed var(--line); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--dim); min-height:190px; font-size:13px; }
+/* asset screen */
+.work { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+.cbar { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; }
+.seg { display:flex; gap:2px; background:var(--soft); padding:3px; border-radius:10px; }
+.seg span { padding:4px 14px; border-radius:8px; color:var(--dim); font-size:13px; }
+.seg .on { background:var(--panel); color:var(--ink); font-weight:500; box-shadow:var(--shadow); }
+.canvasbox { flex:1; background:var(--canvas) var(--chk); overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center; gap:24px; }
+.mk { position:absolute; width:22px; height:22px; border-radius:50%; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+.box { position:absolute; border:2px solid; border-radius:3px; }
+.legend { display:inline-flex; align-items:center; gap:6px; color:var(--dim); margin-right:6px; }
+.zoom { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:var(--panel); padding:4px 6px; border-radius:10px; box-shadow:var(--shadow); }
+.hint { position:absolute; left:12px; bottom:12px; color:#fff; opacity:.8; }
+.hist { margin-top:auto; padding:10px; border-top:1px solid var(--line); color:var(--dim); }
+.tools span { padding:4px 10px; font-size:14px; }
+.seg.mini span { padding:2px 10px; font-size:12px; }
+.showing { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:var(--panel); padding:4px 12px; border-radius:12px; box-shadow:var(--shadow); white-space:nowrap; }
+.fx { display:inline-block; margin-top:5px; font-size:11.5px; padding:1px 8px; border-radius:9px; }
+.fx.ok { background:color-mix(in srgb,var(--ok) 18%,var(--panel)); color:var(--ok); } .fx.none { background:var(--soft); color:var(--dim); }
+.x { position:absolute; top:-9px; right:-9px; width:18px; height:18px; border-radius:50%; background:var(--you); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; }
+.ask.new { box-shadow:inset 0 0 0 1.5px var(--you); }
+.hintbox { margin:8px 12px 12px; padding:10px; border-radius:10px; background:var(--soft); }
+.thread { margin-top:8px; display:flex; flex-direction:column; gap:4px; font-size:12.5px; padding:8px; border-radius:8px; background:var(--panel); }
+b { font-weight:500; }
+.cmpbar { position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:var(--panel); padding:4px 8px; border-radius:12px; box-shadow:var(--shadow); white-space:nowrap; z-index:2; }
+.tag2 { font-size:11.5px; padding:1px 8px; border-radius:9px; background:color-mix(in srgb,var(--you) 18%,var(--panel)); color:var(--you); }
+.multi { margin:8px 12px 0; padding:10px; border-radius:10px; background:var(--soft); display:flex; justify-content:space-between; align-items:center; }
+.more { color:var(--dim); display:inline-block; width:16px; text-align:right; }
+.sum { margin-top:6px; padding:4px 8px; border-radius:8px; background:var(--panel); }
+.lbl { z-index:2;  position:absolute; top:10px; font-size:12px; background:var(--panel); padding:2px 10px; border-radius:10px; box-shadow:var(--shadow); }
+.strip { display:flex; gap:8px; padding:10px 12px; align-items:flex-end; overflow:hidden; }
+.ver { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11.5px; color:var(--dim); }
+.ver .t { width:84px; height:48px; border-radius:6px; background:var(--canvas); overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.ver.on .t { box-shadow:0 0 0 2px var(--ink); } .ver.on { color:var(--ink); font-weight:500; }
+.ver .by { display:flex; gap:4px; align-items:center; }
+.arrow { color:var(--dim); padding-bottom:22px; }
+.panel { width:340px; display:flex; flex-direction:column; overflow:hidden; }
+.panel .hd { padding:14px 16px 6px; display:flex; justify-content:space-between; align-items:center; }
+.list { flex:1; padding:4px 10px; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
+.adv { padding:10px; border-radius:10px; display:grid; grid-template-columns:24px 1fr; gap:8px; }
+.adv.sel { background:var(--hover); }
+.adv .msg { font-size:13.5px; }
+.adv .why { font-size:12px; color:var(--dim); }
+.adv .acts { display:flex; gap:6px; margin-top:6px; }
+.adv.done { opacity:.55; }
+.ask { margin:8px 12px 12px; padding:10px; border-radius:12px; background:var(--soft); display:flex; flex-direction:column; gap:8px; }
+.field { background:var(--panel); border-radius:9px; padding:8px 10px; color:var(--dim); font-size:13px; box-shadow:inset 0 0 0 1px var(--line); }
+.field.txt { color:var(--ink); }
+.reject { margin-top:8px; padding:10px; border-radius:10px; background:var(--panel); box-shadow:inset 0 0 0 1.5px var(--you); display:flex; flex-direction:column; gap:8px; font-size:13px; }
+.chk { display:flex; align-items:center; gap:7px; font-size:13px; }
+.cb { width:16px; height:16px; border-radius:4px; box-shadow:inset 0 0 0 1.5px var(--dim); display:inline-flex; align-items:center; justify-content:center; font-size:11px; }
+.cb.on { background:var(--ink); color:var(--panel); box-shadow:none; }
+.rad { width:16px; height:16px; border-radius:50%; box-shadow:inset 0 0 0 1.5px var(--dim); }
+.rad.on { box-shadow:inset 0 0 0 5px var(--ink); }
+.wait { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ai); font-weight:500; }
+/* start screen */
+.center { flex:1; display:flex; align-items:center; justify-content:center; }
+.start { width:620px; padding:34px 36px; display:flex; flex-direction:column; gap:18px; }
+.choices { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.choice { background:var(--soft); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px; }
+.choice b { font-size:14px; }
+.recent { display:flex; justify-content:space-between; padding:8px 10px; border-radius:9px; }
+.recent:hover, .recent.h { background:var(--hover); }
+/* guide */
+.dimmer { position:absolute; inset:0; background:rgba(15,20,25,.38); }
+.spot { position:absolute; border-radius:14px; box-shadow:0 0 0 3px #fff, 0 0 0 9999px rgba(15,20,25,.38); }
+.coach { position:absolute; width:320px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
+.dots { display:flex; gap:5px; } .dots i { width:7px; height:7px; border-radius:50%; background:var(--line); } .dots i.on { background:var(--ink); }
+/* settings */
+.set { flex:1; padding:22px 26px; display:grid; grid-template-columns:1fr 1fr; gap:22px; align-content:start; }
+.sec { display:flex; flex-direction:column; gap:10px; }
+.sec h3 { margin:0; font-size:14px; }
+.pal { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:var(--soft); }
+.sw { display:flex; } .sw i { width:14px; height:18px; display:block; }
+.flow { display:flex; gap:6px; align-items:center; font-size:12px; color:var(--dim); }
+.flow b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+// ---------- placeholder pixel art (procedural, seeded) ----------
+function rng(s){return()=>((s=Math.imul(s^s>>>15,1|s)+0x6D2B79F5|0)>>>0)/4294967296;}
+const NIGHT=["#0d1026","#1a1f45","#2c3470","#4b5aa3","#e9d8a6","#f2a541","#122033","#1f3a4d","#2f5d6e","#5b8c85","#3b2a28","#6b4a3a"];
+function scene(c,seed,variant){ // 160x90 harbour scene
+  const W=160,H=90,x=c.getContext("2d");c.width=W;c.height=H;const r=rng(seed);
+  for(let y=0;y<54;y++)for(let i=0;i<W;i++){const t=y/54+((i+y)%2?0.04:0)*(r()<.5);x.fillStyle=NIGHT[t<.3?0:t<.6?1:t<.85?2:3];x.fillRect(i,y,1,1);}
+  for(let k=0;k<40;k++){x.fillStyle=NIGHT[4];x.fillRect(r()*W|0,r()*40|0,1,1);}
+  x.fillStyle=NIGHT[4];x.beginPath();x.arc(124,16,7,0,7);x.fill();
+  for(let y=54;y<H;y++)for(let i=0;i<W;i++){x.fillStyle=NIGHT[6+((y+(i>>3))%3===0?1:0)+(y>72?1:0)];x.fillRect(i,y,1,1);}
+  for(let y=56;y<H;y+=3){x.fillStyle=NIGHT[4];x.fillRect(120+((y*7)%9)-4,y,6-(y-56)/8,1);}
+  x.fillStyle=NIGHT[10];x.fillRect(0,50,58,6);x.fillStyle=NIGHT[11];for(let i=2;i<58;i+=8)x.fillRect(i,56,2,10);
+  x.fillStyle=NIGHT[5];x.fillRect(46,36,2,14);x.fillRect(44,34,6,3);
+  const boat=(bx,by,s)=>{x.fillStyle=NIGHT[10];x.fillRect(bx,by,22*s,4*s);x.fillRect(bx+2*s,by+4*s,18*s,2*s);x.fillStyle=NIGHT[11];x.fillRect(bx+9*s,by-14*s,1*s,14*s);if(variant>0){x.fillStyle=NIGHT[4];x.fillRect(bx+10*s,by-12*s,6*s,8*s);}};
+  boat(70,58,1);boat(100,64,1);
+  if(variant===0){x.fillStyle="#ff00ff";x.fillRect(80,61,1,1);x.fillRect(84,60,1,1);x.fillStyle="#9aa";x.fillRect(30,20,1,1);}
+  return c;
+}
+function sprite(c,seed){const W=32,H=32,x=c.getContext("2d");c.width=W;c.height=H;const r=rng(seed);
+  const col=["#2b1d1d","#f0c39a","#3d6b8c","#6c2f2f","#e9d8a6","#1d2b3d"];
+  const px=(a,b,w,h,k)=>{x.fillStyle=col[k];x.fillRect(a,b,w,h);};
+  px(12,4,8,8,1);px(12,3,8,3,3);px(13,7,1,1,0);px(18,7,1,1,0);px(11,12,10,10,2);px(9,13,2,8,2);px(21,13,2,8,2);px(12,22,3,8,5);px(17,22,3,8,5);px(14,14,4,1,4);
+  if(seed%2){px(10,2,12,2,0);}return c;}
+function prop(c,seed){const x=c.getContext("2d");c.width=24;c.height=24;x.fillStyle="#6b4a3a";x.fillRect(4,8,16,12);x.fillStyle="#3b2a28";x.fillRect(4,8,16,2);x.fillRect(4,14,16,1);x.fillStyle="#f2a541";x.fillRect(11,11,2,3);return c;}
+function cv(fn,seed,v,scale){const c=document.createElement("canvas");fn(c,seed,v);c.style.width=(c.width*scale)+"px";c.style.height=(c.height*scale)+"px";return c;}
+// ---------- shared parts ----------
+const P=new URLSearchParams(location.hash.slice(1).replace(/,/g,"&"));
+const S=location.hash.slice(1).split(",")[0]||"s01";
+if(location.hash.includes("dark"))document.documentElement.dataset.theme="dark";
+const AV={you:'<span class="av a-you">Y</span>',ai:'<span class="av a-ai">AI</span>',script:'<span class="av a-script">S</span>'};
+function topbar(crumb,ai=true,action=""){return `<div class="top"><div class="row"><div class="brand">pixelwright</div><span class="dim">/</span>${crumb}</div>
+<div class="row"><span class="legend small">${AV.you} You ${AV.ai} AI ${AV.script} Scripts</span><span class="status"><span class="led ${ai?"":"off"}"></span>${ai?"AI listening":"No AI session: requests wait"}</span>${ai?`<span class="btn flat sm">⚙ Project</span>`:""}${action}</div></div>`;}
+const assets=[
+ ["harbour-night","scenes","wip",scene,11,1,"You: 3 fixes to review","you"],
+ ["harbour-day","scenes","wip",scene,12,0,"AI: working on your issue","ai"],
+ ["tavern-inside","scenes","new",scene,13,0,"Scripts: cleaning and checking","script"],
+ ["lighthouse","scenes","ok",scene,14,1,"Finished · v003","none"],
+ ["captain","characters","wip",sprite,3,0,"AI: looking for issues","ai"],
+ ["sailor","characters","new",sprite,4,0,"AI: new · review with AI","ai"],
+ ["crate","props","ok",prop,1,0,"Finished · v003","none"],
+];
+const stateTxt={new:"Processing",wip:"In review",ok:"Finished"};
+function projectScreen(){
+  const groups=[["scenes",4],["characters",2],["props",1]];
+  const nv=(t,n,on,extra="")=>`<div class="navi ${on?"on":""}"><span class="next">${t}</span><span class="n">${n}<span class="more">${extra?"⋯":""}</span></span></div>`;
+  return topbar('<b>my-game-art</b> <span class="dim small mono">~/art/my-game-art</span>')+`<div class="body">
+  <div class="card side">${nv("All assets",7,true)}
+   <div class="h">Waiting on</div>${nv(AV.you+" You",2)}${nv(AV.ai+" AI",1)}${nv(AV.script+" Scripts",1)}
+   <div class="h">State</div>${nv("In review",5)}${nv("Finished",2)}
+   <div class="h">Categories</div>${groups.map((g,i)=>nv(g[0],g[1],false,i===0?'x':"")).join("")}</div>
+  <div class="card main"><div class="row" style="justify-content:space-between"><div><b style="font-size:16px">All assets</b> <span class="dim small">· 7</span></div>
+   <div class="row"><span class="btn ghost sm">Sort: needs you first ▾</span><span class="btn ai sm">Review all new with AI · 2</span><span class="btn pri sm">+ Add images</span></div></div>
+   <div class="grid" id="grid"></div></div></div>${S==="s14"?dropDialog():""}`;}
+function dropDialog(){return `<div class="dimmer"></div><div class="card coach" style="left:420px;top:190px;width:440px"><b style="font-size:16px">Add 3 images</b>
+  <div class="dim small">tavern-1.png, tavern-2.png, barrel.png</div>
+  <div class="small"><b>Category</b></div>
+  <div class="row" style="flex-wrap:wrap;gap:6px">${["scenes","characters","props","+ New category…"].map((t,i)=>`<span class="btn ${i===0?"pri":"ghost"} sm">${t}</span>`).join("")}</div>
+  <div class="dim small">Proposed from where you dropped them. The category sets canvas size, palette and checks. Each image becomes its own asset; the scripts clean and check it right away.</div>
+  <div class="row" style="justify-content:flex-end"><span class="btn flat sm">Cancel</span><span class="btn pri sm">Add 3 assets</span></div></div>`;}
+function fillGrid(){const g=document.getElementById("grid");if(!g)return;
+  assets.forEach(a=>{const d=document.createElement("div");d.className="asset";
+    d.innerHTML=`<div class="thumb"></div><div class="info"><div class="row" style="justify-content:space-between"><b>${a[0]}</b><span class="chip ${a[2]}">${stateTxt[a[2]]}</span></div>
+    <div class="next">${a[7]!=="none"?AV[a[7]]:'<span class="av" style="background:var(--ok)">✓</span>'}<span>${a[6]}</span></div></div>`;
+    d.querySelector(".thumb").append(cv(a[3],a[4],a[5],a[3]===scene?1:a[3]===sprite?3:4));g.append(d);});
+  const drop=document.createElement("div");drop.className="drop";drop.innerHTML="<b style='color:var(--ink)'>Drop an image here</b><span>sketch, AI output, photo…</span><span>or save it into the project folder: anything there is picked up</span>";g.append(drop);}
+function versions(on,extra=""){const vs=[["v001","S","script","input → normalised"],["v002","S","script",""],["v003","AI","ai",""],["v004","Y","you",""]];
+  return `<div class="strip"><div class="ver"><div class="t" data-v="in"></div><span>input</span></div><span class="arrow">→</span>${vs.map((v,i)=>`<div class="ver ${v[0]===on?"on":""}"><div class="t" data-v="${i}"></div><span class="by">${AV[v[2]].replace('class="av','style="width:14px;height:14px;font-size:8px" class="av')} ${v[0]}${i===0||i===2?" ★":""}</span></div>`).join("")}${extra}
+  <div style="flex:1"></div><span class="dim small" style="padding-bottom:20px">Keeping all versions</span></div>`;}
+const NAME={script:"Scripts",ai:"AI",you:"You"};
+const ISS=[
+ {n:1,by:"script",t:"Two stray pixels outside the palette on the left boat",why:"palette only (R-PAL-1)",fix:"ready"},
+ {n:2,by:"ai",t:"The moon reflection is too regular",why:"critique",fix:"ready",rep:3},
+ {n:3,by:"script",t:"Isolated pixel in the sky reads as noise",why:"orphan pixels (R-PIX-4)",fix:"ready"},
+ {n:4,by:"you",t:"Outline of the right boat is too thick",why:"2 areas",fix:"wait"},
+ {n:5,by:"ai",t:"Pier posts are evenly spaced, looks mechanical",why:"critique",fix:"none",rep:1},
+];
+function issueList(mode){
+  const sel=mode==="reject"?[3]:mode==="multi"?[1,2]:mode==="select"?[]:[2];
+  let h=ISS.map(it=>{const on=sel.includes(it.n);
+   const fx=it.fix==="ready"?`<span class="fx ok">Fix ready</span>`:it.fix==="wait"?`<span class="wait"><span class="led"></span>Sent to the AI · working</span>`:`<span class="fx none">No automatic fix · edit by hand</span>`;
+   let acts="";
+   if(on&&mode==="reject")acts=`<div class="reject"><b>Why reject?</b><div class="field txt">Stars are meant to be single pixels in this style</div>
+   <span class="chk"><span class="cb on">✓</span>Remember as a style rule for</span>
+   <div class="row" style="gap:14px;padding-left:23px"><span class="chk"><span class="rad"></span>asset</span><span class="chk"><span class="rad on"></span>scenes</span><span class="chk"><span class="rad"></span>project</span></div>
+   <div class="row"><span class="btn no sm">Reject</span><span class="btn flat sm">Cancel</span></div></div>`;
+   else if(on&&mode==="reply")acts=`<div class="thread"><div><b class="t-ai">AI</b> Broke it into 3 uneven strokes.</div><div><b class="t-you">You</b> Better, but keep 5 strokes, just uneven.</div><div><b class="t-ai">AI</b> Done: fix revised (2nd try).</div></div><div class="acts"><span class="btn pri sm">Accept fix</span><span class="btn ghost sm">Reject…</span><span class="btn flat sm">Reply</span></div>`;
+   else if(on&&it.fix==="ready"&&mode!=="multi")acts=(it.rep?`<div class="sum small">💬 3 · <b class="t-ai">AI</b>: fix revised (2nd try) <span class="dim">▸ show all</span></div>`:"")+`<div class="acts"><span class="btn pri sm">Accept fix</span><span class="btn ghost sm">Reject…</span><span class="btn flat sm">Reply</span></div>`;
+   else if(on&&it.fix==="none")acts=`<div class="acts"><span class="btn ghost sm">Open in Aseprite</span><span class="btn flat sm">Mark fixed</span><span class="btn flat sm">Reply</span></div><div class="dim small" style="margin-top:4px">Saving in Aseprite adds a new version here.</div>`;
+   return `<div class="adv ${on?"sel":""}"><span class="av a-${it.by}">${it.n}</span><div><div class="msg">${it.t}</div><div class="why"><b class="t-${it.by}">${NAME[it.by]}</b> · ${it.why}${it.rep?` · 💬 ${it.rep}`:""}</div>${fx}${acts}</div></div>`;}).join("");
+  h+=`<div class="hist small">▸ Done · 5 accepted, 1 rejected</div>`;
+  return h;}
+function assetScreen(mode){
+  const tool=mode==="select"?1:mode==="zoom"?2:0;
+  const view=mode==="compare"?"side":"one";
+  const right=mode==="select"?"":mode==="multi"?"v004 + fixes 1, 2":mode==="reject"?"v004 + fix 3":"v004 + fix 2";
+  const cmp=`<div class="cmpbar small"><span class="dim">Compare</span><span class="btn ghost sm">v004 ▾</span><span class="dim">with</span><span class="btn flat sm"><b>${right||"—"}</b></span><span class="dim">· hold Space to compare</span></div>`;
+  const composer=mode==="select"
+   ?`<div class="ask new"><div class="row" style="justify-content:space-between"><b>Ask the AI</b><span class="tag2">2 areas attached ×</span></div><div class="field txt">Sails are too bright on both boats</div><div class="row" style="justify-content:space-between"><span class="dim small">Becomes a new issue</span><span class="btn ai sm">Send</span></div></div>`
+   :`<div class="ask"><div class="row" style="justify-content:space-between"><b>Ask the AI</b><span class="dim small">select areas to attach them</span></div><div class="field">${mode==="multi"?"Ask about fixes 1 and 2…":"Ask about this image or an issue…"}</div><div class="row" style="justify-content:space-between"><span class="dim small">Goes to your AI session</span><span class="btn ai sm">Send</span></div></div>`;
+  const multi=mode==="multi"?`<div class="multi"><b>2 fixes selected</b><span class="btn pri sm">Accept both → v005</span></div>`:"";
+  return topbar('<span class="btn flat sm" title="Back to the project">←</span> <span class="dim">scenes /</span> <b>harbour-night</b> <span class="chip wip">In review</span>',true,'<span class="btn pri sm" title="Marks v004 as the final image and copies it to the export folder">Finish with v004</span>')+`<div class="body">
+  <div class="card work"><div class="cbar"><div class="row"><div class="seg tools"><span class="${tool==0?"on":""}" title="Move (H)">✋</span><span class="${tool==1?"on":""}" title="Select areas (S)">⬚</span></div><div class="seg"><span title="Undo (Ctrl+Z)">↶</span><span title="Redo (Ctrl+Shift+Z)">↷</span></div>
+    <div class="seg"><span class="${view==="one"?"on":""}">One image</span><span class="${view==="side"?"on":""}">Side by side</span></div></div>
+   <div class="row"><span class="btn ghost sm">Markers: selected ▾</span><span class="btn ghost sm">⚙ Asset settings</span><span class="btn ghost sm">Open in Aseprite</span></div></div>
+   <div class="canvasbox" id="cbox">${mode==="select"||view==="side"?"":cmp}<div class="zoom"><span class="btn ${tool==2?"":"flat"} sm" title="Zoom to an area (Z)" style="${tool==2?"background:var(--ink);color:var(--panel)":""}">🔍</span><span class="btn flat sm">−</span><span class="small">${view==="side"?"300% · linked":mode==="zoom"?"Fit":"Fit"}</span><span class="btn flat sm">+</span></div><div class="hint small">${tool==1?"Drag adds an area · × removes one · Esc clears":tool==2?"Drag a rectangle to zoom into it":""}</div></div>${versions("v004")}</div>
+  <div class="card panel"><div class="hd"><b>Issues on v004</b><span class="seg mini"><span class="on">All</span><span>Mine</span><span>With fix</span></span></div>
+   <div class="list">${issueList(mode)}</div>${multi}${composer}</div></div>`;}
+function fillAsset(mode){const b=document.getElementById("cbox");if(!b)return;
+  const mk=(w,n,c,l,t)=>{const m=document.createElement("span");m.className="mk a-"+c;m.textContent=n;m.style.left=l+"px";m.style.top=t+"px";w.append(m);};
+  const bx=(w,css)=>{const x=document.createElement("span");x.className="box";x.style.cssText=css;w.append(x);return x;};
+  if(mode==="compare"){b.style.gap="4px";[["v004 ▾",0],["v004 + fix 2",1]].forEach(([t,v])=>{const w=document.createElement("div");w.style.cssText="position:relative;flex:1;height:100%;overflow:hidden";const c=cv(scene,11,v,9);c.style.position="absolute";c.style.left="-640px";c.style.top="-215px";w.append(c);const l=document.createElement("span");l.className="lbl";l.style.left="8px";l.textContent=t;w.append(l);b.append(w);});}
+  else{const w=document.createElement("div");w.style.position="relative";w.append(cv(scene,11,mode==="select"?0:1,4.4));
+    if(mode==="zoom"){bx(w,"left:400px;top:180px;width:288px;height:162px;border-color:#fff;border-style:dashed");}
+    if(mode===""||mode==="reply"){bx(w,"left:500px;top:240px;width:70px;height:120px;border-color:var(--ai)");mk(w,2,"ai",560,228);}
+    if(mode==="reject"){bx(w,"left:115px;top:75px;width:22px;height:22px;border-color:var(--script)");mk(w,3,"script",128,62);}
+    if(mode==="multi"){bx(w,"left:500px;top:240px;width:70px;height:120px;border-color:var(--ai)");mk(w,2,"ai",560,228);bx(w,"left:310px;top:245px;width:60px;height:40px;border-color:var(--script)");mk(w,1,"script",360,233);}
+    if(mode==="select"){[["430px","270px","110px","50px"],["330px","255px","90px","40px"]].forEach(([l,t,ww,hh])=>{const x=bx(w,`left:${l};top:${t};width:${ww};height:${hh};border-color:var(--you);border-style:dashed;background:color-mix(in srgb,var(--you) 12%,transparent)`);const c=document.createElement("span");c.className="x";c.textContent="×";x.append(c);});}
+    b.append(w);}
+  document.querySelectorAll(".ver .t").forEach((t,i)=>t.append(cv(scene,11,i<2?0:1,0.5)));}
+function startScreen(){return topbar('<span class="dim">no project open</span>',false)+`<div class="center"><div class="card start">
+  <div><b style="font-size:20px">Turn any image into clean pixel art</b></div>
+  <div class="choices"><div class="choice"><b>Open…</b><span class="dim small">A project folder, or any image inside one</span></div>
+   <div class="choice"><b>New project…</b><span class="dim small">Pick a folder and a canvas size</span></div>
+   <div class="choice" style="box-shadow:0 0 0 2px var(--ai)"><b>Try the sample project</b><span class="dim small">Guided, about 3 minutes</span></div></div>
+  <div><div class="dim small" style="margin:0 10px 4px">Recent</div>
+   <div class="recent h"><span>my-game-art</span><span class="dim small mono">~/art/my-game-art</span></div>
+   <div class="recent"><span>jam-tests</span><span class="dim small mono">~/dev/jam-tests/art</span></div></div></div></div>`;}
+function guide(step){
+  const steps={1:["This is a project","A folder on your disk. Each card is an asset: one background, sprite or prop. Groups on the left are just sub-folders.",{l:250,t:56,w:1020,h:450},{l:560,t:530}],
+   2:["Every asset says what happens next","…and who does it: you, the AI or the scripts. Start with the one waiting on you.",{l:262,t:106,w:248,h:194},{l:530,t:120}],
+   3:["You decide here","Issues come from the scripts, the AI or you. Each fix is ready to look at: accept it and a new version appears.",{l:930,t:56,w:340,h:734},{l:570,t:200}]};
+  const s=steps[step];
+  return `<div class="spot" style="left:${s[2].l}px;top:${s[2].t}px;width:${s[2].w}px;height:${s[2].h}px"></div>
+  <div class="card coach" style="left:${s[3].l}px;top:${s[3].t}px"><div class="dim small">Sample project · step ${step} of 6</div><b style="font-size:16px">${s[0]}</b><div>${s[1]}</div>
+  <div class="row" style="justify-content:space-between"><div class="dots">${[1,2,3,4,5,6].map(i=>`<i class="${i==step?"on":""}"></i>`).join("")}</div><div class="row"><span class="btn flat sm">Skip the tour</span><span class="btn pri sm">Next</span></div></div></div>`;}
+function settings(){return topbar('<b>my-game-art</b> <span class="dim">/</span> <span>Project settings</span>')+`<div class="body"><div class="card set">
+  <div class="sec"><h3>Palettes</h3><span class="dim small">A library of palettes. Groups pick a default; an asset can override it or use several.</span>
+   ${[["main",["#22262b","#6b4a3a","#e9d8a6","#f2a541","#5b8c85","#2c3470"],"default"],["night",NIGHT.slice(0,8),"group scenes"],["characters",["#2b1d1d","#f0c39a","#3d6b8c","#6c2f2f","#e9d8a6","#1d2b3d"],"group characters"]].map(p=>`<div class="pal"><b style="width:86px">${p[0]}</b><span class="sw">${p[1].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="dim small" style="margin-left:auto">${p[2]}</span></div>`).join("")}
+   <span class="btn ghost sm" style="align-self:flex-start">+ Import palette (.gpl, .hex, .png)</span></div>
+  <div class="sec"><h3>Canvas</h3><div class="row"><span class="field txt mono">320</span>×<span class="field txt mono">180</span><span class="dim small">default · a group overrides it from its ⋯ menu, an asset from ⓘ Asset settings</span></div>
+   <h3 style="margin-top:10px">Export</h3><div class="field txt mono">../game/assets/art</div><span class="dim small">Finished images are copied here. Can point inside your engine's project.</span>
+   <h3 style="margin-top:10px">History</h3><span class="chk"><span class="cb on">✓</span>Keep all versions</span><span class="dim small">When off, pixelwright keeps only the input, the first version, versions you marked ★ Keep, and the final.</span>
+   <h3 style="margin-top:10px">Style rules</h3><span class="dim small">14 rules on · 2 learnt from your rejections</span><span class="btn ghost sm" style="align-self:flex-start">Review rules…</span></div></div></div>`;}
+// ---------- render ----------
+const app=document.getElementById("app");
+const R={s01:()=>startScreen(),s02:()=>projectScreen(),s03:()=>assetScreen(""),s04:()=>assetScreen("reject"),s05:()=>assetScreen("select"),s06:()=>assetScreen("compare"),s07:()=>settings(),
+ s11:()=>assetScreen("multi"),s14:()=>projectScreen(),s15:()=>assetScreen("zoom"),s12:()=>assetScreen("reply"),s08:()=>projectScreen()+guide(1),s09:()=>projectScreen()+guide(2),s10:()=>assetScreen("")+guide(3)};
+app.innerHTML=(R[S]||R.s01)();fillGrid();fillAsset({s04:"reject",s05:"select",s06:"compare",s11:"multi",s12:"reply",s15:"zoom"}[S]||"");
+</script>
+</body>
+</html>

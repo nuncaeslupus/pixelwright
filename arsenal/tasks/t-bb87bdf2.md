@@ -7,7 +7,7 @@ deps: [t-4e92063d, t-a77f1792]
 tags: [m4]
 ---
 
-Project screen: assets by group, state, next step and actor
+Project screen: assets by category with filters (waiting on, state), state, next step and actor; add dialog with category; folder watching
 
 ## Acceptance gate
 Gate metric (from the plan): `e2e_failed == 0`. The block below checks what can be checked mechanically; the owner judges the rest.
