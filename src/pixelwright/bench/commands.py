@@ -15,13 +15,13 @@ from typing import Any
 from pixelwright.bench.matrix import Matrix, load_matrix
 from pixelwright.bench.rank import READERS, WINNERS, items, next_pair, ranking, record
 from pixelwright.bench.report import write_report
+from pixelwright.budget import Ledger, month_of, monthly_limit
 from pixelwright.cli.gen_commands import DEFAULT_SCALE, provider_config
 from pixelwright.cli.registry import REGISTRY, Outcome, Param, PwError, command
 from pixelwright.core import providers as pv
 from pixelwright.core.providers.base import EXIT_BUDGET
 from pixelwright.workspace import Workspace
 from pixelwright.workspace.asset import utc_now
-from pixelwright.workspace.budget import Ledger, month_of, monthly_limit
 from pixelwright.workspace.config import save_config
 from pixelwright.workspace.files import write_bytes_atomic
 
@@ -236,7 +236,7 @@ def cmd_bench(root: Path, a: dict[str, Any]) -> Outcome:
             f"estimate {total} USD is over the matrix cap {m.max_usd} USD",
             exit_code=EXIT_BUDGET,
         )
-    left = monthly_limit(ws.config) - Ledger(ws.root).spent(month_of(utc_now()))
+    left = monthly_limit(ws.config.extra) - Ledger(ws.root).spent(month_of(utc_now()))
     if total > left:
         raise PwError(
             "budget_exceeded",

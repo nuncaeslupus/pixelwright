@@ -20,7 +20,6 @@ from pixelwright.core.providers.base import (
     ProviderError,
 )
 from pixelwright.core.providers.run import Guard
-from pixelwright.workspace.config import WorkspaceConfig
 from pixelwright.workspace.files import append_jsonl
 
 SECRETS_PATH = ".pixelwright/secrets.toml"
@@ -52,8 +51,9 @@ def api_key(root: Path, provider: str, env: Mapping[str, str] | None = None) -> 
     )
 
 
-def monthly_limit(config: WorkspaceConfig) -> float:
-    budget = config.extra.get("budget", {})
+def monthly_limit(settings: Mapping[str, Any]) -> float:
+    """`[budget] monthly_usd` from the tables of `pixelwright.toml`."""
+    budget = settings.get("budget", {})
     return float(budget.get("monthly_usd", DEFAULT_MONTHLY_USD))
 
 
@@ -106,9 +106,9 @@ class Ledger:
         return row
 
 
-def budget_guard(root: Path, config: WorkspaceConfig, now: str | None = None) -> Guard:
+def budget_guard(root: Path, settings: Mapping[str, Any], now: str | None = None) -> Guard:
     """A guard for `providers.run`: refuse a call that would pass the monthly limit."""
-    limit = monthly_limit(config)
+    limit = monthly_limit(settings)
     month = month_of(now or _now())
 
     def guard(provider: Provider, req: GenRequest, estimate_usd: float) -> None:

@@ -54,5 +54,13 @@ so it is not raised again.
 3. Old M0–M3 workspace? `pw migrate` converts it in place and keeps the old files as
    `pixelwright.toml.bak` and `assets.bak/`.
 
-Generating images with a model (`pw generate`, providers, `pw cost`) still runs on the
-old workspace commands; local painting on your GPU: [comfyui.md](comfyui.md).
+## Painting with an image model
+
+A provider is one more input source. `pw generate scenes/harbour --provider comfyui
+--prompt "a harbour at night"` paints from the newest input (or from nothing, with
+`--init none`); each image lands in `inputs/` and the scripts normalise it into a version.
+`pw generate <asset> --issue <id>` repaints only that issue's areas and proposes the result
+as a fix. Settings live in `pixelwright.toml`: `[providers.<name>]`, `[presets.<name>]`
+(preamble, negative, scale), `[defaults] provider = "..."` and `[budget] monthly_usd`;
+reference images go in `style/references/`. `pw cost` shows the month's spending and
+`pw doctor` what is set up. Local painting on your GPU: [comfyui.md](comfyui.md).

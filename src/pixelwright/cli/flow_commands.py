@@ -12,9 +12,10 @@ from typing import Any
 
 from PIL import Image as PILImage
 
-from pixelwright import flow
+from pixelwright import flow, generate
 from pixelwright.asset import Asset, AssetError, list_assets, open_asset
 from pixelwright.cli.registry import Outcome, Param, PwError, command
+from pixelwright.core.providers import ProviderError
 from pixelwright.issues import KINDS, IssueError, IssueLog
 from pixelwright.migrate import migrate
 from pixelwright.project import PROJECT_FILE, Project, ProjectError, init_project, load_project
@@ -55,7 +56,7 @@ def _guard(fn: Any) -> Any:
             out: Outcome = fn(root, a)
             return out
         except (AssetError, IssueError, ProjectError, ValueError) as exc:
-            if isinstance(exc, PwError):
+            if isinstance(exc, (PwError, ProviderError)):
                 raise
             raise PwError("invalid", str(exc)) from exc
 
@@ -286,3 +287,37 @@ def cmd_migrate(root: Path, a: dict[str, Any]) -> Outcome:
         text=f"Migrated {len(res.assets)} asset(s), {res.versions} version(s), "
         f"{res.issues} issue(s). Old files: pixelwright.toml.bak, assets.bak/",
     )
+
+
+@_guard
+def generate_v2(root: Path, a: dict[str, Any]) -> Outcome:
+    """`pw generate` on a v2 project: images become inputs, then normalised versions."""
+    asset = _asset(root, a["asset"])
+    prompt = Path(a["prompt_file"]).read_text(encoding="utf-8") if a["prompt_file"] else a["prompt"]
+    if a.get("issue"):
+        res = generate.repaint(
+            asset, a["issue"], prompt, provider=a["provider"], seed=a["seed"],
+            budget_override=a["budget_override"],
+        )  # fmt: skip
+    else:
+        size = None
+        if a["size"]:
+            w, _, h = a["size"].lower().partition("x")
+            size = (int(w), int(h))
+        res = generate.generate(
+            asset, prompt, provider=a["provider"], mode=a["mode"], init=a["init"],
+            n=a["n"], seed=a["seed"], size=size, dry_run=a["dry_run"],
+            budget_override=a["budget_override"],
+        )  # fmt: skip
+    data = {k: v for k, v in res.__dict__.items() if k not in ("inputs", "warnings")}
+    data["inputs"] = [str(p) for p in res.inputs]
+    outputs = [str(asset.version_path(v)) for v in res.versions]
+    if res.fix:
+        outputs = [str(asset.path / IssueLog(asset).state().fixes[res.fix].image)]
+    text = (
+        f"{asset.rel}: fix {res.fix} proposed for {a['issue']}"
+        if res.fix
+        else f"{asset.rel}: {', '.join(res.versions) or 'dry run'} ({res.provider}, {res.mode})"
+    )
+    version = res.versions[-1] if res.versions else None
+    return Outcome(asset.rel, version, outputs=outputs, data=data, warnings=res.warnings, text=text)

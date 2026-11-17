@@ -22,6 +22,7 @@ PALETTES_DIR = Path("style") / "palettes"
 DEFAULT_CANVAS: dict[str, int] = {"width": 320, "height": 180}
 DEFAULT_PALETTE = "main"
 RULE_LEVELS = ("error", "warn", "off")
+KNOWN_TABLES = ("project", "canvas", "palettes", "rules")
 AGENTS_TEMPLATE = Path(__file__).parent / "templates" / "AGENTS.md"
 
 
@@ -52,6 +53,8 @@ class Project:
     canvas: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_CANVAS))
     default_palette: str = DEFAULT_PALETTE
     rules: dict[str, str] = field(default_factory=dict)
+    # Other tables, kept as written: [providers.<name>], [presets.<name>], [defaults], [budget]
+    extra: dict[str, Any] = field(default_factory=dict)
 
     @property
     def assets_dir(self) -> Path:
@@ -90,7 +93,7 @@ class Project:
         }
         if self.rules:
             data["rules"] = dict(self.rules)
-        return data
+        return {**self.extra, **data}
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -155,6 +158,7 @@ def load_project(root: Path) -> Project:
         canvas={**DEFAULT_CANVAS, **_canvas(data.get("canvas", {}), file)},
         default_palette=_str(palettes.get("default", DEFAULT_PALETTE), file, "palettes.default"),
         rules=_checks(data.get("rules", {}), file, "rules"),
+        extra={k: v for k, v in data.items() if k not in KNOWN_TABLES},
     )
 
 
