@@ -25,6 +25,22 @@ jobs:
       - run: uv run playwright install --with-deps chromium  # viewer end-to-end tests
       - run: make check
 
+  windows-core:
+    # Core library, project model and flow CLI on Windows (the app stays Linux-first).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync
+      - shell: bash
+        run: >
+          uv run pytest -q tests/core tests/io
+          tests/test_project.py tests/test_asset_model.py tests/test_issues.py
+          tests/test_wait.py tests/test_flow_cli.py tests/test_retention.py
+
   gitleaks:
     runs-on: ubuntu-latest
     permissions:
