@@ -68,13 +68,11 @@ def _preset(project: Project, name: str) -> dict[str, Any]:
     return dict(project.extra.get("presets", {}).get(name, {}))
 
 
-def _prompt(asset: Asset, preset: dict[str, Any], text: str, prov: pv.Provider) -> str:
+def _prompt(asset: Asset, preset: dict[str, Any], text: str) -> str:
     """Provider preamble, then the game's style kit, then the request."""
     if not text.strip() and not preset.get("preamble"):
         raise AssetError("say what to paint: a prompt, or a preamble in [presets.<provider>]")
-    kit = style_kit(asset).prompt(
-        int(preset.get("scale", DEFAULT_SCALE)), codes=prov.capabilities.palette_input
-    )
+    kit = style_kit(asset).prompt(int(preset.get("scale", DEFAULT_SCALE)))
     return " ".join(p for p in (sentence(preset.get("preamble", "")), kit, text.strip()) if p)
 
 
@@ -105,7 +103,7 @@ def generate(
     project = asset.project
     name, prov = _provider(asset, provider, key=not dry_run)
     preset = _preset(project, name)
-    text = _prompt(asset, preset, prompt, prov)
+    text = _prompt(asset, preset, prompt)
     init_path: Path | None = None
     if init not in (None, "input", "none"):
         init_path = asset.version_path(str(init))
@@ -190,7 +188,7 @@ def repaint(
     region = _areas_mask(issue.areas, (h, w))
     name, prov = _provider(asset, provider)
     preset = _preset(project, name)
-    text = _prompt(asset, preset, prompt or issue.message, prov)
+    text = _prompt(asset, preset, prompt or issue.message)
     scale = int(preset.get("scale", DEFAULT_SCALE))
     big = np.repeat(np.repeat(base, scale, axis=0), scale, axis=1)
     big_mask = np.repeat(np.repeat(region, scale, axis=0), scale, axis=1)

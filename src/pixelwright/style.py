@@ -32,21 +32,18 @@ class StyleKit:
     references: tuple[Path, ...]
     max_colors: int | None = None  # `colors = N` instead of a palette file
 
-    def prompt(self, scale: int, *, codes: bool = True) -> str:
-        """The kit as words, put before the request. `codes=False` (a provider without
-        palette input) names the palette size instead of its hex codes: image models
-        read a list of codes as a mood, not a limit, and follow a palette image better."""
+    def prompt(self, scale: int) -> str:
+        """The kit as words, put before the request. It names the palette size, never its
+        hex codes: image models read a list of codes as a mood, not a limit; a provider
+        with palette input gets the palette itself, and the others a swatch reference."""
         w, h = self.canvas
         parts = [sentence(self.preamble)] if self.preamble else []
         parts.append(
             f"Pixel art, {w}x{h} pixels, each pixel drawn as a sharp {scale}x{scale} block; "
             "no anti-aliasing, no blur, no gradients between pixels."
         )
-        if self.colors and not codes:
+        if self.colors:
             parts.append(f"Keep to a limited palette of about {len(self.colors)} colours.")
-        elif self.colors:
-            codes_text = ", ".join("#" + c for c in self.colors)
-            parts.append(f"Use only these {len(self.colors)} colours: {codes_text}.")
         elif self.max_colors:
             parts.append(f"Use at most {self.max_colors} colours.")
         parts += [sentence(r) for r in self.rules]

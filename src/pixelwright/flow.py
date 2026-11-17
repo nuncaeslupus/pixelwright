@@ -114,6 +114,10 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     source_rgb = _rgb(_source(asset, source))
     canvas = asset.settings().canvas
     cw, ch = canvas["width"], canvas["height"]
+    if (source_rgb.width, source_rgb.height) == (cw, ch):
+        # drawn at the canvas size, as pixel-native providers do: each pixel is a cell
+        # already, and a grid found on it would be a false, coarser one (34x18)
+        return Prepared(source_rgb, 1, False, [])
     larger = source_rgb.width > cw and source_rgb.height > ch
     bg = background(source_rgb) if larger else None
     snapped = snap(source_rgb)
