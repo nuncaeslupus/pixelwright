@@ -5,6 +5,7 @@ label: "T55: Issues and fixes log"
 priority: 5
 deps: [t-b2c24f25]
 tags: [m4]
+status: merged
 ---
 
 Issues and fixes log (`issues.jsonl`): schema, append, events; fix candidates as images; accepting one or several fixes writes one new version; reject with reason; reply; mark fixed; undo/redo
