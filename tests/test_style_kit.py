@@ -64,7 +64,7 @@ def test_generate_sends_style_kit(
     (req,) = sent
     assert req.palette == ("141821", "6b4a3a", "e9d8a6")
     assert req.prompt.startswith("Night interiors, warm lamps")  # the category's preamble
-    assert "32x18 pixels" in req.prompt and "#6b4a3a" in req.prompt
+    assert "32x18 pixels" in req.prompt and "#" not in req.prompt  # the palette goes as palette
     assert "1-px dark outlines" in req.prompt and req.prompt.endswith("a piano")
     assert [p.name for p in req.references] == ["tavern.png"]
     assert env["data"]["versions"] == ["v001"]
@@ -125,8 +125,7 @@ def test_prompt_names_palette_size_without_codes(project: Path) -> None:
     from pixelwright.style import style_kit
 
     kit = style_kit((load_project(project), "scenes"))
-    assert "#141821" in kit.prompt(4)
-    words = kit.prompt(4, codes=False)
+    words = kit.prompt(4)
     assert "#" not in words and "about 3 colours" in words
 
 

@@ -78,3 +78,26 @@ def test_generate_issue_proposes_a_fix_inside_its_areas(
     assert not outside.any()
     listed = pw(capsys, project, "issues", "scenes/harbour")["data"]["issues"]
     assert listed[0]["fixes"] == [env["data"]["fix"]]
+
+
+def test_native_input_at_canvas_size_keeps_its_pixels(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    # a pixel-native provider draws at the canvas size; its 2x2 runs are no 2x grid
+    cells = np.array(COLORS, np.uint8)[np.random.default_rng(3).integers(0, 5, (9, 16))]
+    native = tmp_path / "native.png"
+    Image.fromarray(np.repeat(np.repeat(cells, 2, 0), 2, 1), "RGB").save(native)
+    env = pw(capsys, project, "add", "scenes/crypt", "--from", str(native))
+    out = pw(capsys, project, "normalize", "scenes/crypt")
+    with Image.open(out["outputs"][0]) as im:
+        assert im.size == (32, 18)
+    assert env["ok"] and not any("snapped" in w for w in out["warnings"])
+
+
+def test_prompt_never_lists_palette_codes(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    pw(capsys, project, "add", "scenes/harbour", "--from", str(_painting(tmp_path / "s.png", 2)))
+    dry = pw(capsys, project, "generate", "scenes/harbour", "--provider", "replay",
+             "--prompt", "harbour", "--dry-run")  # fmt: skip
+    assert "#" not in dry["data"]["prompt"] and "palette of about" in dry["data"]["prompt"]
