@@ -1,7 +1,7 @@
 # pixelwright — app screens (M4)
 
 **Revision**: 6
-**Status**: draft
+**Status**: approved (2026-11-17, revision 6)
 **Revision log**:
 - r6 — applied `pixelwright-screens-v5-2026-11-17-0132-notes.md` (4 notes): "In the game" becomes **Finished** and the button **Finish with v004** (not every project is a game); the back button is an arrow plus the path `scenes / harbour-night`; groups are called **categories**, and adding images asks for the category (with "+ New category…"), which sets size, palette and checks; Undo and Redo moved to the canvas toolbar; 🔍 zoom-to-area moved next to the zoom controls, away from the Move/Select switch.
 - r5 — applied `pixelwright-screens-v4-2026-11-17-0045-notes.md` (10 notes): AI colour violet (apart from the green of done); ⋯ after the group count; "Use v004 in the game" replaces Approve, state "In the game"; Undo; Asset settings label; one-line conversation summary; compare hint beside the compare bar; "select areas to attach them"; Mark fixed for fixes made outside the app; + New type; zoom rectangle keeps the canvas shape

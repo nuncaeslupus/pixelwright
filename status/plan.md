@@ -3,10 +3,12 @@
 **Date**: 2026-11-16
 **Specification**: `status/specification.md`
 **Author**: Claude (for the repository owner)
-**Revision**: 1
-**Status**: approved (2026-11-16, revision 1) — without annotations
+**Revision**: 2
+**Status**: approved (2026-11-17, revision 2) — without annotations
 **Revision log**:
 - r1 — first draft
+- r2 — aligned with the approved screens (spec r3, D-14 to D-17): advice becomes issues and fixes,
+  groups become categories, approve becomes finish, undo/redo; T53, T55–T58, T61, T62 updated
 
 > Review record, kept the way the spec keeps its own: each round of notes bumps
 > **Revision** with a log line naming the `<repo>-plan-v<N>-<date>-notes.md`
@@ -22,30 +24,30 @@
 
 Three layers, one flow (spec §2.2):
 
-- **Core (Python library + `pw`)** owns every file in a project: the project, group and asset
-  files, versions, the advice log, normalising, checks, export and `pw wait`. Everything an AI
+- **Core (Python library + `pw`)** owns every file in a project: the project, category and asset
+  files, versions, the issue log, normalising, checks, export and `pw wait`. Everything an AI
   or the app does goes through it.
 - **App** is a pywebview window started by `pw open`. The page is plain HTML/JS/CSS, as today.
   It calls the core in-process through pywebview's `js_api`, so there is no HTTP server, port or
-  token. It has two screens: **Project** (assets by group, each with its state and next step)
-  and **Asset** (the image in the centre, a strip of versions, before/after, advice on the
-  image, and the actions accept, reject, request, star, approve and open in Aseprite).
+  token. It has two screens: **Project** (assets by category, each with its state and next step)
+  and **Asset** (the image in the centre, a strip of versions, before/after, issues and fixes on the
+  image, and the actions accept, reject, reply, ask the AI, undo, star, finish and open in Aseprite).
 - **Agent instructions**: Claude skills for steps 0 and 4 and for the bridge, plus `AGENTS.md`
   for other agents.
 
 ### Data flow
 
-Person or AI → `pw add` (inputs) → `pw normalize` (v001) → `pw check` (script advice) → AI loop
-via `pw advice` / fix ops (ai advice, new versions) → app (person accepts or rejects, or leaves a
-request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
+Person or AI → `pw add` (inputs) → `pw normalize` (v001) → `pw check` (script issues and fixes) → AI loop
+via `pw issues` / `pw fix` (AI issues, fix candidates) → app (person accepts or rejects, or leaves a
+request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 
 ### State changes
 
 | Service | Database | Change | Description |
 |---------|----------|--------|-------------|
-| Core | Project folder | CREATE | `pixelwright.toml` v2, `group.toml`, `asset.toml`, `advice.jsonl`, `final.png` |
+| Core | Project folder | CREATE | `pixelwright.toml` v2, `category.toml`, `asset.toml`, `issues.jsonl`, `fixes/`, `final.png` |
 | Core | Project folder | UPDATE | `versions/` gains a file per change; `asset.toml` state, chosen and starred |
-| Core | Project folder | DELETE | Only on approve with `keep_all_versions = false`: unstarred middle versions |
+| Core | Project folder | DELETE | Only on finish with `keep_all_versions = false`: unstarred middle versions |
 
 ### Technology choices
 
@@ -62,10 +64,10 @@ request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
 | `core/` (quantize, snap, clean, palette, color, image, checks) | **Keep** as is; normalise and fix ops call it |
 | `core/providers/`, `bench/` | **Keep**; optional input source and its benchmark |
 | `io/` (png, palette_io, aseprite) | **Keep** |
-| `workspace/asset.py` (immutable versions, append-only log, masks) | **Adapt** to `asset.toml` + `advice.jsonl` |
-| `workspace/config.py`, `style.py`, `workspace.py` | **Adapt**: palette library, groups, export path, retention; drop roles and stages |
+| `workspace/asset.py` (immutable versions, append-only log, masks) | **Adapt** to `asset.toml` + `issues.jsonl` |
+| `workspace/config.py`, `style.py`, `workspace.py` | **Adapt**: palette library, categories, export path, retention; drop roles and stages |
 | `workspace/next_step.py` | **Adapt** into `pw status`'s next step per asset |
-| `workspace/critique.py`, `budget.py` | **Adapt** critique into AI advice; keep budget |
+| `workspace/critique.py`, `budget.py` | **Adapt** critique into AI issues and fixes; keep budget |
 | `cli/` | **Adapt** to the flow commands; keep the registry and JSON envelope |
 | `mcp/server.py` | **Adapt** to the same commands |
 | `viewer/server.py` + static (Look/Compare/Mark/Play) | **Replace** by the app; compare, mark and play code is reused inside the Asset screen |
@@ -87,16 +89,16 @@ request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
 | T# | Description | Service | Size | Depends | Gate | Tests |
 |----|-------------|---------|------|---------|------|-------|
 | T52 | Screens review | docs | M | — | owner approves the screens in the reader | none (review artifact) |
-| T53 | Project model v2 | core | M | — | `tests_failed == 0` | `test_settings_asset_in_group_uses_group_palette` in `tests/test_project.py` — an asset under a group with `palette = "night"` resolves to the night palette |
+| T53 | Project model v2 | core | M | — | `tests_failed == 0` | `test_settings_asset_in_category_uses_category_palette` in `tests/test_project.py` — an asset under a category with `palette = "night"` resolves to the night palette |
 | T54 | Asset model v2 | core | M | T53 | `tests_failed == 0` | `test_asset_files_plain_without_app_readable` in `tests/test_asset_model.py` — every file in an asset parses with `tomllib`, `json` and Pillow alone |
-| T55 | Advice log | core | M | T54 | `tests_failed == 0` | `test_advice_accept_with_fix_writes_new_version` in `tests/test_advice.py` — accepting advice with a fix adds exactly one version and links it |
-| T56 | Promote rejections | core | S | T55 | `tests_failed == 0` | `test_check_promoted_rejection_not_raised_again` in `tests/test_advice.py` — the same rule on the same scope yields no new advice |
+| T55 | Issues and fixes log | core | M | T54 | `tests_failed == 0` | `test_fix_accept_writes_new_version` in `tests/test_issues.py` — accepting a fix adds exactly one version and links it |
+| T56 | Promote rejections | core | S | T55 | `tests_failed == 0` | `test_check_promoted_rejection_not_raised_again` in `tests/test_issues.py` — the same rule on the same scope yields no new issue |
 | T57 | Flow CLI + MCP | cli | L | T55 | `normalize_seconds <= 5` | `test_normalize_320x180_under_budget` in `tests/test_flow_cli.py` — normalising a 320×180 fixture takes at most 5 s |
-| T58 | Version retention | core | S | T57 | `tests_failed == 0` | `test_prune_setting_off_keeps_protected_versions` in `tests/test_retention.py` — after approve only protected versions remain; with the setting on, none are removed |
+| T58 | Version retention | core | S | T57 | `tests_failed == 0` | `test_prune_setting_off_keeps_protected_versions` in `tests/test_retention.py` — after finish only protected versions remain; with the setting on, none are removed |
 | T59 | pw wait + hook | core | M | T55 | `wait_latency_seconds <= 10` | `test_wait_request_written_returns_within_latency` in `tests/test_wait.py` — a request written by another process ends `pw wait` within 10 s |
 | T60 | App shell | app | M | T52, T53 | `open_50_assets_seconds <= 2` | `test_project_list_50_assets_under_budget` in `tests/test_app_api.py` — the app API lists a 50-asset project in at most 2 s |
 | T61 | Project screen | app | M | T60, T57 | `e2e_failed == 0` | `test_project_screen_shows_next_step` in `tests/e2e/test_project_screen.py` — each asset card shows one next step |
-| T62 | Asset screen | app | L | T61, T58, T59 | `e2e_failed == 0` | `test_asset_screen_request_creates_pending_advice` in `tests/e2e/test_asset_screen.py` — a request made in the app appears as pending advice with target `ai` |
+| T62 | Asset screen | app | L | T61, T58, T59 | `e2e_failed == 0` | `test_asset_screen_request_creates_open_issue` in `tests/e2e/test_asset_screen.py` — a request made in the app appears as an open issue with target `ai` |
 | T63 | In-app first run | app | M | T62 | owner states what the app does and the next step at each screen without help text | `test_first_launch_opens_sample_project` in `tests/e2e/test_first_run.py` — first launch with no recent projects opens the sample |
 | T64 | Agent instructions | plugin | M | T57, T59 | `skills_invalid == 0` | `test_skills_reference_existing_commands` in `tests/test_skills.py` — every `pw` command named in a skill exists |
 | T65 | Migrate + clean up | core | M | T63, T64 | `tests_failed == 0` | `test_migrate_m3_workspace_preserves_versions` in `tests/test_migrate.py` — every old version is present and readable after migration |
@@ -105,16 +107,16 @@ request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
 ### Task details
 
 - **T52 Screens review**: Screens review: annotated mock-ups of the Project and Asset screens and the first run, in the reader
-- **T53 Project model v2**: Project model v2: `pixelwright.toml` (palette library, export path, `keep_all_versions`, rules), `group.toml`, nearest-folder resolution
+- **T53 Project model v2**: Project model v2: `pixelwright.toml` (palette library, export path, `keep_all_versions`, rules), `category.toml` (kind, palette, canvas, checks), nearest-folder resolution
 - **T54 Asset model v2**: Asset model v2: `asset.toml`, `inputs/`, star, chosen, `final.png`; readable with no app
-- **T55 Advice log**: Advice log: schema, append, state events, accept runs fix into a new version, reject with reason
+- **T55 Issues and fixes log**: Issues and fixes log (`issues.jsonl`): schema, append, events; fix candidates as images; accepting one or several fixes writes one new version; reject with reason; reply; mark fixed; undo/redo
 - **T56 Promote rejections**: Promote a rejection reason to `style/rules.toml`; `pw check` stops raising it in scope
-- **T57 Flow CLI + MCP**: Flow CLI + MCP: `init`, `add`, `normalize`, `check`, `advice`, `star`, `approve` (+ export), `status` with next step
-- **T58 Version retention**: Retention: `keep_all_versions = false` prunes on approve, never input, v001, starred or final
+- **T57 Flow CLI + MCP**: Flow CLI + MCP: `init`, `add`, `normalize`, `check`, `issues`, `fix`, `undo`/`redo`, `star`, `finish` (+ export), `status` with next step
+- **T58 Version retention**: Retention: `keep_all_versions = false` prunes on finish, never input, v001, starred or final
 - **T59 pw wait + hook**: `pw wait` + Claude session-start hook that reports pending requests
 - **T60 App shell**: App shell: `pw open`, pywebview window, open folder, recent projects, DMABUF default on Linux
-- **T61 Project screen**: Project screen: assets by group, state, next step and actor
-- **T62 Asset screen**: Asset screen: image, versions strip, before/after, advice on image, accept, reject, request to AI, star, approve, open in Aseprite
+- **T61 Project screen**: Project screen: assets by category with filters (waiting on, state), state, next step and actor; add dialog with category; folder watching
+- **T62 Asset screen**: Asset screen per `status/screens/screens.md`: image with Move/Select tools and zoom to area, versions strip, compare (hold Space, side by side), issues and fixes on the image, accept (several at once), reject, reply, ask the AI, undo/redo, star, finish, open in Aseprite, mark fixed
 - **T63 In-app first run**: First run: sample project opened on first launch, guided in the app (replaces `pw tour`)
 - **T64 Agent instructions**: Agent instructions: rewrite Claude skills (style, critique-and-fix loop, listen with `pw wait`) and add `AGENTS.md`
 - **T65 Migrate + clean up**: `pw migrate` for M0–M3 workspaces; remove the four-mode viewer, `pw tour` and stages; update docs
@@ -146,7 +148,7 @@ request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
   {"id": "T53", "text": "T53\nProject model v2"},
   {"id": "T54", "text": "T54\nAsset model v2"},
   {"id": "T60", "text": "T60\nApp shell"},
-  {"id": "T55", "text": "T55\nAdvice log"},
+  {"id": "T55", "text": "T55\nIssues and fixes log"},
   {"id": "T56", "text": "T56\nPromote rejections"},
   {"id": "T57", "text": "T57\nFlow CLI + MCP"},
   {"id": "T59", "text": "T59\npw wait + hook"}
@@ -204,5 +206,5 @@ request) → `pw wait` wakes the AI → … → `pw approve` (final + export).
 ## Sign-off
 
 - [ ] Plan approved by the owner
-- [ ] Screens approved (T52)
+- [x] Screens approved (T52)
 - [ ] Ready for execution
