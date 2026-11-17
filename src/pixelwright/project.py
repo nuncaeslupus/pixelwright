@@ -38,6 +38,7 @@ class Settings:
     canvas: dict[str, int]
     kind: str | None = None
     checks: dict[str, str] = field(default_factory=dict)
+    colors: int | None = None  # build a palette of this many colours from the input
 
     @property
     def palette(self) -> str:
@@ -202,6 +203,7 @@ def resolve_settings(project: Project, folder: Path) -> Settings:
     canvas = dict(project.canvas)
     checks = dict(project.rules)
     kind: str | None = None
+    colors: int | None = None
 
     current = project.assets_dir.resolve()
     for part in ("", *rel.parts):
@@ -224,4 +226,9 @@ def resolve_settings(project: Project, folder: Path) -> Settings:
                 checks.update(_checks(layer["checks"], file, "checks"))
             if "kind" in layer:
                 kind = _str(layer["kind"], file, "kind")
-    return Settings(palettes=palettes, canvas=canvas, kind=kind, checks=checks)
+            if "colors" in layer:
+                raw = layer["colors"]
+                if isinstance(raw, bool) or not isinstance(raw, int) or not 2 <= raw <= 256:
+                    raise ProjectError(f"{file}: colors must be a whole number from 2 to 256")
+                colors = raw
+    return Settings(palettes=palettes, canvas=canvas, kind=kind, checks=checks, colors=colors)

@@ -92,3 +92,7 @@ and the images in `style/references/` and `style/references/<category>/`, sent a
 references where the provider takes them. Normalise then uses the same palette and
 canvas. `pw style show scenes` prints the kit and the exact words sent.
 
+No palette file yet? `colors = 248` in a `category.toml` or `asset.toml` builds the
+palette from each input instead (accents included), and the prompt asks for at most
+that many colours.
+
