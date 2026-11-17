@@ -118,3 +118,27 @@ def test_colors_setting_discovers_the_palette(
         assert 16 < len(im.convert("RGB").getcolors() or []) <= 40
     shown = pw(capsys, project, "style", "show", "scenes/noisy")["data"]
     assert shown["colors"] == [] and shown["max_colors"] == 40
+
+
+def test_prompt_names_palette_size_without_codes(project: Path) -> None:
+    from pixelwright.project import load_project
+    from pixelwright.style import style_kit
+
+    kit = style_kit((load_project(project), "scenes"))
+    assert "#141821" in kit.prompt(4)
+    words = kit.prompt(4, codes=False)
+    assert "#" not in words and "about 3 colours" in words
+
+
+def test_palette_discover_from_images_writes_swatch(
+    project: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    other = tmp_path / "b.png"
+    Image.new("RGB", (32, 18), (200, 40, 40)).save(other)
+    first = str(project / "replay" / "a.png")
+    env = pw(capsys, project, "palette", "discover", "--images", first, str(other),
+             "--colors", "4", "--name", "cast", "--swatch")  # fmt: skip
+    swatch = project / "style" / "references" / "palette-cast.png"
+    assert str(swatch) in env["outputs"]
+    found = {tuple(c) for c in np.asarray(Image.open(swatch)).reshape(-1, 3)}
+    assert (200, 40, 40) in found and len(found) == env["data"]["colors"]
