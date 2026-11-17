@@ -1,7 +1,8 @@
 """Shared fixtures. One conftest for the whole suite (mypy needs unique module names).
 
-`ws`: an empty workspace. `workspace`, `viewer`, `browser`, `page`: the viewer end-to-end
-tests (Playwright, Chromium; skipped when no browser is available)."""
+`ws`: an empty old-style workspace; `workspace`: one with an asset (Aseprite bridge tests).
+`browser`, `app_project`, `open_app`: the app end-to-end tests (Playwright, Chromium;
+skipped when no browser is available)."""
 
 import json
 from collections.abc import Callable, Iterator
@@ -21,7 +22,6 @@ from pixelwright.core.palette import Color, Palette
 from pixelwright.io.palette_io import write_palette
 from pixelwright.io.png import write_png
 from pixelwright.project import Project, init_project
-from pixelwright.viewer.server import Viewer
 from pixelwright.workspace import Workspace
 
 COLORS = [(20, 20, 30), (200, 60, 40), (240, 220, 160), (40, 120, 200)]
@@ -68,14 +68,6 @@ def workspace(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     return root
 
 
-@pytest.fixture
-def viewer(workspace: Path) -> Iterator[Viewer]:
-    server = Viewer(workspace, 0).start()
-    yield server
-    server.shutdown()
-    server.server_close()
-
-
 @pytest.fixture(scope="session")
 def browser() -> Iterator[Any]:
     sync_api = pytest.importorskip("playwright.sync_api")
@@ -86,18 +78,6 @@ def browser() -> Iterator[Any]:
             pytest.skip(f"Chromium not available: {exc}")
         yield b
         b.close()
-
-
-@pytest.fixture
-def page(browser: Any, viewer: Viewer) -> Iterator[Any]:
-    context = browser.new_context(viewport={"width": 1280, "height": 800})
-    pg = context.new_page()
-    errors: list[str] = []
-    pg.on("pageerror", lambda exc: errors.append(str(exc)))
-    pg.goto(viewer.url)
-    yield pg
-    context.close()
-    assert errors == [], errors
 
 
 # --- desktop app (pywebview page driven in Chromium with the real AppApi) ---

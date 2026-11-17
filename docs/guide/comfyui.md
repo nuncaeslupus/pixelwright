@@ -68,7 +68,6 @@ pw new hill --kind background --canvas 320x180
 pw attach hill my-sketch.png --as sketch
 pw generate hill --provider comfyui --prompt "a house on a hill at dusk" --n 2 --seed 1
 pw snap hill && pw quantize hill && pw clean hill && pw check hill
-pw view
 ```
 
 The same request twice is free and instant: it comes from `cache/`.

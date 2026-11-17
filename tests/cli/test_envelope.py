@@ -10,7 +10,6 @@ from pixelwright.core.image import RGBImage
 from pixelwright.core.palette import Color, Palette
 from pixelwright.io.palette_io import write_palette
 from pixelwright.io.png import write_png
-from pixelwright.viewer import command as view_command
 
 OK_KEYS = {
     "ok",
@@ -134,7 +133,6 @@ def test_cli_json_envelope_on_every_command(
         "briefs:\n  - id: b\n    prompt: x\n"
     )
     assert run("bench", "run", "--matrix", str(matrix))["data"]["sent"] == 0
-    assert run("tour", "--path", str(files / "tour"), "--no-view")["stage"] == "final"
     assert run("inbox")["data"]["count"] >= 0
     crit = files / "critique.md"
     crit.write_text(
@@ -145,13 +143,11 @@ def test_cli_json_envelope_on_every_command(
     shown = run("critique", "hero", "show", "--version", "v0004")["data"]
     assert shown["complaints"][0]["issue"] == "focal"
     run("mask", "hero", "clear")
-    viewed = run("view", "--open", "hero/v0004", "--port", "0", "--background", "--no-browser")
-    assert viewed["data"]["url"].endswith("/#/hero/v0004")
-    view_command.stop(ws.resolve())
     assert run("requests")["data"]["requests"] == []
     assert run("wait", "--timeout", "0")["data"]["requests"] == []
-    flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish", "open"}
-    assert seen | flow == set(REGISTRY)  # flow commands: tests/test_flow_cli.py
+    flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish"}
+    flow |= {"open", "migrate"}
+    assert seen | flow == set(REGISTRY)  # flow commands: test_flow_cli, test_migrate
 
 
 def test_errors_use_the_envelope(files: Path, capsys: pytest.CaptureFixture[str]) -> None:

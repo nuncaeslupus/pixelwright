@@ -22,7 +22,7 @@ jobs:
           enable-cache: true
       - run: uv python install 3.12
       - run: make install
-      - run: uv run playwright install --with-deps chromium  # viewer end-to-end tests
+      - run: uv run playwright install --with-deps chromium  # app end-to-end tests
       - run: make check
 
   windows-core:
