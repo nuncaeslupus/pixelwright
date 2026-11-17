@@ -16,6 +16,11 @@ dependencies = [
 [project.scripts]
 pw = "pixelwright.cli:main"
 
+[project.optional-dependencies]
+app = [
+    "pywebview>=5",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.13",
@@ -49,3 +54,7 @@ files = ["src", "tests"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --import-mode=importlib"
+
+[[tool.mypy.overrides]]
+module = ["webview", "webview.*"]
+ignore_missing_imports = true
