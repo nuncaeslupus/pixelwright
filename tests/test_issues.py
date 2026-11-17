@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -8,8 +9,10 @@ import pytest
 from PIL import Image
 
 from pixelwright.asset import Asset
+from pixelwright.core.checks import CheckResult
 from pixelwright.issues import IssueError, IssueLog
 from pixelwright.project import init_project
+from pixelwright.rules import raise_check_issues
 
 BG = (0, 0, 0, 255)
 RED = (255, 0, 0, 255)
@@ -99,7 +102,7 @@ def test_nothing_to_undo(asset: Asset) -> None:
 
 def test_reject_needs_reason_and_can_promote(asset: Asset) -> None:
     log = IssueLog(asset)
-    issue = log.raise_issue("too dark", author="ai", kind="critique")
+    issue = log.raise_issue("too dark", author="script", kind="rule", rule="R-VAL-1")
     with pytest.raises(IssueError, match="reason"):
         log.reject_issue(issue.id, " ")
     log.reject_issue(issue.id, "night scene, dark on purpose", promote=True)
@@ -167,3 +170,37 @@ def test_validation(asset: Asset) -> None:
         log.accept(["f-missing"])
     with pytest.raises(IssueError, match="no issue"):
         log.reply("i-missing", "hi", by="person")
+
+
+def _flag(rule: str) -> CheckResult:
+    return CheckResult(check="orphans", rule=rule, status="fail", value=3, regions=((1, 1, 1, 1),))
+
+
+def test_check_promoted_rejection_not_raised_again(asset: Asset) -> None:
+    log = IssueLog(asset)
+    [first] = raise_check_issues(log, "v001", [_flag("R-PIX-4")])
+    assert raise_check_issues(log, "v001", [_flag("R-PIX-4")]) == []  # already open
+    log.reject_issue(first.id, "dithered on purpose", promote=True, scope="category")
+    assert raise_check_issues(log, "v001", [_flag("R-PIX-4")]) == []
+    sibling = Asset.create(asset.project, "scenes/pier")
+    sibling.add_version(_img())
+    assert raise_check_issues(IssueLog(sibling), "v001", [_flag("R-PIX-4")]) == []
+    other = Asset.create(asset.project, "props/crate")
+    other.add_version(_img())
+    assert len(raise_check_issues(IssueLog(other), "v001", [_flag("R-PIX-4")])) == 1
+    rules = tomllib.loads((asset.project.root / "style" / "rules.toml").read_text())
+    assert rules["promoted"] == [
+        {"rule": "R-PIX-4", "scope": "category:scenes", "reason": "dithered on purpose"}
+    ]
+
+
+def test_rule_off_in_category_not_raised(asset: Asset) -> None:
+    (asset.project.assets_dir / "scenes" / "category.toml").write_text('[checks]\n"R-X" = "off"\n')
+    assert raise_check_issues(IssueLog(asset), "v001", [_flag("R-X")]) == []
+
+
+def test_promote_needs_a_rule(asset: Asset) -> None:
+    log = IssueLog(asset)
+    issue = log.raise_issue("too dark", author="ai", kind="critique")
+    with pytest.raises(IssueError, match="rule"):
+        log.reject_issue(issue.id, "no", promote=True)
