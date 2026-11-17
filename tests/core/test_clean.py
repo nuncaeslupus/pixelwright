@@ -43,3 +43,13 @@ def test_pairs_and_transparency() -> None:
     alpha[1, 1] = True
     lone, _ = clean(IndexedImage(np.zeros((3, 3), dtype=np.uint16), PAL, alpha))
     assert not lone.opaque().any()  # an opaque speck on transparency becomes transparent
+
+
+def test_a_stray_shade_on_a_line_rejoins_the_line() -> None:
+    """A 1-px white line with one near-white pixel: 2 line neighbours against 6 black
+    ones, but taking black would cut the line in two."""
+    idx = np.zeros((5, 7), dtype=np.uint16)
+    idx[2, :] = 1
+    idx[2, 3] = 2
+    out, _ = clean(IndexedImage(idx, PAL))
+    assert (out.indices[2] == 1).all()

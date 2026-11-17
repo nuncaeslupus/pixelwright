@@ -2,6 +2,8 @@
 
 Each offending pixel takes the most common color among its 8 neighbours (transparency
 counts as a color); ties go to the neighbour color nearest in OKLab to the pixel's own.
+A pixel that holds a 1-px line together (the line's colour leaves and re-enters its ring
+of neighbours) joins the line instead.
 Pixels outside the mask are never changed.
 """
 
@@ -38,6 +40,9 @@ def _replacement(key: npt.NDArray[np.int64], y: int, x: int, lab: npt.NDArray[np
     counts = Counter(neighbours).most_common()
     top = [c for c, n in counts if n == counts[0][1]]
     own = int(key[y, x])
+    bridged = _bridged(key, y, x)
+    if own != TRANSPARENT and bridged:  # the pixel holds a line together: keep it in it
+        return min(bridged, key=lambda c: (float(np.linalg.norm(lab[c] - lab[own])), c))
     if len(top) == 1 or own == TRANSPARENT:
         return top[0]
 
@@ -45,6 +50,25 @@ def _replacement(key: npt.NDArray[np.int64], y: int, x: int, lab: npt.NDArray[np
         return float("inf") if c == TRANSPARENT else float(np.linalg.norm(lab[c] - lab[own]))
 
     return min(top, key=lambda c: (distance(c), c))
+
+
+RING = ((-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1))
+
+
+def _bridged(key: npt.NDArray[np.int64], y: int, x: int) -> list[int]:
+    """Colours whose pixels around (y, x) fall apart without it: they come back to the
+    ring of 8 neighbours more than once, as a 1-px line through the pixel does."""
+    h, w = key.shape
+    ring = [
+        int(key[y + dy, x + dx]) if 0 <= y + dy < h and 0 <= x + dx < w else TRANSPARENT
+        for dy, dx in RING
+    ]
+    out = []
+    for c in set(ring) - {TRANSPARENT}:
+        starts = sum(ring[i] == c and ring[i - 1] != c for i in range(8))
+        if starts > 1:
+            out.append(c)
+    return out
 
 
 def clean(

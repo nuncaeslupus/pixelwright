@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 from PIL import Image as PILImage
 
 from pixelwright.asset import Asset, AssetError
@@ -19,6 +20,7 @@ from pixelwright.core.checks import CheckResult, check_banding, check_line_runs,
 from pixelwright.core.clean import clean
 from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
+from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.snap import snap
@@ -129,6 +131,16 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     return Prepared(native, snapped.scale, False, warnings)
 
 
+def _grow(mask: npt.NDArray[np.bool_]) -> npt.NDArray[np.bool_]:
+    """The mask plus its 4-neighbours."""
+    out = mask.copy()
+    out[1:] |= mask[:-1]
+    out[:-1] |= mask[1:]
+    out[:, 1:] |= mask[:, :-1]
+    out[:, :-1] |= mask[:, 1:]
+    return out
+
+
 def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
     prep = prepare(asset, source)
@@ -142,10 +154,12 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
         palette = discover_palette(native, colors, importance=imp)
         palette_name = "discovered"
     indexed, _ = quantize_fixed(native, palette)
-    # a lone pixel that stands out strongly (a star, a glint) is meant, not noise
-    cleaned, _ = clean(indexed, imp < PROTECT)
+    # a lone pixel that stands out strongly (a star, a glint) is meant, not noise, and so
+    # is the glow right around it (the arms of a twinkle)
+    protect = _grow(imp >= PROTECT)
+    cleaned, _ = clean(indexed, ~protect)
     if prep.reduced:  # a painting: fold leftover texture specks into their shapes
-        cleaned, _ = remove_small_clusters(cleaned, SPECK, protect=imp >= PROTECT)
+        cleaned, _ = remove_small_clusters(cleaned, SPECK, protect=protect)
     version = asset.add_version(_pil(cleaned))
     if asset.meta().state == "processing":
         asset.set_state("review")
@@ -187,7 +201,16 @@ def run_checks(asset: Asset, version: str | None = None) -> tuple[list[CheckResu
         palette = discover_palette(native, max(1, min(len(colors), 256)))
     indexed, _ = quantize_fixed(native, palette)
     results = [check_orphans(indexed), check_line_runs(indexed), check_banding(indexed)]
-    issues = raise_check_issues(IssueLog(asset), version, results)
+    log = IssueLog(asset)
+    issues = raise_check_issues(log, version, results)
+    for issue in issues:  # the scripts can propose a fix for jaggy lines themselves
+        if issue.rule == "R-PIX-4":
+            lines, count = regularise_lines(indexed)
+            if count:
+                log.propose_fix(
+                    issue.id, _pil(lines), by="script", base=version,
+                    op={"script": "regularise_lines", "lines": count},
+                )  # fmt: skip
     return results, issues
 
 

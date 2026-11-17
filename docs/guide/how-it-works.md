@@ -14,7 +14,8 @@ cleaned, each showing its next step.
    app picks it up. On the command line: `pw add scenes/harbour --from harbour.png`.
 2. **Scripts run.** `pw normalize` finds the pixel grid, maps colours to the palette and
    removes stray pixels into a new version; `pw check` raises an issue for each problem
-   it measures. The app runs both as soon as an image arrives. An image with no pixel
+   it measures. For jaggy straight lines (steps like 1,2,1,3) the scripts also propose
+   the fix: the same lines redrawn with even steps, for you to accept or reject. The app runs both as soon as an image arrives. An image with no pixel
    grid near the canvas size (a painting, a photo) is first reduced to the canvas: brush
    texture is flattened while edges are kept, and specks of 1-4 pixels left after the
    palette are folded into the shapes around them. With
