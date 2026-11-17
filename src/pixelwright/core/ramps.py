@@ -111,13 +111,15 @@ def ramp_palette(keys: dict[str, str], steps: int = 5, *, ends: bool = True) -> 
 
 
 KEY_LIGHT = (0.45, 0.75)  # OKLab lightness range of a key taken from images
+VIVID = 0.8  # a key's chroma: this weighted percentile of its family's
 NEUTRAL = 0.03  # OKLab chroma below which a colour is a grey (one family of its own)
 
 
 def hue_families(lab: FloatArray, weight: FloatArray, n: int) -> dict[str, str]:
     """Key colours for `n` ramps from OKLab pixels: k-means on hue and chroma only (a, b),
     so a family holds a material's darks and lights; each key is the family's weighted
-    mean hue at its median lightness, kept to a mid-tone. Greys make one family."""
+    mean hue at its median lightness (kept to a mid-tone) and its vivid-end chroma.
+    Greys make one family."""
     grey = np.hypot(lab[:, 1], lab[:, 2]) < NEUTRAL
     keys: dict[str, str] = {}
     if grey.any() and weight[grey].sum() > 0.02 * weight.sum():
@@ -145,5 +147,12 @@ def _key(lab: FloatArray, weight: FloatArray) -> str:
     light = lab[order][np.searchsorted(cum, cum[-1] / 2), 0]
     light = float(np.clip(light, *KEY_LIGHT))  # mid-tone, so the ramp has room both ways
     a, b = np.average(lab[:, 1:], axis=0, weights=weight)
+    # the mean of a family is duller than its colours: keep its hue, at its vivid end
+    chroma = np.hypot(lab[:, 1], lab[:, 2])
+    by_c = np.argsort(chroma)
+    cum_c = np.cumsum(weight[by_c])
+    vivid = chroma[by_c][min(len(by_c) - 1, np.searchsorted(cum_c, VIVID * cum_c[-1]))]
+    norm = max(float(np.hypot(a, b)), 1e-9)
+    a, b = a / norm * vivid, b / norm * vivid
     r, g, bl = oklab_to_srgb8(np.array([light, a, b]))
     return f"{int(r):02x}{int(g):02x}{int(bl):02x}"
