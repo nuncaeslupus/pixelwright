@@ -5,6 +5,7 @@ label: "T73: Game style kit"
 priority: 1
 deps: [t-76a6c43f]
 tags: [m6]
+status: merged
 ---
 
 One style kit per project (and per category): palette, native size, pixel rules, reference images in `style/references/` and a prompt preamble. `pw generate` always sends it (palette as hex codes or provider palette input, references as image inputs where supported), and normalise uses the same palette and canvas, so 'for my game, an empty old bar with a stage and a piano under spotlights' comes back in the game's style. `pw style show` prints the kit.
