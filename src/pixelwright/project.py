@@ -22,6 +22,7 @@ PALETTES_DIR = Path("style") / "palettes"
 DEFAULT_CANVAS: dict[str, int] = {"width": 320, "height": 180}
 DEFAULT_PALETTE = "main"
 RULE_LEVELS = ("error", "warn", "off")
+AGENTS_TEMPLATE = Path(__file__).parent / "templates" / "AGENTS.md"
 
 
 class ProjectError(ValueError):
@@ -166,6 +167,9 @@ def init_project(root: Path, name: str | None = None) -> Project:
     for sub in (ASSETS_DIR, str(PALETTES_DIR)):
         (root / sub).mkdir(parents=True, exist_ok=True)
     write_toml(root / PROJECT_FILE, project.to_dict())
+    agents = root / "AGENTS.md"
+    if not agents.exists():  # how any AI agent works in this project
+        agents.write_text(AGENTS_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
     return project
 
 
