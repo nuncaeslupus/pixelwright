@@ -16,21 +16,32 @@ from typing import Any
 import numpy as np
 from PIL import Image as PILImage
 
+from pixelwright.budget import Ledger, api_key, budget_guard, monthly_limit
 from pixelwright.cli.commands import region_mask
+from pixelwright.cli.flow_commands import generate_v2, is_v2
 from pixelwright.cli.registry import EXIT_USAGE, Outcome, Param, PwError, command
 from pixelwright.core import providers as pv
 from pixelwright.core.image import RGBImage
 from pixelwright.io.aseprite_cli import find_aseprite
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import encode_png, read_png
+from pixelwright.project import load_project
 from pixelwright.workspace import Asset, Workspace
-from pixelwright.workspace.budget import Ledger, api_key, budget_guard, monthly_limit
 from pixelwright.workspace.files import sha256_file
 from pixelwright.workspace.next_step import next_step
 from pixelwright.workspace.style import load_style
 
 IMAGE = "image.png"
 DEFAULT_SCALE = 4  # painters work at a multiple of the native canvas; snap brings it back
+
+
+def _settings(root: Path) -> tuple[Path, dict[str, Any]]:
+    """The root and the `pixelwright.toml` tables, for a v2 project or an old workspace."""
+    if is_v2(root):
+        project = load_project(root)
+        return project.root, project.extra
+    ws = Workspace.open(root)
+    return ws.root, ws.config.extra
 
 
 def provider_config(ws: Workspace, name: str) -> dict[str, Any]:
@@ -79,16 +90,16 @@ def _size(text: str | None, canvas: dict[str, int], scale: int) -> tuple[int, in
     Param("by", help="group rows by", choices=("provider", "asset")),
 )
 def cmd_cost(root: Path, a: dict[str, Any]) -> Outcome:
-    ws = Workspace.open(root)
+    root, settings = _settings(root)
     month = a["month"] or datetime.now(UTC).strftime("%Y-%m")
     if len(month) != 7 or month[4] != "-":
         raise PwError("invalid", f"month must be YYYY-MM, got {month!r}")
-    ledger = Ledger(ws.root)
+    ledger = Ledger(root)
     rows = ledger.rows(month)
     data: dict[str, Any] = {
         "month": month,
         "spent_usd": ledger.spent(month),
-        "limit_usd": monthly_limit(ws.config),
+        "limit_usd": monthly_limit(settings),
         "calls": len(rows),
         "cache_hits": sum(1 for r in rows if r["cache_hit"]),
     }
@@ -105,20 +116,24 @@ def cmd_cost(root: Path, a: dict[str, Any]) -> Outcome:
 @command(
     "generate",
     "paint candidate versions with an image provider (the style preset shapes the request)",
-    Param("asset", help="asset id", required=True, positional=True),
+    Param("asset", help="asset id, or asset path in a v2 project", required=True, positional=True),
     Param("provider", help="provider name (default: [defaults] in pixelwright.toml)"),
     Param("mode", help="what to send", choices=pv.MODES),
     Param("prompt", help="what to paint (added after the style preamble)", default=""),
     Param("prompt_file", help="read the prompt from this file"),
-    Param("init", help="init image: `sketch` or a version (default: the sketch if any)"),
+    Param("init", help="init image: `sketch` (v2: `input`), `none` or a version"),
     Param("n", "int", help="candidates, 1-4", default=1),
     Param("seed", "int", help="seed, for reproducible calls"),
     Param("size", help="generation size WIDTHxHEIGHT (default: canvas x 4)"),
     Param("experiment", "bool", help="keep the results as experiments, not drafts"),
     Param("dry_run", "bool", help="show the request hash and estimated cost; send nothing"),
     Param("budget_override", "bool", help="allow this call to pass the monthly budget"),
+    Param("issue", help="v2 project: repaint this issue's areas and propose it as a fix"),
 )
 def cmd_generate(root: Path, a: dict[str, Any]) -> Outcome:
+    if is_v2(root):
+        out: Outcome = generate_v2(root, a)
+        return out
     ws = Workspace.open(root)
     asset = ws.asset(a["asset"])
     spec = asset.spec()
@@ -181,7 +196,7 @@ def cmd_generate(root: Path, a: dict[str, Any]) -> Outcome:
             },
         )
 
-    guard = None if a["budget_override"] else budget_guard(ws.root, ws.config)
+    guard = None if a["budget_override"] else budget_guard(ws.root, ws.config.extra)
     result = pv.run(provider, req, pv.Cache(ws.path("cache")), guard)
     inputs = {"init": sha256_file(init)} if init is not None else {}
     stage = "experiment" if a["experiment"] else "draft"
@@ -226,8 +241,8 @@ def _check(name: str, ok: bool, detail: str, fix: str = "") -> dict[str, Any]:
     return {"check": name, "ok": ok, "detail": detail, "fix": "" if ok else fix}
 
 
-def _comfyui_row(ws: Workspace) -> dict[str, Any]:
-    cfg = ws.config.extra.get("providers", {}).get("comfyui", {})
+def _comfyui_row(settings: dict[str, Any]) -> dict[str, Any]:
+    cfg = settings.get("providers", {}).get("comfyui", {})
     url = str(cfg.get("base_url", "http://127.0.0.1:8188")).rstrip("/")
     try:
         with urllib.request.urlopen(url + "/system_stats", timeout=2) as resp:
@@ -250,7 +265,7 @@ def _comfyui_row(ws: Workspace) -> dict[str, Any]:
     Param("offline", "bool", help="skip the checks that use the network (ComfyUI)"),
 )
 def cmd_doctor(root: Path, a: dict[str, Any]) -> Outcome:
-    ws = Workspace.open(root)
+    root, settings = _settings(root)
     rows = [
         _check(
             "python", sys.version_info >= (3, 12), platform.python_version(), "use Python 3.12+"
@@ -268,16 +283,16 @@ def cmd_doctor(root: Path, a: dict[str, Any]) -> Outcome:
     for name in pv.names():
         if name == "comfyui":
             if not a["offline"]:
-                rows.append(_comfyui_row(ws))
+                rows.append(_comfyui_row(settings))
             continue
         if pv.needs_key(name):
             try:
-                api_key(ws.root, name)
+                api_key(root, name)
                 rows.append(_check(name, True, "key found"))
             except pv.ProviderError as err:
                 rows.append(_check(name, False, "no key", err.message))
     month = datetime.now(UTC).strftime("%Y-%m")
-    spent, limit = Ledger(ws.root).spent(month), monthly_limit(ws.config)
+    spent, limit = Ledger(root).spent(month), monthly_limit(settings)
     rows.append(
         _check(
             "budget",
@@ -372,7 +387,7 @@ def cmd_regen_region(root: Path, a: dict[str, Any]) -> Outcome:
             params=dict(preset.get("params", {})),
         )
         pv.check_capability(provider, req)
-        guard = None if a["budget_override"] else budget_guard(ws.root, ws.config)
+        guard = None if a["budget_override"] else budget_guard(ws.root, ws.config.extra)
         result = pv.run(provider, req, pv.Cache(ws.path("cache")), guard)
         inputs = {"init": sha256_file(init), "mask": sha256_file(mask)}
     painted = PILImage.open(io.BytesIO(result.images[0])).convert("RGBA")
