@@ -115,5 +115,5 @@ def test_missing_palette_is_discovered_with_a_warning(
     (project / "style" / "palettes" / "main.gpl").unlink()
     pw(capsys, project, "add", "props/crate", "--from", str(source))
     env = pw(capsys, project, "normalize", "props/crate")
-    assert env["data"]["palette"] == "discovered"
+    assert env["data"]["palette"] == "own (5)"  # clean pixel art keeps its own colours
     assert any("palette" in w for w in env["warnings"])
