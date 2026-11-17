@@ -431,12 +431,14 @@ SWATCH_ROW = 16
 
 
 def write_swatch(palette: Palette, path: Path) -> Path:
-    """The palette as an image (16 squares per row), to show an image model the colours."""
-    rows = -(-len(palette.colors) // SWATCH_ROW)
-    size = (SWATCH * min(SWATCH_ROW, len(palette.colors)), SWATCH * rows)
+    """The palette as an image (its own columns, else 16 squares per row), to show an image
+    model the colours."""
+    per_row = palette.columns or SWATCH_ROW
+    rows = -(-len(palette.colors) // per_row)
+    size = (SWATCH * min(per_row, len(palette.colors)), SWATCH * rows)
     img = PILImage.new("RGBA", size, (0, 0, 0, 0))  # a short last row stays transparent
     for i, c in enumerate(palette.colors):
-        x, y = (i % SWATCH_ROW) * SWATCH, (i // SWATCH_ROW) * SWATCH
+        x, y = (i % per_row) * SWATCH, (i // per_row) * SWATCH
         img.paste((c.r, c.g, c.b, 255), (x, y, x + SWATCH, y + SWATCH))
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path)

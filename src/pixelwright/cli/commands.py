@@ -10,6 +10,7 @@ from pixelwright import flow
 from pixelwright.cli.flow_commands import ASSET, _asset, _project, check_v2, init_v2, status_v2
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 from pixelwright.core.image import RGBImage
+from pixelwright.core.ramps import PRESETS, ramp_palette
 from pixelwright.core.snap import snap
 from pixelwright.io.palette_io import read_palette, write_palette
 from pixelwright.io.png import read_png
@@ -47,14 +48,18 @@ def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
 
 @command(
     "palette",
-    "import a palette file, discover one from assets' inputs or images, or list them",
+    "import a palette file, discover one from images, build one from ramps, or list them",
     Param("action", help="what to do", required=True, positional=True,
-          choices=("import", "discover", "show")),
+          choices=("import", "discover", "ramps", "show")),
     Param("file", help="palette file (.gpl or .hex) for import"),
     Param("asset", "list", help="discover: asset paths (their newest inputs)"),
     Param("images", "list", help="discover: image files"),
     Param("colors", "int", help="colors for discover (plus up to 8 accents)", default=16),
-    Param("swatch", "bool", help="discover: also save style/references/palette-<name>.png"),
+    Param("keys", "list", help="ramps: key colours as name=rrggbb (added to the preset)"),
+    Param("preset", help="ramps: starting set of key colours", choices=("adventure", "none"),
+          default="adventure"),
+    Param("steps", "int", help="ramps: shades per key colour", default=5),
+    Param("swatch", "bool", help="discover, ramps: also save style/references/palette-<name>.png"),
     Param("name", help="palette name (default: from the file or the asset)"),
 )  # fmt: skip
 def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
@@ -70,6 +75,20 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
             raise PwError("invalid", "palette import needs --file")
         src = Path(a["file"])
         palette, name = read_palette(src), a["name"] or src.stem
+    elif a["action"] == "ramps":
+        keys = dict(PRESETS.get(a["preset"], {}))
+        for item in a["keys"] or []:
+            key, _, hexa = item.partition("=")
+            if not hexa:
+                raise PwError("invalid", f"--keys wants name=rrggbb, got {item!r}")
+            keys[key] = hexa
+        if not keys:
+            raise PwError("invalid", "palette ramps needs --keys or a --preset")
+        try:
+            palette = ramp_palette(keys, a["steps"])
+        except ValueError as exc:
+            raise PwError("invalid", str(exc)) from exc
+        name = a["name"] or "ramps"
     else:
         images, names = [], []
         for rel in a["asset"] or []:
@@ -90,7 +109,7 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
     folder.mkdir(parents=True, exist_ok=True)
     write_palette(dest, palette)
     outputs = [str(dest)]
-    if a["action"] == "discover" and a["swatch"]:
+    if a["action"] in ("discover", "ramps") and a["swatch"]:
         swatch = project.root / "style" / "references" / f"palette-{name}.png"
         outputs.append(str(flow.write_swatch(palette, swatch)))
     return Outcome(outputs=outputs, data={"palette": name, "colors": len(palette)},
