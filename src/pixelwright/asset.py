@@ -229,7 +229,29 @@ class Asset:
         meta = self.meta()
         meta.final, meta.state = name, "finished"
         self.save_meta(meta)
+        if not self.project.keep_all_versions:
+            self.prune()
         return target
+
+    def protected(self) -> set[str]:
+        """Versions pruning never removes: v001, starred, final and the latest (which
+        also keeps version numbers from being reused)."""
+        meta = self.meta()
+        keep = {version_name(1), *meta.starred}
+        if meta.final:
+            keep.add(meta.final)
+        latest = self.latest()
+        if latest:
+            keep.add(latest)
+        return keep
+
+    def prune(self) -> list[str]:
+        """Delete unprotected versions; inputs are never touched. Returns what was removed."""
+        keep = self.protected()
+        removed = [v for v in self.versions() if v not in keep]
+        for name in removed:
+            (self.path / VERSIONS / f"{name}.png").unlink()
+        return removed
 
 
 def open_asset(project: Project, path: Path) -> Asset:
