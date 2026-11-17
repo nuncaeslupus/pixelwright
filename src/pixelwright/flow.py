@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image as PILImage
 
 from pixelwright.asset import Asset, AssetError
+from pixelwright.core.abstract import kuwahara, remove_small_clusters
 from pixelwright.core.checks import CheckResult, check_banding, check_line_runs, check_orphans
 from pixelwright.core.clean import clean
 from pixelwright.core.image import IndexedImage, RGBImage
@@ -28,8 +29,11 @@ from pixelwright.project import Project
 from pixelwright.rules import raise_check_issues
 
 DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colours
+PAINTING_COLORS = 24  # a reduced painting has no palette of its own to recover
+SPECK = 4  # in a reduced painting, same-colour groups this small are texture, not shape
 PROTECT = 0.8  # pixels at least this important are never cleaned away
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
+UNDERSIZE = 0.5  # ... or this much smaller, while the image itself is larger than the canvas
 
 
 @dataclass
@@ -58,10 +62,18 @@ def _pil(image: IndexedImage | RGBImage) -> PILImage.Image:
     return PILImage.fromarray(np.ascontiguousarray(image.to_rgba()), mode="RGBA")
 
 
-def reduce_to_canvas(image: RGBImage, canvas: tuple[int, int]) -> RGBImage:
+def reduce_to_canvas(
+    image: RGBImage, canvas: tuple[int, int], *, simplify: bool = False
+) -> RGBImage:
     """Scale an image without a usable pixel grid (a painting, a photo) down to fit the
-    canvas, keeping its aspect ratio; each new pixel is the area average of the old ones."""
+    canvas, keeping its aspect ratio; each new pixel is the area average of the old ones.
+    `simplify` first flattens brush texture while keeping edges (`core.abstract.kuwahara`)."""
     factor = min(canvas[0] / image.width, canvas[1] / image.height)
+    if simplify and factor < 0.5:
+        rgba = image.rgba.astype(np.float64)
+        flat = kuwahara(rgba[..., :3], max(1, round(0.5 / factor)))
+        rgba[..., :3] = flat
+        image = RGBImage(np.clip(np.rint(rgba), 0, 255).astype(np.uint8))
     size = (max(1, round(image.width * factor)), max(1, round(image.height * factor)))
     small = PILImage.fromarray(np.ascontiguousarray(image.rgba), "RGBA").resize(
         size, PILImage.Resampling.BOX
@@ -95,8 +107,15 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     canvas = asset.settings().canvas
     cw, ch = canvas["width"], canvas["height"]
     native = snapped.image
-    if native.width > cw * OVERSIZE and native.height > ch * OVERSIZE:
-        small = reduce_to_canvas(source_rgb, (cw, ch))
+    too_big = native.width > cw * OVERSIZE and native.height > ch * OVERSIZE
+    too_small = (  # a coarse false grid on a big painting: 80x44 for a 320x180 scene
+        native.width < cw * UNDERSIZE
+        and native.height < ch * UNDERSIZE
+        and source_rgb.width > cw
+        and source_rgb.height > ch
+    )
+    if too_big or too_small:
+        small = reduce_to_canvas(source_rgb, (cw, ch), simplify=True)
         return Prepared(small, 1, True, [
             f"no pixel grid near the canvas (snapped {native.width}x{native.height}); "
             f"reduced {source_rgb.width}x{source_rgb.height} to {small.width}x{small.height}"
@@ -119,11 +138,14 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     palette_name = asset.settings().palette
     if palette is None:
         warnings.append(f"palette {palette_name!r} not in style/palettes; colours discovered")
-        palette = discover_palette(native, DISCOVERED_COLORS, importance=imp)
+        colors = PAINTING_COLORS if prep.reduced else DISCOVERED_COLORS
+        palette = discover_palette(native, colors, importance=imp)
         palette_name = "discovered"
     indexed, _ = quantize_fixed(native, palette)
     # a lone pixel that stands out strongly (a star, a glint) is meant, not noise
     cleaned, _ = clean(indexed, imp < PROTECT)
+    if prep.reduced:  # a painting: fold leftover texture specks into their shapes
+        cleaned, _ = remove_small_clusters(cleaned, SPECK, protect=imp >= PROTECT)
     version = asset.add_version(_pil(cleaned))
     if asset.meta().state == "processing":
         asset.set_state("review")

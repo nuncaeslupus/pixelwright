@@ -15,7 +15,9 @@ cleaned, each showing its next step.
 2. **Scripts run.** `pw normalize` finds the pixel grid, maps colours to the palette and
    removes stray pixels into a new version; `pw check` raises an issue for each problem
    it measures. The app runs both as soon as an image arrives. An image with no pixel
-   grid near the canvas size (a painting, a photo) is first reduced to the canvas. With
+   grid near the canvas size (a painting, a photo) is first reduced to the canvas: brush
+   texture is flattened while edges are kept, and specks of 1-4 pixels left after the
+   palette are folded into the shapes around them. With
    no palette in the project, one is discovered: 16 colours plus up to 8 *accents*,
    small colours that stand out where they are (a lit window, the moon, an eye).
    `pw colors <asset>` shows that analysis before normalising: the colour groups, the
