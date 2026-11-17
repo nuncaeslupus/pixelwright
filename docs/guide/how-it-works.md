@@ -99,3 +99,10 @@ No palette file yet? `colors = 248` in a `category.toml` or `asset.toml` builds 
 palette from each input instead (accents included), and the prompt asks for at most
 that many colours.
 
+
+Image models read a list of hex codes as a mood, not a limit, so for a provider that
+takes no palette the prompt names only the palette's size; show the colours as an
+image instead. `pw palette discover --asset scenes/tavern scenes/street --colors 32
+--name base --swatch` builds one palette shared by several assets (or `--images` files)
+and saves it as `style/palettes/base.gpl` plus a swatch in
+`style/references/palette-base.png`, which then goes with every prompt.

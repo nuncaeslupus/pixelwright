@@ -6,11 +6,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from pixelwright import flow
 from pixelwright.cli.flow_commands import ASSET, _asset, _project, check_v2, init_v2, status_v2
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 from pixelwright.core.image import RGBImage
-from pixelwright.core.importance import importance_map
-from pixelwright.core.quantize import discover_palette
+from pixelwright.core.snap import snap
 from pixelwright.io.palette_io import read_palette, write_palette
 from pixelwright.io.png import read_png
 
@@ -47,12 +47,14 @@ def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
 
 @command(
     "palette",
-    "import a palette file, discover one from an asset's latest version, or list them",
+    "import a palette file, discover one from assets' inputs or images, or list them",
     Param("action", help="what to do", required=True, positional=True,
           choices=("import", "discover", "show")),
     Param("file", help="palette file (.gpl or .hex) for import"),
-    Param("asset", help="asset path for discover"),
+    Param("asset", "list", help="discover: asset paths (their newest inputs)"),
+    Param("images", "list", help="discover: image files"),
     Param("colors", "int", help="colors for discover (plus up to 8 accents)", default=16),
+    Param("swatch", "bool", help="discover: also save style/references/palette-<name>.png"),
     Param("name", help="palette name (default: from the file or the asset)"),
 )  # fmt: skip
 def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
@@ -69,17 +71,36 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         src = Path(a["file"])
         palette, name = read_palette(src), a["name"] or src.stem
     else:
-        asset = _asset(root, a["asset"])
-        latest = asset.latest()
-        if latest is None:
-            raise PwError("invalid", f"{asset.rel} has no version to take colours from")
-        image = read_png(asset.version_path(latest))
-        rgb = image if isinstance(image, RGBImage) else image.to_rgb_image()
-        imp = importance_map(rgb)
-        palette = discover_palette(rgb, a["colors"], importance=imp)
-        name = a["name"] or asset.name
+        images, names = [], []
+        for rel in a["asset"] or []:
+            asset = _asset(root, rel)
+            if not asset.inputs() and asset.latest() is None:
+                raise PwError("invalid", f"{asset.rel} has no image to take colours from")
+            # the raw input at pixel scale: a version already carries a palette's colours
+            images.append(flow.prepare(asset).image if asset.inputs() else _version(asset))
+            names.append(asset.name)
+        for file in a["images"] or []:
+            images.append(snap(_rgb_file(Path(file))).image)
+            names.append(Path(file).stem)
+        if not images:
+            raise PwError("invalid", "palette discover needs --asset or --images")
+        palette = flow.palette_from(images, a["colors"])
+        name = a["name"] or names[0]
     dest = folder / f"{name}.gpl"
     folder.mkdir(parents=True, exist_ok=True)
     write_palette(dest, palette)
-    return Outcome(outputs=[str(dest)], data={"palette": name, "colors": len(palette)},
+    outputs = [str(dest)]
+    if a["action"] == "discover" and a["swatch"]:
+        swatch = project.root / "style" / "references" / f"palette-{name}.png"
+        outputs.append(str(flow.write_swatch(palette, swatch)))
+    return Outcome(outputs=outputs, data={"palette": name, "colors": len(palette)},
                    text=f"Palette {name}: {len(palette)} colours")  # fmt: skip
+
+
+def _rgb_file(path: Path) -> RGBImage:
+    image = read_png(path)
+    return image if isinstance(image, RGBImage) else image.to_rgb_image()
+
+
+def _version(asset: Any) -> RGBImage:
+    return _rgb_file(asset.version_path(asset.latest()))

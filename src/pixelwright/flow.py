@@ -369,3 +369,36 @@ def scan(project: Project) -> list[Asset]:
             if image.is_file() and image.suffix.lower() in IMAGE_SUFFIXES:
                 found.append(ingest(project, image, category, move=True))
     return found
+
+
+def palette_from(images: list[RGBImage], n: int) -> Palette:
+    """One palette of about `n` colours (plus accents) shared by several images at pixel
+    scale: a scene set's or a cast's colours, each image weighted by its own importance."""
+    if not images:
+        raise ValueError("no images to take colours from")
+    h = max(im.height for im in images)
+    w = sum(im.width for im in images)
+    rgba = np.zeros((h, w, 4), np.uint8)  # side by side; the padding is transparent
+    imp = np.zeros((h, w))
+    x = 0
+    for im in images:
+        rgba[: im.height, x : x + im.width] = im.rgba
+        imp[: im.height, x : x + im.width] = importance_map(im)
+        x += im.width
+    return discover_palette(RGBImage(rgba), n, importance=imp)
+
+
+SWATCH = 24  # px per colour in a palette swatch
+SWATCH_ROW = 16
+
+
+def write_swatch(palette: Palette, path: Path) -> Path:
+    """The palette as an image (16 squares per row), to show an image model the colours."""
+    rows = -(-len(palette.colors) // SWATCH_ROW)
+    img = PILImage.new("RGB", (SWATCH * min(SWATCH_ROW, len(palette.colors)), SWATCH * rows))
+    for i, c in enumerate(palette.colors):
+        x, y = (i % SWATCH_ROW) * SWATCH, (i // SWATCH_ROW) * SWATCH
+        img.paste((c.r, c.g, c.b), (x, y, x + SWATCH, y + SWATCH))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path)
+    return path
