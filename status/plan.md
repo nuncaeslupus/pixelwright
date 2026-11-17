@@ -103,6 +103,9 @@ request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 | T64 | Agent instructions | plugin | M | T57, T59 | `skills_invalid == 0` | `test_skills_reference_existing_commands` in `tests/test_skills.py` — every `pw` command named in a skill exists |
 | T65 | Migrate + clean up | core | M | T63, T64 | `tests_failed == 0` | `test_migrate_m3_workspace_preserves_versions` in `tests/test_migrate.py` — every old version is present and readable after migration |
 | T66 | Windows core CI | ci | S | T57 | `windows_core_tests_failed == 0` | none (CI job) |
+| T67 | Generation on v2 | core | L | T65 | `tests_failed == 0` | `test_generate_adds_inputs_and_versions` in `tests/test_generate_v2.py` — a replay provider's images become inputs, then normalised versions; cost is logged |
+| T68 | Bench on v2 | core | M | T67 | `tests_failed == 0` | `test_bench_run_on_project` in `tests/bench/test_run.py` — a matrix run on a v2 project scores every provider + chain |
+| T69 | Remove the old workspace | core | L | T67, T68 | `tests_failed == 0` | `test_no_workspace_package` in `tests/test_meta.py` — `pixelwright.workspace` no longer exists and every command runs on a v2 project |
 
 ### Task details
 
@@ -121,6 +124,9 @@ request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 - **T64 Agent instructions**: Agent instructions: rewrite Claude skills (style, critique-and-fix loop, listen with `pw wait`) and add `AGENTS.md`
 - **T65 Migrate + clean up**: `pw migrate` for M0–M3 workspaces; remove the four-mode viewer, `pw tour` and stages; update docs
 - **T66 Windows core CI**: Windows CI job running the core tests
+- **T67 Generation on v2**: `pw generate <asset>` runs a provider; its images land in `inputs/` and the scripts normalise each into a version. `pw generate <asset> --issue <id>` repaints the issue's areas and proposes the result as a fix. Providers, defaults and the monthly budget are read from `pixelwright.toml`; `pw cost` and `pw doctor` work on the project
+- **T68 Bench on v2**: `pw bench` builds its assets in a v2 project (`assets/bench/...`), runs the chains through normalise and check, and ranks as before
+- **T69 Remove the old workspace**: Delete `pixelwright.workspace` and the M0–M3 commands (stages, approve/reject/export, masks, critique, inbox, next, render, diff, `init --legacy`); `pw palette import` writes to `style/palettes/`; the Aseprite bridge sends versions to v2 assets; `pw migrate` keeps reading old workspaces
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged
 **Merge order**: T52 and T53 first; then T54 → T55; then T56, T57, T59 in parallel; T58, T60, T66; then T61 → T62 → T63; T64; T65 last
