@@ -150,9 +150,52 @@ def cmd_normalize(root: Path, a: dict[str, Any]) -> Outcome:
         asset.rel,
         res.version,
         outputs=[str(asset.version_path(res.version))],
-        data={"scale": res.scale, "size": list(res.size), "palette": res.palette},
+        data={
+            "scale": res.scale,
+            "size": list(res.size),
+            "palette": res.palette,
+            "reduced": res.reduced,
+        },
         warnings=res.warnings,
         text=f"{asset.rel}: {res.version} ({res.size[0]}x{res.size[1]}, palette {res.palette})",
+    )
+
+
+@command(
+    "colors",
+    "analyse an input's colours before normalising: groups, accents, importance heatmap",
+    ASSET,
+    Param("input", help="input file (default: the newest in inputs/)"),
+    Param("top", "int", help="colour groups to list", default=12),
+)
+@_guard
+def cmd_colors(root: Path, a: dict[str, Any]) -> Outcome:
+    asset = _asset(root, a["asset"])
+    res = flow.analyze(asset, Path(a["input"]) if a["input"] else None)
+
+    def row(g: Any) -> dict[str, Any]:
+        return {
+            "color": "#{:02x}{:02x}{:02x}".format(*g.color),
+            "share": round(g.share, 4),
+            "importance": round(g.importance, 3),
+            "accent": g.accent,
+        }
+
+    accents = [row(g) for g in res.groups if g.accent]
+    image = res.prepared.image
+    lines = [f"{asset.rel}: {len(res.groups)} colour groups at {image.width}x{image.height}"]
+    lines += [f"  accent {r['color']}  {r['share']:.2%} of the image" for r in accents]
+    return Outcome(
+        asset.rel,
+        outputs=[str(res.heatmap)],
+        data={
+            "size": [image.width, image.height],
+            "groups": [row(g) for g in res.groups[: a["top"]]],
+            "accents": accents,
+            "reduced": res.prepared.reduced,
+        },
+        warnings=res.prepared.warnings,
+        text="\n".join(lines),
     )
 
 

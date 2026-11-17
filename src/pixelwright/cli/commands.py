@@ -9,6 +9,7 @@ from typing import Any
 from pixelwright.cli.flow_commands import ASSET, _asset, _project, check_v2, init_v2, status_v2
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 from pixelwright.core.image import RGBImage
+from pixelwright.core.importance import importance_map
 from pixelwright.core.quantize import discover_palette
 from pixelwright.io.palette_io import read_palette, write_palette
 from pixelwright.io.png import read_png
@@ -51,7 +52,7 @@ def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
           choices=("import", "discover", "show")),
     Param("file", help="palette file (.gpl or .hex) for import"),
     Param("asset", help="asset path for discover"),
-    Param("colors", "int", help="number of colors for discover", default=16),
+    Param("colors", "int", help="colors for discover (plus up to 8 accents)", default=16),
     Param("name", help="palette name (default: from the file or the asset)"),
 )  # fmt: skip
 def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
@@ -74,7 +75,9 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
             raise PwError("invalid", f"{asset.rel} has no version to take colours from")
         image = read_png(asset.version_path(latest))
         rgb = image if isinstance(image, RGBImage) else image.to_rgb_image()
-        palette, name = discover_palette(rgb, a["colors"]), a["name"] or asset.name
+        imp = importance_map(rgb)
+        palette = discover_palette(rgb, a["colors"], importance=imp)
+        name = a["name"] or asset.name
     dest = folder / f"{name}.gpl"
     folder.mkdir(parents=True, exist_ok=True)
     write_palette(dest, palette)

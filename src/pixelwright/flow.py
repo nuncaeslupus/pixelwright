@@ -17,6 +17,7 @@ from pixelwright.asset import Asset, AssetError
 from pixelwright.core.checks import CheckResult, check_banding, check_line_runs, check_orphans
 from pixelwright.core.clean import clean
 from pixelwright.core.image import IndexedImage, RGBImage
+from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
 from pixelwright.core.palette import Palette
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.snap import snap
@@ -26,16 +27,18 @@ from pixelwright.issues import Issue, IssueLog
 from pixelwright.project import Project
 from pixelwright.rules import raise_check_issues
 
-DISCOVERED_COLORS = 16
+DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colours
+OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
 
 
 @dataclass
 class NormalizeResult:
     version: str
-    scale: int
+    scale: int  # detected pixel size in source pixels (1 when reduced to the canvas)
     size: tuple[int, int]
     palette: str
     warnings: list[str]
+    reduced: bool = False  # no pixel grid near the canvas: the image was scaled down to it
 
 
 def asset_palette(asset: Asset) -> Palette | None:
@@ -54,35 +57,97 @@ def _pil(image: IndexedImage | RGBImage) -> PILImage.Image:
     return PILImage.fromarray(np.ascontiguousarray(image.to_rgba()), mode="RGBA")
 
 
-def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
-    """Input → next version: detect the pixel grid, map to the palette, clean stray pixels."""
-    if source is None:
-        inputs = asset.inputs()
-        if not inputs:
-            raise AssetError(f"{asset.rel}: no input to normalise; add an image first")
-        source = inputs[-1]
-    warnings: list[str] = []
-    snapped = snap(_rgb(source))
-    native = snapped.image
+def reduce_to_canvas(image: RGBImage, canvas: tuple[int, int]) -> RGBImage:
+    """Scale an image without a usable pixel grid (a painting, a photo) down to fit the
+    canvas, keeping its aspect ratio; each new pixel is the area average of the old ones."""
+    factor = min(canvas[0] / image.width, canvas[1] / image.height)
+    size = (max(1, round(image.width * factor)), max(1, round(image.height * factor)))
+    small = PILImage.fromarray(np.ascontiguousarray(image.rgba), "RGBA").resize(
+        size, PILImage.Resampling.BOX
+    )
+    return RGBImage(np.asarray(small, dtype=np.uint8).copy())
+
+
+@dataclass
+class Prepared:
+    """An input brought to pixel scale, before any palette: what normalize quantizes."""
+
+    image: RGBImage
+    scale: int
+    reduced: bool
+    warnings: list[str]
+
+
+def _source(asset: Asset, source: Path | None) -> Path:
+    if source is not None:
+        return source
+    inputs = asset.inputs()
+    if not inputs:
+        raise AssetError(f"{asset.rel}: no input to normalise; add an image first")
+    return inputs[-1]
+
+
+def prepare(asset: Asset, source: Path | None = None) -> Prepared:
+    """Detect the pixel grid of an input, or reduce it to the canvas when it has none."""
+    source_rgb = _rgb(_source(asset, source))
+    snapped = snap(source_rgb)
     canvas = asset.settings().canvas
-    size = (native.width, native.height)
-    if size != (canvas["width"], canvas["height"]):
+    cw, ch = canvas["width"], canvas["height"]
+    native = snapped.image
+    if native.width > cw * OVERSIZE and native.height > ch * OVERSIZE:
+        small = reduce_to_canvas(source_rgb, (cw, ch))
+        return Prepared(small, 1, True, [
+            f"no pixel grid near the canvas (snapped {native.width}x{native.height}); "
+            f"reduced {source_rgb.width}x{source_rgb.height} to {small.width}x{small.height}"
+        ])  # fmt: skip
+    warnings = []
+    if (native.width, native.height) != (cw, ch):
         warnings.append(
-            f"snapped size {size[0]}x{size[1]} (scale {snapped.scale}) differs from "
-            f"the canvas {canvas['width']}x{canvas['height']}"
+            f"snapped size {native.width}x{native.height} (scale {snapped.scale}) "
+            f"differs from the canvas {cw}x{ch}"
         )
+    return Prepared(native, snapped.scale, False, warnings)
+
+
+def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
+    """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
+    prep = prepare(asset, source)
+    native, warnings = prep.image, list(prep.warnings)
     palette = asset_palette(asset)
     palette_name = asset.settings().palette
     if palette is None:
         warnings.append(f"palette {palette_name!r} not in style/palettes; colours discovered")
-        palette = discover_palette(native, DISCOVERED_COLORS)
+        palette = discover_palette(native, DISCOVERED_COLORS, importance=importance_map(native))
         palette_name = "discovered"
     indexed, _ = quantize_fixed(native, palette)
     cleaned, _ = clean(indexed)
     version = asset.add_version(_pil(cleaned))
     if asset.meta().state == "processing":
         asset.set_state("review")
-    return NormalizeResult(version, snapped.scale, size, palette_name, warnings)
+    size = (native.width, native.height)
+    return NormalizeResult(version, prep.scale, size, palette_name, warnings, prep.reduced)
+
+
+ANALYSIS = "analysis"
+
+
+@dataclass
+class ColorAnalysis:
+    groups: list[ColorGroup]
+    heatmap: Path  # importance per pixel, white = matters most
+    prepared: Prepared
+
+
+def analyze(asset: Asset, source: Path | None = None) -> ColorAnalysis:
+    """Analyse an input's colours as normalize will see them: groups, accents and an
+    importance heatmap saved as `analysis/importance.png` in the asset folder."""
+    prep = prepare(asset, source)
+    imp = importance_map(prep.image)
+    folder = asset.path / ANALYSIS
+    folder.mkdir(exist_ok=True)
+    heatmap = folder / "importance.png"
+    PILImage.fromarray((imp * 255).round().astype(np.uint8), "L").save(heatmap)
+    return ColorAnalysis(analyze_colors(prep.image, imp), heatmap, prep)
 
 
 def run_checks(asset: Asset, version: str | None = None) -> tuple[list[CheckResult], list[Issue]]:
