@@ -25,7 +25,7 @@ reason and reply instead. Never accept, reject or finish on the person's behalf:
 
 ## Commands
 
-`pw init` · `pw add <category>/<name> --from <image>` · `pw normalize <asset>` · `pw check <asset>` ·
+`pw init` · `pw add <category>/<name> --from <image>` · `pw colors <asset>` · `pw normalize <asset>` · `pw check <asset>` ·
 `pw status [asset]` · `pw issues <asset> list|raise|reply|reject|mark-fixed` ·
 `pw fix <asset> propose|accept|reject` · `pw undo <asset>` · `pw redo <asset>` ·
 `pw star <asset> <version>` · `pw finish <asset> [version]` · `pw requests [--hook]` · `pw wait` · `pw open`

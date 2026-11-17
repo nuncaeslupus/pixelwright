@@ -111,3 +111,27 @@ def test_normalize_warns_when_the_snapped_size_is_not_the_canvas(
     assert main(["normalize", "props/box", *art]) == 0
     warnings = json.loads(capsys.readouterr().out)["warnings"]
     assert any("12x10" in w and "scale 4" in w and "320x180" in w for w in warnings), warnings
+
+
+def test_a_painting_without_a_grid_is_reduced_to_the_canvas(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A smooth painting with a fine 2 px brush texture: snap finds that texture (640x360),
+    far larger than the 320x180 canvas, so normalize reduces the whole image instead."""
+    y, x = np.mgrid[0:720, 0:1280]
+    smooth = np.stack(
+        [100 * np.sin(x / 97), 100 * np.sin(y / 61 + x / 150), 100 * np.cos((x + y) / 83)], -1
+    )
+    texture = 12 * ((x // 2 + y // 2) % 2)[..., None]
+    rgb = np.clip(128 + smooth + texture, 0, 255).astype(np.uint8)
+    write_png(
+        tmp_path / "paint.png", RGBImage(np.dstack([rgb, np.full((720, 1280), 255, np.uint8)]))
+    )
+    art = ["--workspace", str(tmp_path / "art"), "--json"]
+    assert main(["init", *art]) == 0
+    assert main(["add", "scenes/hill", "--from", str(tmp_path / "paint.png"), *art]) == 0
+    capsys.readouterr()
+    assert main(["normalize", "scenes/hill", *art]) == 0
+    env = json.loads(capsys.readouterr().out)
+    assert env["data"]["reduced"] and env["data"]["size"] == [320, 180]
+    assert any("reduced 1280x720 to 320x180" in w for w in env["warnings"])

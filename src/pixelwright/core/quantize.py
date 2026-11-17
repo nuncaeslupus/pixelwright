@@ -111,11 +111,26 @@ def quantize_fixed(
     return indexed, report
 
 
-def _weighted_colors(image: RGBImage) -> tuple[FloatArray, FloatArray]:
+ACCENT_BOOST = 40.0  # how much a fully important pixel outweighs a plain one
+ACCENT_MIN = 0.5  # importance from which a pixel counts as an accent
+ACCENT_DE = 0.06  # an accent this far (OKLab) from every palette colour gets its own
+MAX_ACCENTS = 8  # palette entries added for accents, on top of `n`
+
+
+def _weighted_colors(
+    image: RGBImage, importance: FloatArray | None = None
+) -> tuple[FloatArray, FloatArray]:
+    """Unique opaque colours in OKLab and their weights: pixel counts, each pixel boosted
+    by `1 + ACCENT_BOOST * importance^2` when an importance map is given."""
     rgb = image.rgba[..., :3].reshape(-1, 3)
     opaque = (image.rgba[..., 3] >= ALPHA_THRESHOLD).reshape(-1)
-    uniq, counts = np.unique(rgb[opaque], axis=0, return_counts=True)
-    return srgb8_to_oklab(uniq), counts.astype(np.float64)
+    uniq, inverse = np.unique(rgb[opaque], axis=0, return_inverse=True)
+    inverse = inverse.reshape(-1)
+    per_pixel = np.ones(len(inverse))
+    if importance is not None:
+        per_pixel += ACCENT_BOOST * importance.reshape(-1)[opaque] ** 2
+    weight = np.bincount(inverse, per_pixel, len(uniq))
+    return srgb8_to_oklab(uniq), weight
 
 
 def _best_split(
@@ -171,20 +186,54 @@ def _kmeans(
     return centers
 
 
+def _add_accents(image: RGBImage, importance: FloatArray, centers: FloatArray) -> FloatArray:
+    """Append up to MAX_ACCENTS colours for important pixels the palette misses."""
+    opaque = (image.rgba[..., 3] >= ALPHA_THRESHOLD).reshape(-1)
+    imp = importance.reshape(-1)[opaque]
+    lab = srgb8_to_oklab(image.rgba[..., :3].reshape(-1, 3)[opaque])
+    keep = imp >= ACCENT_MIN
+    lab, imp = lab[keep], imp[keep]
+    for _ in range(MAX_ACCENTS):
+        if len(lab) == 0:
+            break
+        nearest, _second = _two_nearest(lab, centers)
+        far = np.sqrt(((lab - centers[nearest]) ** 2).sum(axis=1)) > ACCENT_DE
+        if not far.any():
+            break
+        lab, imp = lab[far], imp[far]
+        # the densest missed colour, by importance: the heaviest of a few median-cut boxes
+        boxes = _median_cut(lab, imp, min(4, len(lab)))
+        group, _ = _two_nearest(lab, boxes)
+        heaviest = int(np.argmax(np.bincount(group, imp, len(boxes))))
+        centers = np.vstack([centers, boxes[heaviest]])
+    return centers
+
+
 def discover_palette(
-    image: RGBImage, n: int, *, method: str = "kmeans", iterations: int = 20
+    image: RGBImage,
+    n: int,
+    *,
+    method: str = "kmeans",
+    iterations: int = 20,
+    importance: FloatArray | None = None,
 ) -> Palette:
-    """Build a palette of at most `n` colors for `image` (median cut, refined by k-means)."""
+    """Build a palette of at most `n` colors for `image` (median cut, refined by k-means).
+
+    With an `importance` map (`core.importance.importance_map`), small colours that stand
+    out locally (lights, eyes, accents) weigh more, and any of them still far from every
+    entry gets its own (up to MAX_ACCENTS more than `n`)."""
     if n < 1:
         raise ValueError("n must be >= 1")
     if method not in ("kmeans", "median-cut"):
         raise ValueError("method must be 'kmeans' or 'median-cut'")
-    lab, weight = _weighted_colors(image)
+    lab, weight = _weighted_colors(image, importance)
     if len(lab) == 0:
         raise ValueError("image has no opaque pixels")
     centers = _median_cut(lab, weight, n)
     if method == "kmeans":
         centers = _kmeans(lab, weight, centers, iterations)
+    if importance is not None:
+        centers = _add_accents(image, importance, centers)
     order = np.argsort(centers[:, 0], kind="stable")  # dark to light
     seen: list[tuple[int, int, int]] = []
     for rgb in oklab_to_srgb8(centers[order]):

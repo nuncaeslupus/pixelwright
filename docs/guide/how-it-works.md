@@ -14,7 +14,12 @@ cleaned, each showing its next step.
    app picks it up. On the command line: `pw add scenes/harbour --from harbour.png`.
 2. **Scripts run.** `pw normalize` finds the pixel grid, maps colours to the palette and
    removes stray pixels into a new version; `pw check` raises an issue for each problem
-   it measures. The app runs both as soon as an image arrives.
+   it measures. The app runs both as soon as an image arrives. An image with no pixel
+   grid near the canvas size (a painting, a photo) is first reduced to the canvas. With
+   no palette in the project, one is discovered: 16 colours plus up to 8 *accents*,
+   small colours that stand out where they are (a lit window, the moon, an eye).
+   `pw colors <asset>` shows that analysis before normalising: the colour groups, the
+   accents and `analysis/importance.png`, a heatmap of where colour matters most.
 3. **Review.** Open the asset, compare versions (hold Space), select areas and write what
    is wrong. *Ask the AI* sends it as a request; the AI answers with a fix (a new image).
 4. **Decide.** Accept or reject each fix; accepting several makes one new version. Undo
