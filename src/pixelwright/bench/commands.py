@@ -1,36 +1,47 @@
-"""`pw bench`: run the provider benchmark in the workspace (estimate first, spend on --yes).
+"""`pw bench`: run the provider benchmark in a project (estimate first, spend on --yes).
 
-Each (brief, provider) is an asset `bench-<brief>-<provider>`; `generate` makes the
-samples, each chain post-processes every sample, `check` scores the result. Results go to
-`benchmarks/<name>/scores.json`. A rerun skips what is already scored and replays cached
-requests, so an interrupted run resumes for free.
+Each (brief, provider) is an asset `bench/<brief>/<provider>`; the provider paints the
+samples (kept as inputs), each chain post-processes every sample into a version, and the
+pixel checks score it. Results go to `benchmarks/<name>/scores.json`. A rerun skips what
+is already scored and replays cached requests, so an interrupted run resumes for free.
 """
 
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pixelwright.bench.matrix import Matrix, load_matrix
+import numpy as np
+from PIL import Image
+
+from pixelwright.asset import Asset, open_asset
+from pixelwright.bench.matrix import Brief, Matrix, load_matrix
 from pixelwright.bench.rank import READERS, WINNERS, items, next_pair, ranking, record
 from pixelwright.bench.report import write_report
 from pixelwright.budget import Ledger, month_of, monthly_limit
-from pixelwright.cli.gen_commands import DEFAULT_SCALE, provider_config
-from pixelwright.cli.registry import REGISTRY, Outcome, Param, PwError, command
+from pixelwright.cli.registry import Outcome, Param, PwError, command
 from pixelwright.core import providers as pv
+from pixelwright.core.checks import check_banding, check_line_runs, check_orphans
+from pixelwright.core.clean import clean
+from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.providers.base import EXIT_BUDGET
-from pixelwright.workspace import Workspace
-from pixelwright.workspace.asset import utc_now
-from pixelwright.workspace.config import save_config
-from pixelwright.workspace.files import write_bytes_atomic
+from pixelwright.core.quantize import discover_palette, quantize_fixed
+from pixelwright.core.snap import snap
+from pixelwright.flow import asset_name, asset_palette
+from pixelwright.generate import DEFAULT_SCALE, generate, provider_config
+from pixelwright.project import CATEGORY_FILE, Project, ProjectError, load_project
+from pixelwright.workspace.files import write_bytes_atomic, write_toml
+
+BENCH = "bench"
 
 
-def asset_id(brief: str, provider: str) -> str:
-    return f"bench-{brief}-{provider}"
+def asset_rel(brief: str, provider: str) -> str:
+    return f"{BENCH}/{asset_name(brief)}/{asset_name(provider)}"
 
 
-def estimate(ws: Workspace, m: Matrix) -> list[dict[str, Any]]:
+def estimate(project: Project, m: Matrix) -> list[dict[str, Any]]:
     """One row per (brief, provider): calls, estimated USD, and why it cannot run."""
     rows = []
     for brief in m.briefs:
@@ -38,9 +49,9 @@ def estimate(ws: Workspace, m: Matrix) -> list[dict[str, Any]]:
         for name in m.providers:
             row: dict[str, Any] = {"brief": brief.id, "provider": name, "images": m.samples}
             try:
-                cfg = provider_config(ws, name)
+                cfg = provider_config(project, name)
                 problem = ""
-            except (PwError, pv.ProviderError) as exc:
+            except (ValueError, pv.ProviderError) as exc:
                 cfg, problem = {"api_key": "missing"}, str(exc)
             provider = pv.get(name, **cfg)
             req = pv.GenRequest(
@@ -67,13 +78,53 @@ def _table(rows: list[dict[str, Any]], total: float) -> str:
     return "\n".join(lines)
 
 
-def _pw(root: Path, name: str, **args: Any) -> Outcome:
-    cmd = REGISTRY[name]
-    full = {p.name: args.get(p.name, [] if p.kind == "list" else p.default) for p in cmd.params}
-    return cmd.run(root, full)
+def _bench_asset(project: Project, brief: Brief, provider: str) -> Asset:
+    """`assets/bench/<brief>/` holds the brief's canvas and palette for every provider."""
+    rel = asset_rel(brief.id, provider)
+    path = project.assets_dir / rel
+    if (path / "asset.toml").is_file():
+        return open_asset(project, path)
+    folder = path.parent
+    folder.mkdir(parents=True, exist_ok=True)
+    w, _, h = brief.canvas.partition("x")
+    layer: dict[str, Any] = {"kind": brief.kind, "canvas": {"width": int(w), "height": int(h)}}
+    if brief.palette:
+        layer["palette"] = Path(brief.palette).stem
+    write_toml(folder / CATEGORY_FILE, layer)
+    asset = Asset.create(project, rel)
+    if brief.sketch is not None:
+        asset.add_input(brief.sketch)
+    return asset
 
 
-def run_matrix(ws: Workspace, m: Matrix, out: Path) -> list[dict[str, Any]]:
+Pixels = RGBImage | IndexedImage
+
+
+def _chain(asset: Asset, source: Path, steps: tuple[str, ...], colors: int) -> Pixels:
+    with Image.open(source) as im:
+        image: Pixels = RGBImage.from_array(np.asarray(im.convert("RGBA")))
+    palette = asset_palette(asset)
+    for step in steps:
+        if step == "snap":
+            image = snap(image if isinstance(image, RGBImage) else image.to_rgb_image()).image
+        elif step == "quantize":
+            rgb = image if isinstance(image, RGBImage) else image.to_rgb_image()
+            image, _ = quantize_fixed(rgb, palette or discover_palette(rgb, colors))
+        elif step == "clean":
+            if isinstance(image, RGBImage):
+                image, _ = quantize_fixed(image, palette or discover_palette(image, colors))
+            image, _ = clean(image)
+    return image
+
+
+def _score(image: Pixels, colors: int) -> list[dict[str, Any]]:
+    if isinstance(image, RGBImage):
+        image, _ = quantize_fixed(image, discover_palette(image, colors))
+    found = (check_orphans(image), check_line_runs(image), check_banding(image))
+    return [r.to_dict() for r in found]
+
+
+def run_matrix(project: Project, m: Matrix, out: Path) -> list[dict[str, Any]]:
     scores_path = out / "scores.json"
     scores: list[dict[str, Any]] = (
         json.loads(scores_path.read_text(encoding="utf-8")) if scores_path.is_file() else []
@@ -81,53 +132,31 @@ def run_matrix(ws: Workspace, m: Matrix, out: Path) -> list[dict[str, Any]]:
     done = {(s["brief"], s["provider"], s["sample"], s["chain"]) for s in scores}
     for brief in m.briefs:
         for name in m.providers:
-            aid = asset_id(brief.id, name)
-            if aid not in ws.assets():
-                _pw(
-                    ws.root,
-                    "new",
-                    asset=aid,
-                    kind=brief.kind,
-                    canvas=brief.canvas,
-                    palette=brief.palette,
-                )
-                if brief.sketch is not None:
-                    _pw(ws.root, "attach", asset=aid, file=str(brief.sketch), **{"as": "sketch"})
-            gen = _pw(
-                ws.root,
-                "generate",
-                asset=aid,
-                provider=name,
-                prompt=brief.prompt,
-                n=m.samples,
-                seed=m.seed,
-            )
-            for sample, version in enumerate(gen.data["versions"]):
+            asset = _bench_asset(project, brief, name)
+            gen = generate(
+                asset, brief.prompt, provider=name, init=None if brief.sketch else "none",
+                n=m.samples, seed=m.seed, normalize=False,
+            )  # fmt: skip
+            per_image = gen.cost_usd / max(1, len(gen.inputs))
+            for sample, source in enumerate(gen.inputs):
                 for chain, steps in m.chains.items():
                     if (brief.id, name, sample, chain) in done:
                         continue
-                    current = version
-                    for step in steps:
-                        extra = (
-                            {"discover": m.colors}
-                            if step == "quantize" and not brief.palette
-                            else {}
-                        )
-                        current = str(
-                            _pw(ws.root, step, asset=aid, version=current, **extra).version
-                        )
-                    checked = _pw(ws.root, "check", asset=aid, version=current)
-                    results = checked.data["results"]
+                    image = _chain(asset, source, steps, m.colors)
+                    version = asset.add_version(
+                        Image.fromarray(np.ascontiguousarray(image.to_rgba()), "RGBA")
+                    )
+                    results = _score(image, m.colors)
                     scores.append(
                         {
                             "brief": brief.id,
                             "provider": name,
                             "sample": sample,
                             "chain": chain,
-                            "asset": aid,
-                            "generated": version,
-                            "version": current,
-                            "cost_usd": gen.data["cost_usd"] / max(1, len(gen.data["versions"])),
+                            "asset": asset.rel,
+                            "input": source.name,
+                            "version": version,
+                            "cost_usd": per_image,
                             "fails": sum(r["status"] == "fail" for r in results),
                             "warns": sum(r["status"] == "warn" for r in results),
                             "checks": {r["check"]: [r["status"], r["value"]] for r in results},
@@ -140,8 +169,8 @@ def run_matrix(ws: Workspace, m: Matrix, out: Path) -> list[dict[str, Any]]:
 ACTIONS = ("run", "pair", "vote", "rank", "report", "apply")
 
 
-def bench_dir(ws: Workspace, name: str | None) -> Path:
-    base = ws.root / "benchmarks"
+def bench_dir(root: Path, name: str | None) -> Path:
+    base = root / "benchmarks"
     if name:
         out = base / name
     else:
@@ -154,8 +183,8 @@ def bench_dir(ws: Workspace, name: str | None) -> Path:
     return out
 
 
-def _after_run(ws: Workspace, a: dict[str, Any]) -> Outcome:
-    out = bench_dir(ws, a["name"])
+def _after_run(project: Project, a: dict[str, Any]) -> Outcome:
+    out = bench_dir(project.root, a["name"])
     act = a["action"]
     if act == "pair":
         pair = next_pair(out, a["reader"])
@@ -179,24 +208,25 @@ def _after_run(ws: Workspace, a: dict[str, Any]) -> Outcome:
         )
     if act == "report":
         path = write_report(out, tables)
-        rel = path.relative_to(ws.root).as_posix()
+        rel = path.relative_to(project.root).as_posix()
         return Outcome(outputs=[rel], data={"report": rel}, text=f"Report: {path}")
     # apply: the strongest system's provider becomes the default for each kind benchmarked
     best = tables["human"] if any(r["games"] for r in tables["human"]) else tables[None]
-    kinds = sorted({_kind(ws, r) for r in items(out)})
-    defaults = dict(ws.config.extra.get("defaults", {}))
+    kinds = sorted({_kind(project, r) for r in items(out)})
+    defaults = dict(project.extra.get("defaults", {}))
     for kind in kinds:
         defaults[kind] = best[0]["provider"]
-    ws.config.extra["defaults"] = defaults
-    save_config(ws.root, ws.config)
+    project.extra["defaults"] = defaults
+    write_toml(project.root / "pixelwright.toml", project.to_dict())
     return Outcome(
         data={"defaults": defaults, "from": best[0]["system"]},
         text=f"[defaults] now: {defaults} (from {best[0]['system']})",
     )
 
 
-def _kind(ws: Workspace, row: dict[str, Any]) -> str:
-    return str(ws.asset(row["asset"]).spec()["kind"])
+def _kind(project: Project, row: dict[str, Any]) -> str:
+    asset = open_asset(project, project.assets_dir / row["asset"])
+    return asset.settings().kind or "background"
 
 
 @command(
@@ -213,15 +243,18 @@ def _kind(ws: Workspace, row: dict[str, Any]) -> str:
     Param("note", help="vote: why", default=""),
 )
 def cmd_bench(root: Path, a: dict[str, Any]) -> Outcome:
-    ws = Workspace.open(root)
+    try:
+        project = load_project(root)
+    except ProjectError as exc:
+        raise PwError("no_project", f"{exc}; the benchmark runs in a project (pw init)") from exc
     if a["action"] != "run":
-        return _after_run(ws, a)
+        return _after_run(project, a)
     if not a["matrix"]:
         raise PwError("invalid", "bench run needs --matrix <matrix.yaml>")
     m = load_matrix(Path(a["matrix"]))
-    rows = estimate(ws, m)
+    rows = estimate(project, m)
     total = round(sum(r["usd"] for r in rows), 4)
-    out = ws.root / "benchmarks" / m.name
+    out = project.root / "benchmarks" / m.name
     data: dict[str, Any] = {"estimate_usd": total, "rows": rows, "sent": 0, "out": str(out)}
     text = _table(rows, total)
     if not a["yes"]:
@@ -236,7 +269,8 @@ def cmd_bench(root: Path, a: dict[str, Any]) -> Outcome:
             f"estimate {total} USD is over the matrix cap {m.max_usd} USD",
             exit_code=EXIT_BUDGET,
         )
-    left = monthly_limit(ws.config.extra) - Ledger(ws.root).spent(month_of(utc_now()))
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    left = monthly_limit(project.extra) - Ledger(project.root).spent(month_of(now))
     if total > left:
         raise PwError(
             "budget_exceeded",
@@ -245,10 +279,10 @@ def cmd_bench(root: Path, a: dict[str, Any]) -> Outcome:
         )
     out.mkdir(parents=True, exist_ok=True)
     write_bytes_atomic(out / "matrix.yaml", Path(a["matrix"]).read_bytes())
-    scores = run_matrix(ws, m, out)
+    scores = run_matrix(project, m, out)
     data.update(sent=len(scores), scores=str(out / "scores.json"))
     return Outcome(
-        outputs=[(out / "scores.json").relative_to(ws.root).as_posix()],
+        outputs=[(out / "scores.json").relative_to(project.root).as_posix()],
         data=data,
         text=text + f"\n\n{len(scores)} results scored: {out / 'scores.json'}",
     )

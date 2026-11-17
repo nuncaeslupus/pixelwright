@@ -66,8 +66,8 @@ def next_pair(out: Path, reader: str) -> dict[str, Any] | None:
     a, b = todo[0]
     pair: dict[str, Any] = {"a": a["token"], "b": b["token"], "left": len(todo)}
     if reader == "claude":  # Claude needs the files; the blind page never gets them
-        pair["a_file"] = f"assets/{a['asset']}/versions/{a['version']}/image.png"
-        pair["b_file"] = f"assets/{b['asset']}/versions/{b['version']}/image.png"
+        pair["a_file"] = f"assets/{a['asset']}/versions/{a['version']}.png"
+        pair["b_file"] = f"assets/{b['asset']}/versions/{b['version']}.png"
         pair["brief"] = a["brief"]
     return pair
 

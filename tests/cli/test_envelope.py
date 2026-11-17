@@ -127,12 +127,6 @@ def test_cli_json_envelope_on_every_command(
     assert gen["data"]["estimate_usd"] == 0.0
     assert "rows" in run("doctor", "--offline")["data"]
     assert run("next", "hero")["data"]["step"]
-    matrix = files / "matrix.yaml"
-    matrix.write_text(
-        "schema: pixelwright/bench-matrix@1\nproviders: [replay]\n"
-        "briefs:\n  - id: b\n    prompt: x\n"
-    )
-    assert run("bench", "run", "--matrix", str(matrix))["data"]["sent"] == 0
     assert run("inbox")["data"]["count"] >= 0
     crit = files / "critique.md"
     crit.write_text(
@@ -146,7 +140,7 @@ def test_cli_json_envelope_on_every_command(
     assert run("requests")["data"]["requests"] == []
     assert run("wait", "--timeout", "0")["data"]["requests"] == []
     flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish"}
-    flow |= {"open", "migrate"}
+    flow |= {"open", "migrate", "bench"}  # bench: tests/bench
     assert seen | flow == set(REGISTRY)  # flow commands: test_flow_cli, test_migrate
 
 
