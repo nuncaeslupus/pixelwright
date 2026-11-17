@@ -13,7 +13,7 @@ import pytest
 from pixelwright.bench.rank import bradley_terry, items
 from pixelwright.cli import main
 from pixelwright.fixtures.bench import bench_workspace
-from pixelwright.workspace import Workspace
+from pixelwright.project import load_project
 
 
 def test_bradley_terry_recovers_known_order() -> None:
@@ -40,7 +40,7 @@ def test_votes_rank_report_and_apply(tmp_path: Path, capsys: pytest.CaptureFixtu
     out = bench_workspace(ws)
     capsys.readouterr()
     pair = _pw(ws, capsys, "bench", "pair")["data"]["pair"]
-    assert pair["a_file"].startswith("assets/bench-") and pair["left"] == 8  # 2 briefs x 4
+    assert pair["a_file"].startswith("assets/bench/") and pair["left"] == 8  # 2 briefs x 4
     voted = 0
     chain = {r["token"]: r["chain"] for r in items(out)}
     while pair:  # always prefer the full chain
@@ -56,6 +56,6 @@ def test_votes_rank_report_and_apply(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert "Bradley-Terry" in (ws / report["data"]["report"]).read_text()
     applied = _pw(ws, capsys, "bench", "apply")
     assert applied["data"]["defaults"] == {"background": "replay"}
-    assert Workspace.open(ws).config.extra["defaults"]["background"] == "replay"
+    assert load_project(ws).extra["defaults"]["background"] == "replay"
     bad = _pw(ws, capsys, "bench", "vote", "--a", "nope", "--b", "nope2", "--winner", "a")
     assert bad["exit"] != 0

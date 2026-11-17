@@ -90,6 +90,7 @@ def generate(
     size: tuple[int, int] | None = None,
     dry_run: bool = False,
     budget_override: bool = False,
+    normalize: bool = True,
 ) -> GenerateResult:
     """Paint with a provider; each image becomes an input and then a normalised version.
 
@@ -140,7 +141,7 @@ def generate(
             src = Path(tmp) / f"{name}-{result.request_hash[:8]}-{i}.png"
             src.write_bytes(_png(data))
             out.inputs.append(asset.add_input(src))
-    for path in out.inputs:
+    for path in out.inputs if normalize else []:
         res = flow.normalize(asset, path)
         flow.run_checks(asset, res.version)
         out.versions.append(res.version)

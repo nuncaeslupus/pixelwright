@@ -10,10 +10,10 @@ from pixelwright.io.png import encode_png
 
 
 def bench_workspace(root: Path) -> Path:
-    """A workspace with one finished benchmark `try`: replay x 2 chains x 2 briefs x 2."""
+    """A project with one finished benchmark `try`: replay x 2 chains x 2 briefs x 2."""
     w = ["--workspace", str(root)]
     if not (root / "pixelwright.toml").is_file():
-        assert main(["init", "--legacy", *w]) == 0
+        assert main(["init", *w]) == 0
     (root / "replay").mkdir(exist_ok=True)
     (root / "replay" / "a.png").write_bytes(encode_png(tour.painted()))
     matrix = root / "matrix.yaml"

@@ -9,10 +9,11 @@ from typing import Any
 
 import pytest
 
+from pixelwright.asset import list_assets
 from pixelwright.cli import main
 from pixelwright.fixtures import tour
 from pixelwright.io.png import encode_png
-from pixelwright.workspace import Workspace
+from pixelwright.project import load_project
 
 MATRIX = """schema: pixelwright/bench-matrix@1
 name: try
@@ -37,7 +38,7 @@ def _pw(ws: Path, capsys: pytest.CaptureFixture[str], *args: str) -> dict[str, A
 @pytest.fixture
 def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     root = tmp_path / "ws"
-    _pw(root, capsys, "init", "--legacy")
+    _pw(root, capsys, "init")
     (root / "replay").mkdir()
     (root / "replay" / "a.png").write_bytes(encode_png(tour.painted()))
     return root
@@ -65,14 +66,12 @@ def test_bench_run_refuses_without_yes_and_shows_estimate(
     rows = {r["provider"]: r for r in out["data"]["rows"]}
     assert out["data"]["sent"] == 0 and rows["gemini"]["usd"] == pytest.approx(0.078)
     assert rows["gemini"]["problem"] and not rows["replay"]["problem"]
-    assert Workspace.open(ws).assets() == [] and not (ws / "cost.jsonl").exists()
+    assert list_assets(load_project(ws)) == [] and not (ws / "cost.jsonl").exists()
     refused = _pw(ws, capsys, "bench", "run", "--matrix", matrix, "--yes")
     assert refused["exit"] != 0 and refused["error"]["code"] == "not_ready"
 
 
-def test_bench_run_scores_every_sample_and_chain_and_resumes(
-    ws: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_bench_run_on_project(ws: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     matrix = _matrix(tmp_path, "replay")
     out = _pw(ws, capsys, "bench", "run", "--matrix", matrix, "--yes")
     assert out["exit"] == 0, out
@@ -81,6 +80,11 @@ def test_bench_run_scores_every_sample_and_chain_and_resumes(
     assert {s["chain"] for s in scores} == {"full", "light"} and all("checks" in s for s in scores)
     again = _pw(ws, capsys, "bench", "run", "--matrix", matrix, "--yes")
     assert again["exit"] == 0 and again["data"]["sent"] == 4
+    project = load_project(ws)
+    assert [a.rel for a in list_assets(project)] == ["bench/dusk/replay"]
+    assert all(
+        (ws / "assets" / s["asset"] / "versions" / f"{s['version']}.png").is_file() for s in scores
+    )
 
 
 def test_shipped_matrix_loads() -> None:
