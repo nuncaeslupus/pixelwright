@@ -1,11 +1,16 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
+from pixelwright.cli import main
 from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.palette import Color, Palette
 from pixelwright.core.quantize import quantize_fixed
 from pixelwright.core.snap import snap
 from pixelwright.fixtures.synth import Degradation, degrade, make_art, snap_cases
+from pixelwright.io.png import write_png
 
 
 def pixel_accuracy(truth: IndexedImage, snapped: RGBImage) -> float:
@@ -88,3 +93,21 @@ def test_blurred_art_on_an_even_subgrid_keeps_the_true_scale() -> None:
         observed = degrade(art, Degradation(scale, (1, 2), blur=scale / 4), rng)
         hits += snap(observed).scale == scale
     assert hits >= 55
+
+
+def test_normalize_warns_when_the_snapped_size_is_not_the_canvas(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path
+    rng = np.random.default_rng(1)
+    native = rng.integers(0, 255, (10, 12, 3), np.uint8)
+    big = np.repeat(np.repeat(native, 4, 0), 4, 1)
+    write_png(root / "src.png", RGBImage(np.dstack([big, np.full(big.shape[:2], 255, np.uint8)])))
+    art = ["--workspace", str(root / "art"), "--json"]
+    assert main(["init", *art]) == 0
+    capsys.readouterr()
+    assert main(["add", "props/box", "--from", str(root / "src.png"), *art]) == 0
+    capsys.readouterr()
+    assert main(["normalize", "props/box", *art]) == 0
+    warnings = json.loads(capsys.readouterr().out)["warnings"]
+    assert any("12x10" in w and "scale 4" in w and "320x180" in w for w in warnings), warnings
