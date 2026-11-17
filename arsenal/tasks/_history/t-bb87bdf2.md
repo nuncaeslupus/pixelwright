@@ -5,6 +5,7 @@ label: "T61: Project screen"
 priority: 5
 deps: [t-4e92063d, t-a77f1792]
 tags: [m4]
+status: merged
 ---
 
 Project screen: assets by category with filters (waiting on, state), state, next step and actor; add dialog with category; folder watching
