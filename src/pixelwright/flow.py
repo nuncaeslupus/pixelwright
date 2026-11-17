@@ -18,6 +18,7 @@ from pixelwright.asset import Asset, AssetError
 from pixelwright.core.abstract import kuwahara, remove_small_clusters
 from pixelwright.core.checks import CheckResult, check_banding, check_line_runs, check_orphans
 from pixelwright.core.clean import clean
+from pixelwright.core.color import srgb8_to_oklab
 from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
 from pixelwright.core.lines import regularise_lines
@@ -34,6 +35,8 @@ from pixelwright.rules import raise_check_issues
 DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colours
 PAINTING_COLORS = 24  # a reduced painting has no palette of its own to recover
 SPECK = 4  # in a reduced painting, same-colour groups this small are texture, not shape
+RICH = 24  # with more palette colours than this, a grid-snapped input's detail is meant
+FAITHFUL_DE = 0.02  # ... so clean undoes a change that moves a pixel this much further
 PROTECT = 0.8  # pixels at least this important are never cleaned away
 GLOW = 0.5  # ... nor their neighbours this important: the arms of a twinkle, not JPEG noise
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
@@ -112,15 +115,12 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     cw, ch = canvas["width"], canvas["height"]
     larger = source_rgb.width > cw and source_rgb.height > ch
     bg = background(source_rgb) if larger else None
-    keyed = key_background(source_rgb, bg) if bg else None
-    if bg and keyed is not None:  # a sprite on a flat background: key it, frame it
-        small = outline_reduce(frame(keyed, (cw, ch)), (cw, ch))
-        hexa = "#{:02x}{:02x}{:02x}".format(*bg)
-        return Prepared(small, 1, False, [
-            f"background {hexa} made transparent; figure cropped and reduced "
-            f"from {source_rgb.width}x{source_rgb.height} to {cw}x{ch}"
-        ])  # fmt: skip
     snapped = snap(source_rgb)
+    if bg:  # a sprite on a flat background: key it on its own pixel grid, frame it
+        sprite = snapped.image if snapped.scale > 1 else source_rgb
+        keyed = key_background(sprite, bg)
+        if keyed is not None:
+            return _sprite(frame(keyed, (cw, ch)), (cw, ch), bg)
     native = snapped.image
     off = abs(native.width / cw - 1) > NEAR or abs(native.height / ch - 1) > NEAR
     if off and source_rgb.width > cw * OVERSIZE and source_rgb.height > ch * OVERSIZE:
@@ -149,6 +149,22 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
             f"differs from the canvas {cw}x{ch}"
         )
     return Prepared(native, snapped.scale, False, warnings)
+
+
+def _sprite(framed: RGBImage, canvas: tuple[int, int], bg: tuple[int, int, int]) -> Prepared:
+    """A keyed, framed sprite on the canvas: as drawn when it fits, else reduced."""
+    hexa = "#{:02x}{:02x}{:02x}".format(*bg)
+    cw, ch = canvas
+    if framed.width <= cw and framed.height <= ch:  # pad, centred, feet at the bottom
+        out = np.zeros((ch, cw, 4), np.uint8)
+        x, y = (cw - framed.width) // 2, ch - framed.height
+        out[y:, x : x + framed.width] = framed.rgba
+        return Prepared(RGBImage(out), 1, False, [f"background {hexa} made transparent"])
+    return Prepared(outline_reduce(framed, canvas), 1, False, [
+        f"background {hexa} made transparent; the figure is drawn {framed.width}x"
+        f"{framed.height} px, reduced to the {cw}x{ch} canvas (detail is lost: a canvas "
+        f"near {framed.width}x{framed.height} keeps it)"
+    ])  # fmt: skip
 
 
 def _grow(mask: npt.NDArray[np.bool_]) -> npt.NDArray[np.bool_]:
@@ -197,6 +213,24 @@ def _glow(
     return IndexedImage(indices, indexed.palette, indexed.alpha), protect
 
 
+def _faithful(cleaned: IndexedImage, indexed: IndexedImage, native: RGBImage) -> IndexedImage:
+    """`cleaned` with each change undone that takes a pixel further from the input than
+    quantising did (by FAITHFUL_DE): in rich pixel art a lone pixel is a highlight or a
+    crack, not noise; only near-equal flecks left by quantising are cleaned away."""
+    lab = srgb8_to_oklab(native.rgba[..., :3])
+
+    def err(image: IndexedImage) -> npt.NDArray[np.float64]:
+        return np.asarray(np.linalg.norm(srgb8_to_oklab(image.to_rgba()[..., :3]) - lab, axis=-1))
+
+    both = np.ones(lab.shape[:2], bool)
+    for image in (cleaned, indexed):
+        if image.alpha is not None:
+            both &= image.alpha
+    undo = both & (err(cleaned) > err(indexed) + FAITHFUL_DE)
+    indices = np.where(undo, indexed.indices, cleaned.indices).astype(np.uint16)
+    return IndexedImage(indices, cleaned.palette, cleaned.alpha)
+
+
 def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
     prep = prepare(asset, source)
@@ -219,6 +253,8 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     # a lone pixel that stands out strongly (a star, a glint) is meant, not noise
     indexed, protect = _glow(indexed, native, imp, palette)
     cleaned, _ = clean(indexed, ~protect)
+    if not prep.reduced and len(palette) > RICH:
+        cleaned = _faithful(cleaned, indexed, native)
     if prep.reduced:  # a painting: fold leftover texture specks into their shapes
         cleaned, _ = remove_small_clusters(cleaned, SPECK, protect=protect)
     version = asset.add_version(_pil(cleaned))
