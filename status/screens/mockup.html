@@ -167,27 +167,28 @@ const assets=[
  ["harbour-night","scenes","wip",scene,11,1,"You: 3 fixes to review","you"],
  ["harbour-day","scenes","wip",scene,12,0,"AI: working on your issue","ai"],
  ["tavern-inside","scenes","new",scene,13,0,"Scripts: cleaning and checking","script"],
- ["lighthouse","scenes","ok",scene,14,1,"In the game · v003","none"],
+ ["lighthouse","scenes","ok",scene,14,1,"Finished · v003","none"],
  ["captain","characters","wip",sprite,3,0,"AI: looking for issues","ai"],
  ["sailor","characters","new",sprite,4,0,"AI: new · review with AI","ai"],
- ["crate","props","ok",prop,1,0,"In the game · v003","none"],
+ ["crate","props","ok",prop,1,0,"Finished · v003","none"],
 ];
-const stateTxt={new:"Processing",wip:"In review",ok:"In the game"};
+const stateTxt={new:"Processing",wip:"In review",ok:"Finished"};
 function projectScreen(){
   const groups=[["scenes",4],["characters",2],["props",1]];
   const nv=(t,n,on,extra="")=>`<div class="navi ${on?"on":""}"><span class="next">${t}</span><span class="n">${n}<span class="more">${extra?"⋯":""}</span></span></div>`;
   return topbar('<b>my-game-art</b> <span class="dim small mono">~/art/my-game-art</span>')+`<div class="body">
   <div class="card side">${nv("All assets",7,true)}
    <div class="h">Waiting on</div>${nv(AV.you+" You",2)}${nv(AV.ai+" AI",1)}${nv(AV.script+" Scripts",1)}
-   <div class="h">State</div>${nv("In review",5)}${nv("In the game",2)}
-   <div class="h">Groups</div>${groups.map((g,i)=>nv(g[0],g[1],false,i===0?'x':"")).join("")}</div>
+   <div class="h">State</div>${nv("In review",5)}${nv("Finished",2)}
+   <div class="h">Categories</div>${groups.map((g,i)=>nv(g[0],g[1],false,i===0?'x':"")).join("")}</div>
   <div class="card main"><div class="row" style="justify-content:space-between"><div><b style="font-size:16px">All assets</b> <span class="dim small">· 7</span></div>
    <div class="row"><span class="btn ghost sm">Sort: needs you first ▾</span><span class="btn ai sm">Review all new with AI · 2</span><span class="btn pri sm">+ Add images</span></div></div>
    <div class="grid" id="grid"></div></div></div>${S==="s14"?dropDialog():""}`;}
 function dropDialog(){return `<div class="dimmer"></div><div class="card coach" style="left:420px;top:190px;width:440px"><b style="font-size:16px">Add 3 images</b>
-  <div class="dim small">tavern-1.png, tavern-2.png, barrel.png · into <b>scenes</b></div>
-  <div class="row" style="flex-wrap:wrap;gap:6px">${["Background","Sprite","Prop","Animation","Effect","Tileset","Portrait (custom)","+ New type…"].map((t,i)=>`<span class="btn ${i===0?"pri":"ghost"} sm">${t}</span>`).join("")}</div>
-  <div class="dim small">Type proposed by the group "scenes". Each image gets its own asset; the scripts clean and check them right away.</div>
+  <div class="dim small">tavern-1.png, tavern-2.png, barrel.png</div>
+  <div class="small"><b>Category</b></div>
+  <div class="row" style="flex-wrap:wrap;gap:6px">${["scenes","characters","props","+ New category…"].map((t,i)=>`<span class="btn ${i===0?"pri":"ghost"} sm">${t}</span>`).join("")}</div>
+  <div class="dim small">Proposed from where you dropped them. The category sets canvas size, palette and checks. Each image becomes its own asset; the scripts clean and check it right away.</div>
   <div class="row" style="justify-content:flex-end"><span class="btn flat sm">Cancel</span><span class="btn pri sm">Add 3 assets</span></div></div>`;}
 function fillGrid(){const g=document.getElementById("grid");if(!g)return;
   assets.forEach(a=>{const d=document.createElement("div");d.className="asset";
@@ -230,8 +231,8 @@ function assetScreen(mode){
    ?`<div class="ask new"><div class="row" style="justify-content:space-between"><b>Ask the AI</b><span class="tag2">2 areas attached ×</span></div><div class="field txt">Sails are too bright on both boats</div><div class="row" style="justify-content:space-between"><span class="dim small">Becomes a new issue</span><span class="btn ai sm">Send</span></div></div>`
    :`<div class="ask"><div class="row" style="justify-content:space-between"><b>Ask the AI</b><span class="dim small">select areas to attach them</span></div><div class="field">${mode==="multi"?"Ask about fixes 1 and 2…":"Ask about this image or an issue…"}</div><div class="row" style="justify-content:space-between"><span class="dim small">Goes to your AI session</span><span class="btn ai sm">Send</span></div></div>`;
   const multi=mode==="multi"?`<div class="multi"><b>2 fixes selected</b><span class="btn pri sm">Accept both → v005</span></div>`:"";
-  return topbar('<span class="btn flat sm">← scenes</span> <span class="btn flat sm" title="Undo (Ctrl+Z)">↶ Undo</span> <b>harbour-night</b> <span class="chip wip">In review</span>',true,'<span class="btn pri sm" title="Marks v004 as the final image and copies it to the game folder">Use v004 in the game</span>')+`<div class="body">
-  <div class="card work"><div class="cbar"><div class="row"><div class="seg tools"><span class="${tool==0?"on":""}" title="Move (H)">✋</span><span class="${tool==1?"on":""}" title="Select areas (S)">⬚</span><span class="${tool==2?"on":""}" title="Zoom to an area (Z)">🔍</span></div>
+  return topbar('<span class="btn flat sm" title="Back to the project">←</span> <span class="dim">scenes /</span> <b>harbour-night</b> <span class="chip wip">In review</span>',true,'<span class="btn pri sm" title="Marks v004 as the final image and copies it to the export folder">Finish with v004</span>')+`<div class="body">
+  <div class="card work"><div class="cbar"><div class="row"><div class="seg tools"><span class="${tool==0?"on":""}" title="Move (H)">✋</span><span class="${tool==1?"on":""}" title="Select areas (S)">⬚</span><span class="${tool==2?"on":""}" title="Zoom to an area (Z)">🔍</span></div><div class="seg"><span title="Undo (Ctrl+Z)">↶</span><span title="Redo (Ctrl+Shift+Z)">↷</span></div>
     <div class="seg"><span class="${view==="one"?"on":""}">One image</span><span class="${view==="side"?"on":""}">Side by side</span></div></div>
    <div class="row"><span class="btn ghost sm">Markers: selected ▾</span><span class="btn ghost sm">⚙ Asset settings</span><span class="btn ghost sm">Open in Aseprite</span></div></div>
    <div class="canvasbox" id="cbox">${mode==="select"||view==="side"?"":cmp}<div class="zoom"><span class="btn flat sm">−</span><span class="small">${view==="side"?"300% · linked":mode==="zoom"?"Fit":"Fit"}</span><span class="btn flat sm">+</span></div><div class="hint small">${tool==1?"Drag adds an area · × removes one · Esc clears":tool==2?"Drag a rectangle to zoom into it":""}</div></div>${versions("v004")}</div>
@@ -250,7 +251,7 @@ function fillAsset(mode){const b=document.getElementById("cbox");if(!b)return;
     b.append(w);}
   document.querySelectorAll(".ver .t").forEach((t,i)=>t.append(cv(scene,11,i<2?0:1,0.5)));}
 function startScreen(){return topbar('<span class="dim">no project open</span>',false)+`<div class="center"><div class="card start">
-  <div><b style="font-size:20px">Turn any image into game-ready pixel art</b></div>
+  <div><b style="font-size:20px">Turn any image into clean pixel art</b></div>
   <div class="choices"><div class="choice"><b>Open…</b><span class="dim small">A project folder, or any image inside one</span></div>
    <div class="choice"><b>New project…</b><span class="dim small">Pick a folder and a canvas size</span></div>
    <div class="choice" style="box-shadow:0 0 0 2px var(--ai)"><b>Try the sample project</b><span class="dim small">Guided, about 3 minutes</span></div></div>
@@ -270,7 +271,7 @@ function settings(){return topbar('<b>my-game-art</b> <span class="dim">/</span>
    ${[["main",["#22262b","#6b4a3a","#e9d8a6","#f2a541","#5b8c85","#2c3470"],"default"],["night",NIGHT.slice(0,8),"group scenes"],["characters",["#2b1d1d","#f0c39a","#3d6b8c","#6c2f2f","#e9d8a6","#1d2b3d"],"group characters"]].map(p=>`<div class="pal"><b style="width:86px">${p[0]}</b><span class="sw">${p[1].map(c=>`<i style="background:${c}"></i>`).join("")}</span><span class="dim small" style="margin-left:auto">${p[2]}</span></div>`).join("")}
    <span class="btn ghost sm" style="align-self:flex-start">+ Import palette (.gpl, .hex, .png)</span></div>
   <div class="sec"><h3>Canvas</h3><div class="row"><span class="field txt mono">320</span>×<span class="field txt mono">180</span><span class="dim small">default · a group overrides it from its ⋯ menu, an asset from ⓘ Asset settings</span></div>
-   <h3 style="margin-top:10px">Export</h3><div class="field txt mono">../game/assets/art</div><span class="dim small">Approved images are copied here. Can point inside your engine's project.</span>
+   <h3 style="margin-top:10px">Export</h3><div class="field txt mono">../game/assets/art</div><span class="dim small">Finished images are copied here. Can point inside your engine's project.</span>
    <h3 style="margin-top:10px">History</h3><span class="chk"><span class="cb on">✓</span>Keep all versions</span><span class="dim small">When off, pixelwright keeps only the input, the first version, versions you marked ★ Keep, and the final.</span>
    <h3 style="margin-top:10px">Style rules</h3><span class="dim small">14 rules on · 2 learnt from your rejections</span><span class="btn ghost sm" style="align-self:flex-start">Review rules…</span></div></div></div>`;}
 // ---------- render ----------
