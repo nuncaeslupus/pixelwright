@@ -16,7 +16,7 @@ from typing import Any
 from PIL import Image, ImageChops
 
 from pixelwright.asset import Asset, AssetError
-from pixelwright.workspace.files import append_jsonl
+from pixelwright.files import append_jsonl
 
 ISSUES_FILE = "issues.jsonl"
 FIXES_DIR = "fixes"

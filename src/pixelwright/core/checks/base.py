@@ -11,8 +11,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from pixelwright.workspace import schema
-from pixelwright.workspace.files import write_bytes_atomic
+from pixelwright import schema
+from pixelwright.files import write_bytes_atomic
 
 STATUSES = ("pass", "warn", "fail")
 Box = tuple[int, int, int, int]  # x, y, w, h in native pixels

@@ -20,7 +20,7 @@ from pixelwright.core.providers.base import (
     ProviderError,
 )
 from pixelwright.core.providers.run import Guard
-from pixelwright.workspace.files import append_jsonl
+from pixelwright.files import append_jsonl
 
 SECRETS_PATH = ".pixelwright/secrets.toml"
 LEDGER_NAME = "cost.jsonl"

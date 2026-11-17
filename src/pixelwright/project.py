@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pixelwright.workspace.files import write_toml
+from pixelwright.files import write_toml
 
 PROJECT_FILE = "pixelwright.toml"
 CATEGORY_FILE = "category.toml"
@@ -174,7 +174,20 @@ def init_project(root: Path, name: str | None = None) -> Project:
     agents = root / "AGENTS.md"
     if not agents.exists():  # how any AI agent works in this project
         agents.write_text(AGENTS_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
+    _ignore_private(root)
     return project
+
+
+PRIVATE = ("/.pixelwright/secrets.toml", "/cache/")
+
+
+def _ignore_private(root: Path) -> None:
+    """Keep API keys and the provider cache out of git, leaving other lines alone."""
+    path = root / ".gitignore"
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    missing = [p for p in PRIVATE if p not in lines]
+    if missing:
+        path.write_text("\n".join([*lines, *missing]) + "\n", encoding="utf-8")
 
 
 def resolve_settings(project: Project, folder: Path) -> Settings:

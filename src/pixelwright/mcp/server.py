@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import sys
 import time
@@ -10,14 +9,10 @@ from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import IO, Any
 
-from pixelwright.cli import as_error, envelope, find_workspace, run
+from pixelwright.cli import as_error, envelope, run
 from pixelwright.cli.registry import EXIT_USAGE, REGISTRY, Command, Param, PwError
-from pixelwright.core.image import RGBImage
-from pixelwright.core.render import upscale
-from pixelwright.io.png import encode_png, read_png
 
 PROTOCOL = "2025-06-18"
-MAX_IMAGE = 1024
 _JSON_TYPES = {"str": "string", "int": "integer", "float": "number", "bool": "boolean"}
 _PY_TYPES: dict[str, tuple[type, ...]] = {
     "str": (str,),
@@ -81,14 +76,6 @@ def _arguments(cmd: Command, raw: object) -> dict[str, Any]:
     return args
 
 
-def _image_content(path: Path, scale: int) -> dict[str, Any]:
-    """The render at native size, integer-upscaled so its longest side stays <= 1024 px."""
-    native = read_png(path).to_rgba()[::scale, ::scale]
-    factor = max(1, MAX_IMAGE // max(native.shape[:2]))
-    png = encode_png(RGBImage(upscale(native, factor)))
-    return {"type": "image", "data": base64.b64encode(png).decode(), "mimeType": "image/png"}
-
-
 def call_tool(name: str, raw: object, workspace: Path | None) -> dict[str, Any]:
     started = time.perf_counter()
     cmd = REGISTRY.get(name)
@@ -109,11 +96,6 @@ def call_tool(name: str, raw: object, workspace: Path | None) -> dict[str, Any]:
         }
     env = envelope(name, started, outcome)
     content: list[dict[str, Any]] = [{"type": "text", "text": json.dumps(env, default=str)}]
-    if name == "render" and outcome.outputs:
-        base = find_workspace((root or Path.cwd()).resolve())
-        default = next(p.default for p in REGISTRY["render"].params if p.name == "scale")
-        scale = int(args.get("scale") or default)
-        content.append(_image_content(base / outcome.outputs[0], scale))
     return {"content": content, "structuredContent": env, "isError": False}
 
 

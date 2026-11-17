@@ -13,7 +13,7 @@ from pixelwright.fixtures.synth import Degradation, degrade, make_art
 from pixelwright.io.palette_io import write_palette
 from pixelwright.io.png import write_png
 
-STEPS = ("snap", "quantize", "clean", "check", "render")
+STEPS = ("normalize", "check")
 MAX_MS_PER_100K_PX = 2000
 
 
@@ -25,16 +25,17 @@ def _pw(capsys: pytest.CaptureFixture[str], *argv: str) -> dict[str, Any]:
 
 def _pipeline(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[dict[str, str], list[int]]:
     """Return output hashes by step and each step's duration in ms."""
-    w = ["--workspace", str(root / "ws")]
-    _pw(capsys, "init", "--legacy", *w)
-    _pw(capsys, "palette", "import", "--file", str(root / "scene.gpl"), *w)
-    _pw(capsys, "new", "bg", "--kind", "background", "--palette", "palettes/scene.gpl", *w)
-    _pw(capsys, "attach", "bg", str(root / "src.png"), *w)
+    art = root / "art"
+    w = ["--workspace", str(art)]
+    _pw(capsys, "init", *w)
+    _pw(capsys, "palette", "import", "--file", str(root / "scene.gpl"), "--name", "main", *w)
+    asset = art / "assets" / "scenes" / "bg"
+    _pw(capsys, "add", "scenes/bg", "--from", str(root / "src.png"), *w)
     hashes, times = {}, []
     for step in STEPS:
-        env = _pw(capsys, step, "bg", *w)
-        data = (root / "ws" / env["outputs"][0]).read_bytes()
-        hashes[step] = hashlib.sha256(data).hexdigest()
+        env = _pw(capsys, step, "scenes/bg", *w)
+        version = asset / "versions" / f"{env['version']}.png"
+        hashes[step] = hashlib.sha256(version.read_bytes()).hexdigest()
         times.append(env["duration_ms"])
     return hashes, times
 

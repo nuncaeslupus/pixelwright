@@ -50,7 +50,7 @@ presets:
       steps: 30
 ```
 
-## 3. Workspace settings
+## 3. Project settings
 
 ```toml
 # pixelwright.toml
@@ -64,13 +64,11 @@ background = "comfyui"               # provider per asset kind
 ## 4. First run
 
 ```bash
-pw new hill --kind background --canvas 320x180
-pw attach hill my-sketch.png --as sketch
-pw generate hill --provider comfyui --prompt "a house on a hill at dusk" --n 2 --seed 1
-pw snap hill && pw quantize hill && pw clean hill && pw check hill
+pw add scenes/hill --from my-sketch.png --kind background
+pw generate scenes/hill --provider comfyui --init input --prompt "a house on a hill at dusk" --n 2 --seed 1
 ```
 
-The same request twice is free and instant: it comes from `cache/`.
+Each result is normalised and checked like any other input. The same request twice is free and instant: it comes from `cache/`.
 
 ## When it fails
 
