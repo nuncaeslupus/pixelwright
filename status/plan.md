@@ -106,6 +106,10 @@ request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 | T67 | Generation on v2 | core | L | T65 | `tests_failed == 0` | `test_generate_adds_inputs_and_versions` in `tests/test_generate_v2.py` — a replay provider's images become inputs, then normalised versions; cost is logged |
 | T68 | Bench on v2 | core | M | T67 | `tests_failed == 0` | `test_bench_run_on_project` in `tests/bench/test_run.py` — a matrix run on a v2 project scores every provider + chain |
 | T69 | Remove the old workspace | core | L | T67, T68 | `tests_failed == 0` | `test_no_workspace_package` in `tests/test_meta.py` — `pixelwright.workspace` no longer exists and every command runs on a v2 project |
+| T70 | Fractional pixel scale | core | M |  | `grid_drift_px <= 0.5` | `test_snap_recovers_non_integer_scale` in `tests/core/test_snap.py` — art upscaled by 8.6 is snapped back to its native size with dither and diagonals intact |
+| T71 | Paintings to readable pixels | core | L | T70 | `stray_cluster_share <= 0.02` | `test_painting_regions_are_flat` in `tests/core/test_abstract.py` — after normalise, at most 2% of pixels sit in same-colour clusters of 1-4 pixels |
+| T72 | Clean diagonals | core | M | T70 | `irregular_line_steps == 0` | `test_diagonals_regularised` in `tests/core/test_lines.py` — jagged 1-px lines become regular 1:1 / 2:1 / 1:2 steps |
+| T73 | Game style kit | core | L | T71 | `tests_failed == 0` | `test_generate_sends_style_kit` in `tests/test_style_kit.py` — the request carries the palette hex codes, pixel size, rules and reference images |
 
 ### Task details
 
@@ -127,6 +131,10 @@ request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 - **T67 Generation on v2**: `pw generate <asset>` runs a provider; its images land in `inputs/` and the scripts normalise each into a version. `pw generate <asset> --issue <id>` repaints the issue's areas and proposes the result as a fix. Providers, defaults and the monthly budget are read from `pixelwright.toml`; `pw cost` and `pw doctor` work on the project
 - **T68 Bench on v2**: `pw bench` builds its assets in a v2 project (`assets/bench/...`), runs the chains through normalise and check, and ranks as before
 - **T69 Remove the old workspace**: Delete `pixelwright.workspace` and the M0–M3 commands (stages, approve/reject/export, masks, critique, inbox, next, render, diff, `init --legacy`); `pw palette import` writes to `style/palettes/`; the Aseprite bridge sends versions to v2 assets; `pw migrate` keeps reading old workspaces
+- **T70 Fractional pixel scale**: `snap` detects and resamples non-integer pixel sizes (e.g. 2752 px / 320 = 8.6), so the grid does not drift across the image and dither checkerboards and diagonals survive. Integer scales keep today's behaviour.
+- **T71 Paintings to readable pixels**: For images reduced to the canvas (no pixel grid): edge-preserving simplification (Kuwahara or mean-shift) before reducing, then removal of small same-colour clusters (2-4 px, not only single orphans) that carry no shape. Accents from `core/importance` are protected. Evaluate region-based abstraction (Gerstner et al., *Pixelated Image Abstraction*) and keep it if it reads better on the test painting.
+- **T72 Clean diagonals**: A fixer for what `check_line_runs` (R-PIX-4) flags: one-pixel outlines with irregular step lengths are redrawn with consistent steps (1:1, 2:1, 1:2...) along the same path, as a script fix the person can accept or reject.
+- **T73 Game style kit**: One style kit per project (and per category): palette, native size, pixel rules, reference images in `style/references/` and a prompt preamble. `pw generate` always sends it (palette as hex codes or provider palette input, references as image inputs where supported), and normalise uses the same palette and canvas, so 'for my game, an empty old bar with a stage and a piano under spotlights' comes back in the game's style. `pw style show` prints the kit.
 
 **Status legend**: ☐ not started · ◐ in progress · ☑ merged
 **Merge order**: T52 and T53 first; then T54 → T55; then T56, T57, T59 in parallel; T58, T60, T66; then T61 → T62 → T63; T64; T65 last
