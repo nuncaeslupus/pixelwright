@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 from pixelwright.bench import commands as _bench  # noqa: F401  (registers `bench`)
+from pixelwright.cli import app_command as _app  # noqa: F401  (open)
 from pixelwright.cli import bridge_commands as _bridge  # noqa: F401  (wait, requests)
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
 from pixelwright.cli import flow_commands as _flow  # noqa: F401  (flow commands)

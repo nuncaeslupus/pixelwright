@@ -150,7 +150,7 @@ def test_cli_json_envelope_on_every_command(
     view_command.stop(ws.resolve())
     assert run("requests")["data"]["requests"] == []
     assert run("wait", "--timeout", "0")["data"]["requests"] == []
-    flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish"}
+    flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish", "open"}
     assert seen | flow == set(REGISTRY)  # flow commands: tests/test_flow_cli.py
 
 
