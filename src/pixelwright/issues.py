@@ -261,12 +261,30 @@ class IssueLog:
         self._append({"id": issue_id, "event": "reply", "by": by, "message": message})
 
     def reject_issue(
-        self, issue_id: str, reason: str, *, by: str = "person", promote: bool = False
+        self,
+        issue_id: str,
+        reason: str,
+        *,
+        by: str = "person",
+        promote: bool = False,
+        scope: str = "asset",
     ) -> None:
+        """Reject an issue. With `promote`, its rule is written to `style/rules.toml` for
+        `scope` (asset, category or project) and checks stop raising it there."""
         if not reason.strip():
             raise IssueError("a rejection needs a reason")
-        if self.issue(issue_id).state != "open":
+        issue = self.issue(issue_id)
+        if issue.state != "open":
             raise IssueError(f"issue {issue_id} is not open")
+        if promote:
+            if not issue.rule:
+                raise IssueError("only an issue raised by a rule can be promoted")
+            from pixelwright.rules import promote as promote_rule
+
+            try:
+                promote_rule(self.asset, issue.rule, reason, scope)
+            except ValueError as exc:
+                raise IssueError(str(exc)) from exc
         self._append(
             {"id": issue_id, "event": "rejected", "by": by, "reason": reason, "promote": promote}
         )
