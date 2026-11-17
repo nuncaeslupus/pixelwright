@@ -23,6 +23,7 @@ from pixelwright.core.snap import snap
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import read_png
 from pixelwright.issues import Issue, IssueLog
+from pixelwright.project import Project
 from pixelwright.rules import raise_check_issues
 
 DISCOVERED_COLORS = 16
@@ -146,3 +147,50 @@ def status(assets: list[Asset]) -> list[dict[str, Any]]:
             }
         )
     return rows
+
+
+IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
+
+
+def asset_name(stem: str) -> str:
+    """A kebab-case asset name from a file name: 'Tavern 1.png' → 'tavern-1'."""
+    out = "".join(c if c.isalnum() else "-" for c in stem.lower())
+    return "-".join(p for p in out.split("-") if p) or "image"
+
+
+def ingest(project: Project, image: Path, category: str, *, move: bool = False) -> Asset:
+    """Make an asset from an image under `category`, then let the scripts run
+    (normalise, check). Script failures leave the asset in Processing, never lose the input."""
+    from pixelwright.asset import Asset as AssetCls
+
+    base = asset_name(image.stem)
+    name, n = base, 2
+    while (project.assets_dir / category / name).exists():
+        name, n = f"{base}-{n}", n + 1
+    asset = AssetCls.create(project, f"{category}/{name}")
+    asset.add_input(image)
+    if move:
+        image.unlink()
+    try:
+        normalize(asset)
+        run_checks(asset)
+    except (ValueError, OSError):
+        pass  # stays in Processing; the app shows it and the person can retry
+    return asset
+
+
+def scan(project: Project) -> list[Asset]:
+    """Pick up images saved straight into a category folder (not inside an asset)."""
+    found: list[Asset] = []
+    if not project.assets_dir.is_dir():
+        return found
+    for folder in sorted(p for p in project.assets_dir.rglob("*") if p.is_dir()):
+        if (folder / "asset.toml").is_file() or any(
+            (parent / "asset.toml").is_file() for parent in folder.parents
+        ):
+            continue
+        category = folder.relative_to(project.assets_dir).as_posix()
+        for image in sorted(folder.iterdir()):
+            if image.is_file() and image.suffix.lower() in IMAGE_SUFFIXES:
+                found.append(ingest(project, image, category, move=True))
+    return found

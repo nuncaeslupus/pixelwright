@@ -38,5 +38,14 @@ def launch(project: Path | None = None, debug: bool = False) -> None:
         chosen = window.create_file_dialog(webview.FileDialog.FOLDER)
         return str(chosen[0]) if chosen else None
 
+    def pick_files() -> list[str]:
+        chosen = window.create_file_dialog(
+            webview.FileDialog.OPEN,
+            allow_multiple=True,
+            file_types=("Images (*.png;*.jpg;*.jpeg;*.webp;*.gif;*.bmp)",),
+        )
+        return [str(c) for c in chosen or []]
+
     api.bind_folder_picker(pick)
+    api.bind_file_picker(pick_files)
     webview.start(debug=debug)

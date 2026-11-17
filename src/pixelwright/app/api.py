@@ -15,7 +15,7 @@ from typing import Any
 from pixelwright import flow
 from pixelwright.app import recent
 from pixelwright.asset import AssetError, list_assets
-from pixelwright.issues import IssueError
+from pixelwright.issues import IssueError, IssueLog
 from pixelwright.project import Project, ProjectError, find_project, load_project
 
 Result = dict[str, Any]
@@ -40,6 +40,7 @@ class AppApi:
     def __init__(self, project: Path | None = None) -> None:
         self._project: Project | None = None
         self._pick_folder: Callable[[], str | None] | None = None
+        self._pick_files: Callable[[], list[str]] | None = None
         if project is not None:
             self.open_project(str(project))
 
@@ -90,3 +91,52 @@ class AppApi:
             "categories": project.categories(),
             "assets": rows,
         }
+
+    # --- Project screen --------------------------------------------------------------
+
+    def bind_file_picker(self, picker: Callable[[], list[str]]) -> None:
+        self._pick_files = picker
+
+    @_safe
+    def add_images(self, paths: list[str], category: str) -> Result:
+        """Each image becomes its own asset in `category`; the scripts run right away."""
+        project = self.project
+        category = category.strip().strip("/")
+        if not category or not all(flow.asset_name(p) == p for p in category.split("/")):
+            raise ProjectError(f"category must be lowercase words joined by '-': {category!r}")
+        made = [flow.ingest(project, Path(p), category).rel for p in paths]
+        return {"added": made}
+
+    @_safe
+    def pick_and_add(self, category: str) -> Result:
+        picker = self._pick_files
+        if picker is None:
+            raise ProjectError("file picker not available")
+        paths = picker()
+        if not paths:
+            return {"cancelled": True}
+        res = self.add_images(paths, category)
+        if not res["ok"]:
+            raise ProjectError(res["error"])
+        return {"added": res["added"]}
+
+    @_safe
+    def scan(self) -> Result:
+        """Images saved into a category folder outside the app become assets."""
+        return {"added": [a.rel for a in flow.scan(self.project)]}
+
+    @_safe
+    def review_all_new(self) -> Result:
+        """Ask the AI to review every asset in review that it has not looked at yet."""
+        asked = []
+        for asset in list_assets(self.project):
+            if asset.meta().state != "review" or asset.latest() is None:
+                continue
+            issues = IssueLog(asset).state().issues.values()
+            if any(i.author == "ai" or i.target == "ai" for i in issues):
+                continue
+            IssueLog(asset).raise_issue(
+                "Review this asset", author="person", kind="request", target="ai"
+            )
+            asked.append(asset.rel)
+        return {"asked": asked}
