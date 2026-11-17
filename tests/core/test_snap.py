@@ -161,3 +161,33 @@ def test_snap_recovers_non_integer_scale(factor: float) -> None:
     assert got.shape[:2] == (30, 40)
     match = (np.abs(got.astype(int) - native.astype(int)).sum(axis=2) < 40).mean()
     assert match >= 0.95
+
+
+def test_pixel_art_painted_larger_keeps_the_canvas_grid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A generator draws a 320x183 scene (mostly 2x2 blocks) as 1344x768 with soft 4.2 px
+    cells: the grid found on its own is a multiple (7-8 px), half the detail; normalize
+    must keep the canvas grid and stay close to the input."""
+    rng = np.random.default_rng(0)
+    colors = rng.integers(20, 235, (12, 3)).astype(np.uint8)
+    idx = np.kron(rng.integers(0, 12, (92, 160)), np.ones((2, 2), int))[:183, :320]
+    detail = rng.random(idx.shape) < 0.03
+    idx[detail] = rng.integers(0, 12, int(detail.sum()))
+    big = PILImage.fromarray(colors[idx]).resize((1344, 768), PILImage.Resampling.NEAREST)
+    big = big.filter(ImageFilter.GaussianBlur(0.8))
+    rgb = np.asarray(big)
+    write_png(tmp_path / "t.png", RGBImage(np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)])))
+    assert snap(RGBImage(np.dstack([rgb, np.full(rgb.shape[:2], 255, np.uint8)]))).image.width < 272
+    art = ["--workspace", str(tmp_path / "art"), "--json"]
+    assert main(["init", *art]) == 0
+    assert main(["add", "rooms/tavern", "--from", str(tmp_path / "t.png"), *art]) == 0
+    capsys.readouterr()
+    assert main(["normalize", "rooms/tavern", *art]) == 0
+    env = json.loads(capsys.readouterr().out)
+    w, h = env["data"]["size"]
+    assert abs(w / 320 - 1) <= 0.02 and abs(h / 180 - 1) <= 0.03 and not env["data"]["reduced"]
+    with PILImage.open(env["outputs"][0]) as im:
+        got = np.asarray(im.convert("RGB").resize((320, 183), PILImage.Resampling.NEAREST))
+    match = (np.abs(got.astype(int) - colors[idx].astype(int)).sum(axis=2) < 60).mean()
+    assert match >= 0.9

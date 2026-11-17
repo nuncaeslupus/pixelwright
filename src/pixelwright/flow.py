@@ -23,7 +23,7 @@ from pixelwright.core.importance import ColorGroup, analyze_colors, importance_m
 from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
 from pixelwright.core.quantize import MAX_ACCENTS, discover_palette, quantize_fixed
-from pixelwright.core.snap import snap
+from pixelwright.core.snap import finer_canvas_grid, snap
 from pixelwright.io.palette_io import read_palette
 from pixelwright.io.png import read_png
 from pixelwright.issues import Issue, IssueLog
@@ -37,6 +37,7 @@ PROTECT = 0.8  # pixels at least this important are never cleaned away
 GLOW = 0.5  # ... nor their neighbours this important: the arms of a twinkle, not JPEG noise
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
 UNDERSIZE = 0.5  # ... or this much smaller, while the image itself is larger than the canvas
+NEAR = 0.15  # a grid this close to the canvas size is the canvas grid
 
 
 @dataclass
@@ -110,6 +111,13 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
     canvas = asset.settings().canvas
     cw, ch = canvas["width"], canvas["height"]
     native = snapped.image
+    off = abs(native.width / cw - 1) > NEAR or abs(native.height / ch - 1) > NEAR
+    if off and source_rgb.width > cw * OVERSIZE and source_rgb.height > ch * OVERSIZE:
+        # the grid found may be a multiple of the real one (8 px for 4.2 px cells): pixel
+        # art drawn at the canvas size would come out at half its detail
+        fitted = finer_canvas_grid(source_rgb, (cw, ch), snapped.period[0] or snapped.scale)
+        if fitted is not None:
+            snapped, native = fitted, fitted.image
     too_big = native.width > cw * OVERSIZE and native.height > ch * OVERSIZE
     too_small = (  # a coarse false grid on a big painting: 80x44 for a 320x180 scene
         native.width < cw * UNDERSIZE

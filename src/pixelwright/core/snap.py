@@ -32,6 +32,8 @@ PERIOD_GAIN = 1.1  # a fractional period must explain the peaks this much better
 WEAK_FIT = 0.1  # below this best integer fit, search every fractional period instead
 GLOBAL_MIN = 0.3  # chance-normalized peak share a fractional grid needs to be believed
 GLOBAL_MARGIN = 0.05  # the largest period within this of the best normalized score wins
+CANVAS_MIN = 0.1  # a canvas grid explaining borders less than this is no grid (noise)
+FLAT_CELLS = 0.35  # pixel-art cells vary inside less than this share of between them
 KERNEL = 0.35  # grid-line width (px) of the soft score
 
 
@@ -347,3 +349,76 @@ def snap(image: RGBImage, *, scale: int | None = None, max_scale: int = MAX_SCAL
     cells = _downsample(rgb, scale, px, py)
     out = np.clip(np.rint(cells), 0, 255).astype(np.uint8)
     return SnapResult(RGBImage.from_array(out), scale, (px, py), confidence, fits)
+
+
+def _period_near(profile: F64, guess: float, span: float = 0.1) -> tuple[float, float, float]:
+    """(period, phase, normalized score) of the grid along one axis, searched within
+    `span` of `guess`; the score is 0 for chance and 1 when every border is on the grid."""
+    pos_i, weight = _peaks(profile)
+    if len(pos_i) < 4:
+        return guess, 0.0, 0.0
+    pos = pos_i.astype(np.float64)
+    best = (-1.0, guess, 0.0)
+    for p in np.arange(guess * (1 - span), guess * (1 + span) + 1e-9, 0.01):
+        if p < MIN_SCALE:
+            continue
+        phases = np.arange(0.0, p, 0.1)
+        scores = _grid_score(pos, weight, np.full(len(phases), p), phases)
+        k = int(np.argmax(scores))
+        if scores[k] > best[0]:
+            best = (float(scores[k]), float(p), float(phases[k]))
+    chance = min(1.0, KERNEL * np.sqrt(np.pi) / best[1])
+    norm = (best[0] / float(weight.sum()) - chance) / (1.0 - chance) if chance < 1 else 0.0
+    return best[1], best[2], norm
+
+
+def snap_to(image: RGBImage, size: tuple[int, int]) -> SnapResult:
+    """Snap to a grid of about `size` cells: for pixel art drawn at the canvas size but
+    painted larger (a generator's 4.2 px cells), where the strongest grid found on its
+    own is a multiple of the real one and would halve the detail. `confidence` is how
+    well the borders sit on that grid (below GLOBAL_MIN: no grid, e.g. a painting)."""
+    rgb = image.rgba[..., :3].astype(np.float64)
+    smooth = _median3(rgb)
+    gx = _period_near(_edge_profile(smooth, 1), image.width / size[0])
+    gy = _period_near(_edge_profile(smooth, 0), image.height / size[1])
+    cells = _downsample_float(rgb, (gx[0], gy[0]), (gx[1], gy[1]))
+    out = np.clip(np.rint(cells), 0, 255).astype(np.uint8)
+    return SnapResult(
+        RGBImage.from_array(out), round(gx[0]), (round(gx[1]), round(gy[1])),
+        min(gx[2], gy[2]), {}, (gx[0], gy[0]),
+    )  # fmt: skip
+
+
+def _cell_flatness(rgb: F64, period: tuple[float, float], phase: tuple[float, float]) -> float:
+    """Mean spread inside the cells (their middle half) over the spread between cells:
+    near 0 for flat pixel-art cells, high for brush texture or noise."""
+    inner, means = [], []
+    for y0 in np.arange(phase[1] % period[1], rgb.shape[0] - period[1], period[1]):
+        rows = rgb[int(y0 + period[1] / 4) : int(y0 + 3 * period[1] / 4) + 1]
+        for x0 in np.arange(phase[0] % period[0], rgb.shape[1] - period[0], period[0]):
+            cell = rows[:, int(x0 + period[0] / 4) : int(x0 + 3 * period[0] / 4) + 1]
+            cell = cell.reshape(-1, 3)
+            inner.append(float(cell.std(axis=0).mean()))
+            means.append(cell.mean(axis=0))
+    between = float(np.asarray(means).std(axis=0).mean()) if means else 0.0
+    return float(np.mean(inner)) / between if between > 0 else float("inf")
+
+
+def finer_canvas_grid(image: RGBImage, size: tuple[int, int], found: float) -> SnapResult | None:
+    """`snap_to(size)` when the grid of the canvas explains the image's borders at least
+    as well as the grid `found` on its own, on both axes; else None. A found grid that is
+    a multiple of the canvas grid (8 px for 4.2 px cells) loses to it; a real coarser
+    grid (art drawn at 240x134), a painting's texture or plain noise does not, and the
+    cells must be flat inside, as pixel art's are."""
+    rgb = image.rgba[..., :3].astype(np.float64)
+    smooth = _median3(rgb)
+    grid = []
+    for axis, n, cells in ((1, image.width, size[0]), (0, image.height, size[1])):
+        profile = _edge_profile(smooth, axis)
+        period, phase, canvas = _period_near(profile, n / cells)
+        if canvas < CANVAS_MIN or canvas < _period_near(profile, found, 0.03)[2]:
+            return None
+        grid.append((period, phase))
+    if _cell_flatness(rgb, (grid[0][0], grid[1][0]), (grid[0][1], grid[1][1])) > FLAT_CELLS:
+        return None  # textured cells: a painting, not pixel art
+    return snap_to(image, size)
