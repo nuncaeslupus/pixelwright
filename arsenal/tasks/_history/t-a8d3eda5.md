@@ -4,6 +4,7 @@ title: "T53: Project model v2"
 label: "T53: Project model v2"
 priority: 5
 tags: [m4]
+status: merged
 ---
 
 Project model v2: `pixelwright.toml` (palette library, export path, `keep_all_versions`, rules), `category.toml` (kind, palette, canvas, checks), nearest-folder resolution
