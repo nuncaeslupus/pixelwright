@@ -10,7 +10,7 @@ import pytest
 from pixelwright.budget import Ledger, api_key, budget_guard
 from pixelwright.cli import main
 from pixelwright.core import providers as pv
-from pixelwright.workspace import Workspace, WorkspaceConfig
+from pixelwright.project import Project, init_project
 
 
 class PaidProvider:
@@ -28,17 +28,17 @@ class PaidProvider:
         return pv.GenResult([b"png"] * req.n, {}, self.estimate(req), "m")
 
 
-def _ws(tmp_path: Path, limit: float | None = None) -> Workspace:
-    config = WorkspaceConfig()
+def _ws(tmp_path: Path, limit: float | None = None) -> Project:
+    project = init_project(tmp_path / "ws")
     if limit is not None:
-        config.extra["budget"] = {"monthly_usd": limit}
-    return Workspace.init(tmp_path / "ws", config)
+        project.extra["budget"] = {"monthly_usd": limit}
+    return project
 
 
 def test_call_over_budget_is_refused_before_send(tmp_path: Path) -> None:
     ws = _ws(tmp_path, limit=4.0)
     prov, now = PaidProvider(), "2026-11-15T10:00:00Z"
-    guard = budget_guard(ws.root, ws.config.extra, now=now)
+    guard = budget_guard(ws.root, ws.extra, now=now)
     res = pv.run(prov, pv.GenRequest("txt2img", "a", (8, 8), n=2), guard=guard)
     Ledger(ws.root).record("paid", res, now=now)
     with pytest.raises(pv.ProviderError) as e:
@@ -50,7 +50,7 @@ def test_call_over_budget_is_refused_before_send(tmp_path: Path) -> None:
 
 def test_default_budget_is_five_usd(tmp_path: Path) -> None:
     ws = _ws(tmp_path)
-    guard = budget_guard(ws.root, ws.config.extra, now="2026-11-15T10:00:00Z")
+    guard = budget_guard(ws.root, ws.extra, now="2026-11-15T10:00:00Z")
     with pytest.raises(pv.ProviderError, match=r"5\.00 USD"):
         pv.run(PaidProvider(), pv.GenRequest("txt2img", "a", (8, 8), n=4), guard=guard)
 

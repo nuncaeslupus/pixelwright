@@ -8,7 +8,9 @@ order (v0001 → v001), its issues become notes on the matching version.
 from __future__ import annotations
 
 import dataclasses
+import re
 import shutil
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -16,11 +18,9 @@ from typing import Any
 from PIL import Image
 
 from pixelwright.asset import Asset, AssetMeta
+from pixelwright.files import read_yaml, write_toml
 from pixelwright.issues import IssueLog
 from pixelwright.project import PROJECT_FILE, Project, ProjectError, init_project
-from pixelwright.workspace import Workspace
-from pixelwright.workspace.asset import Asset as OldAsset
-from pixelwright.workspace.files import write_toml
 
 BAK = ".bak"
 IMAGE = "image.png"  # the main file of an old version folder
@@ -33,6 +33,55 @@ class MigrateResult:
     versions: int = 0
     issues: int = 0
     warnings: list[str] = field(default_factory=list)
+
+
+OLD_VERSION = re.compile(r"v\d{4}")
+
+
+@dataclass
+class OldAsset:
+    """Just enough of an M0-M3 asset folder to copy it: `asset.yaml`, `versions/vNNNN/`
+    and `masks/masks.yaml` (its issues)."""
+
+    path: Path
+
+    @property
+    def id(self) -> str:
+        return self.path.name
+
+    @property
+    def versions_dir(self) -> Path:
+        return self.path / "versions"
+
+    def spec(self) -> dict[str, Any]:
+        raw = read_yaml(self.path / "asset.yaml")
+        return dict(raw) if isinstance(raw, dict) else {}
+
+    def versions(self) -> list[str]:
+        if not self.versions_dir.is_dir():
+            return []
+        names = [p.name for p in self.versions_dir.iterdir() if OLD_VERSION.fullmatch(p.name)]
+        return sorted(names, key=lambda n: int(n[1:]))
+
+    def issues(self) -> list[dict[str, Any]]:
+        index = self.path / "masks" / "masks.yaml"
+        if not index.is_file():
+            return []
+        raw = read_yaml(index)
+        entries = raw.get("masks") if isinstance(raw, dict) else None
+        return [dict(e) for e in entries or [] if isinstance(e, dict)]
+
+
+def _old_config(root: Path) -> dict[str, Any]:
+    """The old `pixelwright.toml` (roles, canvas); refuses a v2 project or no project."""
+    file = root / PROJECT_FILE
+    if not file.is_file():
+        raise ProjectError(f"{root}: no {PROJECT_FILE}, nothing to migrate")
+    with file.open("rb") as fh:
+        data = tomllib.load(fh)
+    if "project" in data:
+        raise ProjectError(f"{root}: already a v2 project")
+    return data
 
 
 def _author(old: str) -> str:
@@ -48,10 +97,11 @@ def _palette_name(ref: object) -> str | None:
 
 def migrate(root: Path) -> MigrateResult:
     root = root.resolve()
-    ws = Workspace.open(root)  # raises when this is not an old workspace
-    old_assets_dir = ws.path("assets")
-    old_style_dir = ws.path("style")
-    canvas = dict(ws.config.canvas)
+    old = _old_config(root)
+    roles = old.get("roles", {})
+    old_assets_dir = root / roles.get("assets", "assets")
+    old_style_dir = root / roles.get("style", "style")
+    canvas = {"width": 320, "height": 180, **old.get("canvas", {})}
     if old_assets_dir.resolve() == (root / "assets").resolve():
         bak_assets = root / f"assets{BAK}"
         if bak_assets.exists():
@@ -74,7 +124,7 @@ def migrate(root: Path) -> MigrateResult:
 
 def _migrate_asset(project: Project, old: OldAsset, result: MigrateResult) -> None:
     spec = old.spec()
-    kind = str(spec["kind"])
+    kind = str(spec.get("kind") or "sprite")
     new = Asset.create(project, f"{kind}s/{old.id}", kind=kind)
     palette = _palette_name(spec.get("palette"))
     if palette:

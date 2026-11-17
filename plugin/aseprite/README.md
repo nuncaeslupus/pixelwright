@@ -1,6 +1,6 @@
 # Aseprite helpers
 
-Lua scripts that connect Aseprite to a pixelwright workspace. They call the `pw` CLI,
+Lua scripts that connect Aseprite to a pixelwright project. They call the `pw` CLI,
 so `pw` must be on `PATH` (or pass `pw=<path>` as a script parameter).
 
 - `send_to_pixelwright.lua`: saves the active sprite as a new draft version of an asset

@@ -1,11 +1,9 @@
-import base64
 import io
 import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PIL import Image as PILImage
 
 from pixelwright.cli import REGISTRY, build_parser
 from pixelwright.core.image import RGBImage
@@ -45,25 +43,19 @@ def call(ws: Path, name: str, **arguments: Any) -> dict[str, Any]:
     return result
 
 
-def test_tools_call_returns_envelope_and_render_image(tmp_path: Path) -> None:
-    ws = tmp_path / "ws"
-    assert call(ws, "init", legacy=True)["structuredContent"]["ok"]
-    call(ws, "new", asset="hero", kind="sprite")
-    rgba = np.zeros((300, 200, 4), np.uint8)
+def test_tools_call_returns_envelope(tmp_path: Path) -> None:
+    ws = tmp_path / "art"
+    assert call(ws, "init")["structuredContent"]["ok"]
+    rgba = np.zeros((12, 16, 4), np.uint8)
     rgba[..., 3] = 255
-    rgba[:150] = (200, 50, 50, 255)
     write_png(tmp_path / "src.png", RGBImage(rgba))
-    call(ws, "attach", asset="hero", file=str(tmp_path / "src.png"))
-    result = call(ws, "render", asset="hero", view="gray", scale=2)
-    assert not result["isError"] and result["structuredContent"]["command"] == "render"
-    image = result["content"][1]
-    assert image["type"] == "image"
-    png = PILImage.open(io.BytesIO(base64.b64decode(image["data"])))
-    assert max(png.size) <= 1024 and png.size == (200 * 3, 300 * 3)
-    bad = call(ws, "render", asset="hero", view="sepia")
+    added = call(ws, "add", asset="sprites/hero", **{"from": str(tmp_path / "src.png")})
+    assert not added["isError"] and added["structuredContent"]["command"] == "add"
+    assert added["content"][0]["type"] == "text"
+    bad = call(ws, "palette", action="sepia")
     assert bad["isError"] and bad["structuredContent"]["error"]["code"] == "usage"
-    missing = call(ws, "snap", asset="ghost")
-    assert missing["isError"] and missing["structuredContent"]["error"]["code"] == "not_found"
+    missing = call(ws, "check", asset="sprites/ghost")
+    assert missing["isError"] and missing["structuredContent"]["error"]["code"] == "no_asset"
 
 
 def test_stdio_protocol() -> None:

@@ -22,8 +22,8 @@ from typing import Any
 
 from PIL import Image
 
+from pixelwright.files import write_toml
 from pixelwright.project import ASSET_FILE, Project, ProjectError, Settings
-from pixelwright.workspace.files import write_toml
 
 STATES = ("processing", "review", "finished")
 NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")

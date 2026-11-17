@@ -98,7 +98,8 @@ def status_v2(root: Path, a: dict[str, Any]) -> Outcome:
     assets = [_asset(root, a["asset"])] if a.get("asset") else list_assets(project)
     rows = flow.status(assets)
     text = "\n".join(f"{r['asset']}  {r['state']}  → {r['next']['text']}" for r in rows)
-    return Outcome(a.get("asset"), data={"assets": rows}, text=text or "No assets yet.")
+    latest = rows[0]["latest"] if a.get("asset") and rows else None
+    return Outcome(a.get("asset"), latest, data={"assets": rows}, text=text or "No assets yet.")
 
 
 # --- new commands --------------------------------------------------------------------
@@ -111,6 +112,7 @@ def status_v2(root: Path, a: dict[str, Any]) -> Outcome:
     Param("from", help="image file", required=True),
     Param("brief", help="what the asset should be", default=""),
     Param("kind", help="asset kind (default: from the category)"),
+    Param("as_version", "bool", help="add the image as a new version as is (a hand edit)"),
 )
 @_guard
 def cmd_add(root: Path, a: dict[str, Any]) -> Outcome:
@@ -123,6 +125,13 @@ def cmd_add(root: Path, a: dict[str, Any]) -> Outcome:
         asset = open_asset(project, path)
     else:
         asset = Asset.create(project, a["asset"], brief=a["brief"], kind=a["kind"])
+    if a["as_version"]:
+        with PILImage.open(source) as im:
+            version = asset.add_version(im.convert("RGBA"))
+        if asset.meta().state == "processing":
+            asset.set_state("review")
+        path = asset.version_path(version)
+        return Outcome(asset.rel, version, outputs=[str(path)], text=f"{asset.rel}: {version}")
     added = asset.add_input(source)
     return Outcome(asset.rel, outputs=[str(added)], text=f"Added {added.name} to {asset.rel}")
 

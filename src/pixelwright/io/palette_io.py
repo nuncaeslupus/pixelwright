@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pixelwright import schema
 from pixelwright.core.palette import Color, Palette, Ramp, Ramps
-from pixelwright.workspace import schema
-from pixelwright.workspace.files import read_yaml, write_bytes_atomic, write_yaml
+from pixelwright.files import read_yaml, write_bytes_atomic, write_yaml
 
 GPL_HEADER = "GIMP Palette"
 

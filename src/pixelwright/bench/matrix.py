@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pixelwright.workspace.files import read_yaml
+from pixelwright.files import read_yaml
 
 SCHEMA = "pixelwright/bench-matrix@1"
 STEPS = ("snap", "quantize", "clean")

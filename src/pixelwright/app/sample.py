@@ -13,11 +13,11 @@ import tempfile
 from pathlib import Path
 
 from pixelwright import flow
+from pixelwright.files import write_toml
 from pixelwright.fixtures import tour as drawing
 from pixelwright.io.palette_io import write_palette
 from pixelwright.io.png import encode_png
 from pixelwright.project import PROJECT_FILE, Project, init_project, load_project
-from pixelwright.workspace.files import write_toml
 
 NAME = "sample"
 

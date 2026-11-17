@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pixelwright.workspace.files import write_toml
+from pixelwright.files import write_toml
 
 if TYPE_CHECKING:
     from pixelwright.asset import Asset

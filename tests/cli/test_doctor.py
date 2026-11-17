@@ -22,7 +22,7 @@ def test_doctor_reports_missing_key_with_env_var_name(
     monkeypatch.setitem(registry._FACTORIES, "paidtest", Paid)
     monkeypatch.delenv("PW_PAIDTEST_KEY", raising=False)
     ws = tmp_path / "ws"
-    main(["init", "--legacy", str(ws)])
+    main(["init", str(ws)])
     capsys.readouterr()
     assert main(["doctor", "--offline", "--workspace", str(ws), "--json"]) == 0
     rows = {r["check"]: r for r in json.loads(capsys.readouterr().out)["data"]["rows"]}
@@ -38,7 +38,7 @@ def test_doctor_comfyui_down_says_how_to_fix(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     ws = tmp_path / "ws"
-    main(["init", "--legacy", str(ws)])
+    main(["init", str(ws)])
     (ws / "pixelwright.toml").write_text(
         (ws / "pixelwright.toml").read_text()
         + '\n[providers.comfyui]\nbase_url = "http://127.0.0.1:9"\n'

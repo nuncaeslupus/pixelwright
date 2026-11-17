@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 
-from pixelwright.workspace.files import write_bytes_atomic
+from pixelwright.files import write_bytes_atomic
 
 HEADER_MAGIC = 0xA5E0
 FRAME_MAGIC = 0xF1FA

@@ -14,7 +14,7 @@ from PIL import Image as PILImage
 
 from pixelwright.core.image import Image, IndexedImage, RGBImage
 from pixelwright.core.palette import Color, Palette
-from pixelwright.workspace.files import write_bytes_atomic
+from pixelwright.files import write_bytes_atomic
 
 
 def read_png(path: Path) -> Image:

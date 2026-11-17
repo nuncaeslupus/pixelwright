@@ -29,10 +29,10 @@ from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.providers.base import EXIT_BUDGET
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.snap import snap
+from pixelwright.files import write_bytes_atomic, write_toml
 from pixelwright.flow import asset_name, asset_palette
 from pixelwright.generate import DEFAULT_SCALE, generate, provider_config
 from pixelwright.project import CATEGORY_FILE, Project, ProjectError, load_project
-from pixelwright.workspace.files import write_bytes_atomic, write_toml
 
 BENCH = "bench"
 

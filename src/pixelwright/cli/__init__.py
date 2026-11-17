@@ -26,8 +26,8 @@ from pixelwright.cli.registry import (
     PwError,
 )
 from pixelwright.core.providers.base import ProviderError
-from pixelwright.workspace.config import CONFIG_NAME
-from pixelwright.workspace.schema import SchemaError
+from pixelwright.project import PROJECT_FILE as CONFIG_NAME
+from pixelwright.schema import SchemaError
 
 __all__ = ["REGISTRY", "build_parser", "main", "run"]
 

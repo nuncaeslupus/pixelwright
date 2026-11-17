@@ -13,11 +13,11 @@ from typing import Any
 
 import numpy as np
 
+from pixelwright import schema
 from pixelwright.core.image import IndexedImage
+from pixelwright.files import read_yaml, write_yaml
 from pixelwright.fixtures.synth import make_art
 from pixelwright.io.png import read_png, write_png
-from pixelwright.workspace import schema
-from pixelwright.workspace.files import read_yaml, write_yaml
 
 EXPECT = ("pass", "fail")
 Box = tuple[int, int, int, int]
