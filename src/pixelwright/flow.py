@@ -19,6 +19,7 @@ from pixelwright.core.checks import CheckResult, check_banding, check_line_runs,
 from pixelwright.core.clean import clean
 from pixelwright.core.image import IndexedImage, RGBImage
 from pixelwright.core.importance import ColorGroup, analyze_colors, importance_map
+from pixelwright.core.lines import regularise_lines
 from pixelwright.core.palette import Palette
 from pixelwright.core.quantize import discover_palette, quantize_fixed
 from pixelwright.core.snap import snap
@@ -187,7 +188,16 @@ def run_checks(asset: Asset, version: str | None = None) -> tuple[list[CheckResu
         palette = discover_palette(native, max(1, min(len(colors), 256)))
     indexed, _ = quantize_fixed(native, palette)
     results = [check_orphans(indexed), check_line_runs(indexed), check_banding(indexed)]
-    issues = raise_check_issues(IssueLog(asset), version, results)
+    log = IssueLog(asset)
+    issues = raise_check_issues(log, version, results)
+    for issue in issues:  # the scripts can propose a fix for jaggy lines themselves
+        if issue.rule == "R-PIX-4":
+            lines, count = regularise_lines(indexed)
+            if count:
+                log.propose_fix(
+                    issue.id, _pil(lines), by="script", base=version,
+                    op={"script": "regularise_lines", "lines": count},
+                )  # fmt: skip
     return results, issues
 
 
