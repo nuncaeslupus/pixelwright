@@ -398,9 +398,13 @@ def _cell_flatness(rgb: F64, period: tuple[float, float], phase: tuple[float, fl
         for x0 in np.arange(phase[0] % period[0], rgb.shape[1] - period[0], period[0]):
             cell = rows[:, int(x0 + period[0] / 4) : int(x0 + 3 * period[0] / 4) + 1]
             cell = cell.reshape(-1, 3)
+            if not len(cell):
+                continue
             inner.append(float(cell.std(axis=0).mean()))
             means.append(cell.mean(axis=0))
-    between = float(np.asarray(means).std(axis=0).mean()) if means else 0.0
+    if not means:
+        return float("inf")
+    between = float(np.asarray(means).std(axis=0).mean())
     return float(np.mean(inner)) / between if between > 0 else float("inf")
 
 
