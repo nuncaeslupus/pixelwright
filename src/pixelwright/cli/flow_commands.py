@@ -16,6 +16,7 @@ from pixelwright import flow
 from pixelwright.asset import Asset, AssetError, list_assets, open_asset
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 from pixelwright.issues import KINDS, IssueError, IssueLog
+from pixelwright.migrate import migrate
 from pixelwright.project import PROJECT_FILE, Project, ProjectError, init_project, load_project
 
 ASSET = Param("asset", help="asset path under assets/, e.g. scenes/harbour", positional=True)
@@ -266,4 +267,22 @@ def cmd_finish(root: Path, a: dict[str, Any]) -> Outcome:
     final = asset.meta().final
     return Outcome(
         asset.rel, final, outputs=[str(target)], text=f"Finished with {final} → {target}"
+    )
+
+
+@command(
+    "migrate",
+    "turn an M0-M3 workspace into a v2 project (old files kept as .bak)",
+)
+@_guard
+def cmd_migrate(root: Path, a: dict[str, Any]) -> Outcome:
+    if is_v2(root):
+        raise PwError("exists", f"{root}: already a v2 project")
+    res = migrate(root)
+    return Outcome(
+        outputs=[str(res.project.root / PROJECT_FILE)],
+        data={"assets": res.assets, "versions": res.versions, "issues": res.issues},
+        warnings=res.warnings,
+        text=f"Migrated {len(res.assets)} asset(s), {res.versions} version(s), "
+        f"{res.issues} issue(s). Old files: pixelwright.toml.bak, assets.bak/",
     )

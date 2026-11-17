@@ -7,8 +7,7 @@ Which painter is worth paying for? The benchmark answers it with your own briefs
    and sends nothing. Missing keys are flagged. Add `--yes` to run it; it stops before
    spending if the estimate is over the matrix cap (20 USD) or the month's budget.
 3. Vote. Claude votes with `pw bench pair` and `pw bench vote` (it may see file names).
-   You vote blind: `pw view`, then open `http://127.0.0.1:<port>/blind?b=<name>`. Two
-   results of the same brief, no names; keys `1` left, `2` right, `0` about the same.
+   You vote with the same commands. (The blind voting page went with the old viewer.)
 4. `pw bench rank` ranks each provider + chain with Bradley-Terry; `pw bench report`
    writes `benchmarks/<name>/report.html` with the human, Claude and combined rankings
    and the mean failing checks.

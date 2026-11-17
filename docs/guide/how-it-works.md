@@ -1,72 +1,58 @@
 # How pixelwright works
 
-pixelwright turns a sketch into game-ready pixel art. Image models paint; code makes the
-pixels real and measures them; Claude reviews like an art director; you decide.
+pixelwright turns any image (a sketch, an AI painting, a photo) into clean pixel art for
+a game. Scripts make the pixels real and measure them; an AI agent fixes what you ask;
+you decide when an asset is finished.
 
-Try it first, offline and free: `pw tour` runs every step below on a sample in a few
-seconds and explains each one.
+Try it first: `pw open` with no project opens a sample project with two assets, already
+cleaned, each showing its next step.
 
-## The loop
+## The flow
 
-![One asset, from sketch to export](diagrams/how-it-works-1.svg) <!-- drawspec-render -->
+1. **Add an image.** In the app, *+ Add images* and pick a category (scenes, characters,
+   ... or *+ New category…*). Or save the file straight into `assets/<category>/`; the
+   app picks it up. On the command line: `pw add scenes/harbour --from harbour.png`.
+2. **Scripts run.** `pw normalize` finds the pixel grid, maps colours to the palette and
+   removes stray pixels into a new version; `pw check` raises an issue for each problem
+   it measures. The app runs both as soon as an image arrives.
+3. **Review.** Open the asset, compare versions (hold Space), select areas and write what
+   is wrong. *Ask the AI* sends it as a request; the AI answers with a fix (a new image).
+4. **Decide.** Accept or reject each fix; accepting several makes one new version. Undo
+   and redo write new versions too, so nothing is ever lost. Retouch by hand with
+   *Open in Aseprite*; the saved file comes back as a new version.
+5. **Finish.** *Finish with vN* writes the final image and copies it to the export folder
+   (`export/<category>/<asset>.png` by default).
 
-<details><summary>Diagram source</summary>
+Every asset card shows its single next step and who owes it: you, the AI or the scripts.
+`pw status` prints the same list.
 
-```drawspec
-{"version": 1, "kind": "flow", "title": "One asset, from sketch to export",
- "nodes": [
-  {"id": "S", "text": "Sketch\npw attach --as sketch"},
-  {"id": "G", "text": "Paint\npw generate"},
-  {"id": "P", "text": "Make pixels real\nsnap, quantize, clean"},
-  {"id": "C", "text": "Measure\npw check"},
-  {"id": "R", "text": "Review\ncritique, pw view"},
-  {"id": "F", "text": "Fix issues\nregen-region, Aseprite"},
-  {"id": "A", "text": "Approve, export"}
- ],
- "edges": [
-  {"from": "S", "to": "G"}, {"from": "G", "to": "P"}, {"from": "P", "to": "C"},
-  {"from": "C", "to": "R"}, {"from": "R", "to": "F"}, {"from": "F", "to": "C"},
-  {"from": "R", "to": "A"}
- ]}
-```
+## The AI side
 
-</details>
-
-1. **Sketch.** You draw the composition; `pw attach <id> sketch.png --as sketch`.
-2. **Paint.** `pw generate <id> --prompt "..."` asks an image model for 1-4 candidates.
-   They look like pixel art, but their pixels are fake (soft edges, noise, uneven grid).
-3. **Make the pixels real.** `pw snap` finds the grid and shrinks to true pixels,
-   `pw quantize` maps colours to the palette, `pw clean` removes stray pixels.
-4. **Measure.** `pw check` runs the rules a machine can measure and marks where they fail.
-5. **Review.** Claude writes a critique against the style guide; you look in `pw view`
-   and mark what is wrong as issues.
-6. **Fix.** Each issue is a region: repaint it (`pw regen-region`), redo a step inside it
-   (`pw quantize --mask`), or retouch it in Aseprite. Then measure again.
-7. **Approve and export.** `pw approve <id> <version>`, then `pw export <id>`.
-
-Lost? `pw next <id>` names the next step for an asset and why; the viewer shows the same
-hint under the image.
+Any agent works the project through `pw` (see `AGENTS.md`, written by `pw init`). With
+Claude Code, the plugin's `listen` skill runs `pw wait`, answers each request with
+`pw fix <asset> propose`, and never finishes an asset for you. Rejecting an issue as a
+style rule (`pw issues <asset> reject --promote`) writes the reason to `style/rules.toml`,
+so it is not raised again.
 
 ## Glossary
 
 | Word | Meaning |
 |---|---|
-| asset | one game image (a background, a sprite), a folder under `assets/` |
-| version | one image of an asset (`v0001`, `v0002`...); every step makes a new one, nothing is overwritten |
-| stage | where a version stands: draft, approved, rejected, final (exported) |
-| check | an automatic measurement against a rule (palette, orphan pixels, banding, contrast) |
-| critique | Claude's written review of a version, one section per complaint |
-| issue | a region of a version that needs fixing, drawn by you or found by a check or critique |
-| style guide | `style/`: palette, rules and references every asset follows |
-| provider | the image model that paints: `replay` (offline), `comfyui` (local GPU) or a paid API |
+| project | a folder with `pixelwright.toml`; settings resolve by nearest folder (`asset.toml`, `category.toml`) |
+| category | a folder under `assets/` (scenes, characters...); the left panel of the app |
+| asset | one game image, a folder under its category with `inputs/` and `versions/` |
+| version | one image of an asset (`v001`, `v002`...); every change makes a new one |
+| issue | something to fix on a version, raised by a script, the AI or you |
+| fix | a proposed new image for one or more issues; you accept or reject it |
+| state | where an asset stands: processing, in review, finished |
 
-## Your first real asset
+## Your first real project
 
-1. `pw init my-game --canvas 320x180` and `cd my-game`.
-2. `pw doctor` shows what is set up (ComfyUI, keys, Aseprite) and how to fix the rest.
-3. `pw new title-bg --kind background`, then `pw attach title-bg sketch.png --as sketch`.
-4. Follow `pw next title-bg` until it says done. With Claude, ask it to "run the review
-   loop": it drives the same commands and asks you only to look and decide.
+1. `pw init my-game` (or *Open a project folder…* in the app), then put a `.gpl` palette
+   in `style/palettes/main.gpl`.
+2. `pw open my-game` and add images.
+3. Old M0–M3 workspace? `pw migrate` converts it in place and keeps the old files as
+   `pixelwright.toml.bak` and `assets.bak/`.
 
-Local painting on your GPU: [comfyui.md](comfyui.md). Spending is capped per month
-(`pw cost` shows it); paid providers need a key in `.pixelwright/secrets.toml`.
+Generating images with a model (`pw generate`, providers, `pw cost`) still runs on the
+old workspace commands; local painting on your GPU: [comfyui.md](comfyui.md).

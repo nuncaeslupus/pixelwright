@@ -1,4 +1,4 @@
-"""What to do next with an asset, in plain words (`pw next`, the viewer hint, `pw tour`).
+"""What to do next with an asset, in plain words (`pw next`).
 
 The pipeline an asset goes through: sketch -> generate -> snap -> quantize -> clean ->
 check -> critique -> fix issues -> approve -> export. This module reads where an asset is
@@ -43,8 +43,8 @@ STEPS: dict[str, tuple[str, str]] = {
         "and marks where problems are.",
     ),
     "review-checks": (
-        "pw view {id}",
-        "Some checks flagged problems. Look at them in the viewer (Checks panel), "
+        "pw issue {id} list",
+        "Some checks flagged problems. Look at them with `pw check`, "
         "mark what matters as issues, then fix them.",
     ),
     "critique": (
@@ -53,7 +53,7 @@ STEPS: dict[str, tuple[str, str]] = {
         "region by region, and records issues.",
     ),
     "fix": (
-        "pw view {id}",
+        "pw issue {id} list",
         "Open issues remain. Fix each one: `pw regen-region` repaints a region, "
         "`pw quantize/clean --mask` redo a step inside it, or retouch it in Aseprite.",
     ),

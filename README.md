@@ -6,4 +6,4 @@
 
 LLM-directed pixel art pipeline. Work in progress.
 
-Start with `pw tour`, then read [how it works](docs/guide/how-it-works.md).
+Start with `pw open` (it opens a sample project the first time), then read [how it works](docs/guide/how-it-works.md).
