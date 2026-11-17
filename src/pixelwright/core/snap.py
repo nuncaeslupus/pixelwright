@@ -29,6 +29,10 @@ MULTIPLE_INNER = 1.0  # ... if its inner error is at most this times the pick's 
 PERIOD_SPAN = 0.6  # a fractional pixel size is searched within this of the integer scale
 PERIOD_STEP = 0.01
 PERIOD_GAIN = 1.1  # a fractional period must explain the peaks this much better to win
+WEAK_FIT = 0.1  # below this best integer fit, search every fractional period instead
+GLOBAL_MIN = 0.3  # chance-normalized peak share a fractional grid needs to be believed
+GLOBAL_MARGIN = 0.05  # the largest period within this of the best normalized score wins
+KERNEL = 0.35  # grid-line width (px) of the soft score
 
 
 @dataclass(frozen=True)
@@ -146,7 +150,7 @@ def _grid_score(pos: F64, weight: F64, period: F64, phase: F64) -> F64:
     """Peak weight near grid lines, for each (period, phase) pair (soft, Gaussian falloff)."""
     d = (pos[None, :] - phase[:, None]) % period[:, None]
     d = np.minimum(d, period[:, None] - d)
-    out: F64 = (weight[None, :] * np.exp(-((d / 0.35) ** 2))).sum(axis=1)
+    out: F64 = (weight[None, :] * np.exp(-((d / KERNEL) ** 2))).sum(axis=1)
     return out
 
 
@@ -178,6 +182,42 @@ def _refine_period(profile: F64, scale: int) -> tuple[float, float]:
     if score >= PERIOD_GAIN * base and drift >= 0.5:
         return period, phase
     return float(scale), float(_phase(profile, scale))
+
+
+def _global_period(profile: F64, max_scale: int) -> tuple[float, float, float]:
+    """(period, phase, normalized score) of the best fractional grid along one axis.
+
+    For art whose cell size drifts so fast that no integer scale fits (8.6 px cells over
+    a 2752 px image): every period from MIN_SCALE to `max_scale` is scored, normalized
+    against chance (a finer grid catches more peaks at random), and the largest period
+    close to the best score wins, so divisors of the true size lose."""
+    pos_i, weight = _peaks(profile)
+    if len(pos_i) < 8:
+        return 1.0, 0.0, 0.0
+    pos, total = pos_i.astype(np.float64), float(weight.sum())
+    found: list[tuple[float, float, float]] = []
+    for p in np.arange(MIN_SCALE, max_scale + 0.5, 0.02):
+        phases = np.arange(0.0, p, 0.2)
+        scores = _grid_score(pos, weight, np.full(len(phases), p), phases)
+        k = int(np.argmax(scores))
+        chance = min(1.0, KERNEL * np.sqrt(np.pi) / p)
+        norm = (float(scores[k]) / total - chance) / (1.0 - chance) if chance < 1 else 0.0
+        found.append((float(p), float(phases[k]), norm))
+    best = max(f[2] for f in found)
+    period, phase, score = max(
+        (f for f in found if f[2] >= best - GLOBAL_MARGIN), key=lambda f: f[0]
+    )
+    # local polish of period and phase
+    periods = np.arange(period - 0.03, period + 0.031, 0.005)
+    for p in periods:
+        phases = np.arange(0.0, p, 0.05)
+        scores = _grid_score(pos, weight, np.full(len(phases), p), phases)
+        k = int(np.argmax(scores))
+        chance = min(1.0, KERNEL * np.sqrt(np.pi) / p)
+        norm = (float(scores[k]) / total - chance) / (1.0 - chance)
+        if norm > score:
+            period, phase, score = float(p), float(phases[k]), norm
+    return period, phase, score
 
 
 def _downsample_float(rgb: F64, period: tuple[float, float], phase: tuple[float, float]) -> F64:
@@ -281,6 +321,18 @@ def snap(image: RGBImage, *, scale: int | None = None, max_scale: int = MAX_SCAL
         confidence, fits = 1.0, {}
     if scale <= 1:
         return SnapResult(image, 1, (0, 0), confidence, fits)
+    if fits and max(fits.values()) < WEAK_FIT:  # no integer grid: try fractional ones
+        smooth = _median3(rgb)
+        gx = _global_period(_edge_profile(smooth, 1), max_scale)
+        gy = _global_period(_edge_profile(smooth, 0), max_scale)
+        agree = abs(gx[0] - gy[0]) <= 0.05 * max(gx[0], gy[0])
+        if min(gx[2], gy[2]) >= GLOBAL_MIN and agree and min(gx[0], gy[0]) >= MIN_SCALE:
+            cells = _downsample_float(rgb, (gx[0], gy[0]), (gx[1], gy[1]))
+            out = np.clip(np.rint(cells), 0, 255).astype(np.uint8)
+            return SnapResult(
+                RGBImage.from_array(out), round(gx[0]), (round(gx[1]), round(gy[1])),
+                confidence, fits, (gx[0], gy[0]),
+            )  # fmt: skip
     if fits:  # detected, not given: the cells may be a fractional size
         smooth = _median3(rgb)
         period_x, phase_x = _refine_period(_edge_profile(smooth, 1), scale)
