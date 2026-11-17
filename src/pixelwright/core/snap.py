@@ -26,6 +26,9 @@ INNER_REL = 1.3
 INNER_ABS = 2.0  # RMS, 0-255 units
 MULTIPLE_KEEP = 0.8  # a multiple of the pick keeping this share of its raw on-grid weight wins
 MULTIPLE_INNER = 1.0  # ... if its inner error is at most this times the pick's (+ INNER_ABS / 2)
+PERIOD_SPAN = 0.6  # a fractional pixel size is searched within this of the integer scale
+PERIOD_STEP = 0.01
+PERIOD_GAIN = 1.1  # a fractional period must explain the peaks this much better to win
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,7 @@ class SnapResult:
     offset: tuple[int, int]  # (x, y) phase of the grid lines, in source pixels
     confidence: float  # 0-1: how clearly the chosen scale beats the next coarser one
     fits: dict[int, float]  # share of border energy on the grid, per candidate scale
+    period: tuple[float, float] = (0.0, 0.0)  # (x, y) cell size when not an integer, else 0
 
 
 def _median3(rgb: F64) -> F64:
@@ -138,6 +142,65 @@ def _inner_error(rgb: F64, scale: int, px: int, py: int) -> float:
     return float(np.sqrt((dev**2).mean()))
 
 
+def _grid_score(pos: F64, weight: F64, period: F64, phase: F64) -> F64:
+    """Peak weight near grid lines, for each (period, phase) pair (soft, Gaussian falloff)."""
+    d = (pos[None, :] - phase[:, None]) % period[:, None]
+    d = np.minimum(d, period[:, None] - d)
+    out: F64 = (weight[None, :] * np.exp(-((d / 0.35) ** 2))).sum(axis=1)
+    return out
+
+
+def _refine_period(profile: F64, scale: int) -> tuple[float, float]:
+    """(period, phase) of the grid along one axis, allowing a non-integer cell size.
+
+    Generators often draw "pixels" 8.6 screen pixels wide; an integer grid then drifts a
+    whole cell every few cells, breaking dither and diagonals. The integer scale wins
+    unless a fractional one explains the border peaks clearly better and would drift by
+    at least half a pixel over the image."""
+    pos_i, weight = _peaks(profile)
+    if len(pos_i) < 4:
+        return float(scale), float(_phase(profile, scale))
+    pos = pos_i.astype(np.float64)
+    periods = np.arange(scale - PERIOD_SPAN, scale + PERIOD_SPAN + 1e-9, PERIOD_STEP)
+    periods = periods[periods >= MIN_SCALE]
+    best = (-1.0, float(scale), 0.0)
+    base = -1.0
+    for p in periods:
+        phases = np.arange(0.0, p, 0.1)
+        scores = _grid_score(pos, weight, np.full(len(phases), p), phases)
+        k = int(np.argmax(scores))
+        if scores[k] > best[0]:
+            best = (float(scores[k]), float(p), float(phases[k]))
+        if abs(p - scale) < PERIOD_STEP / 2:
+            base = float(scores[k])
+    score, period, phase = best
+    drift = abs(period - scale) * len(profile) / period
+    if score >= PERIOD_GAIN * base and drift >= 0.5:
+        return period, phase
+    return float(scale), float(_phase(profile, scale))
+
+
+def _downsample_float(rgb: F64, period: tuple[float, float], phase: tuple[float, float]) -> F64:
+    """Like `_downsample`, with grid lines at phase + k * period (non-integer)."""
+
+    def bounds(n: int, p: float, ph: float) -> list[tuple[int, int]]:
+        start = ph % p
+        lines = [round(start + k * p) for k in range(int((n - start) / p) + 1)]
+        lines = sorted({0, *[x for x in lines if 0 <= x <= n], n})
+        return [(a, b) for a, b in pairwise(lines) if b - a >= p / 2]
+
+    rows = bounds(rgb.shape[0], period[1], phase[1])
+    cols = bounds(rgb.shape[1], period[0], phase[0])
+    cells = np.empty((len(rows), len(cols), 3))
+    for i, (y0, y1) in enumerate(rows):
+        iy0, iy1 = _inner(y0, y1, 4)
+        band = rgb[iy0:iy1]
+        for j, (x0, x1) in enumerate(cols):
+            ix0, ix1 = _inner(x0, x1, 4)
+            cells[i, j] = np.median(band[:, ix0:ix1].reshape(-1, 3), axis=0)
+    return cells
+
+
 def detect_grid(
     image: RGBImage, max_scale: int = MAX_SCALE
 ) -> tuple[int, int, int, float, dict[int, float]]:
@@ -218,6 +281,17 @@ def snap(image: RGBImage, *, scale: int | None = None, max_scale: int = MAX_SCAL
         confidence, fits = 1.0, {}
     if scale <= 1:
         return SnapResult(image, 1, (0, 0), confidence, fits)
+    if fits:  # detected, not given: the cells may be a fractional size
+        smooth = _median3(rgb)
+        period_x, phase_x = _refine_period(_edge_profile(smooth, 1), scale)
+        period_y, phase_y = _refine_period(_edge_profile(smooth, 0), scale)
+        if (period_x, period_y) != (float(scale), float(scale)):
+            cells = _downsample_float(rgb, (period_x, period_y), (phase_x, phase_y))
+            out = np.clip(np.rint(cells), 0, 255).astype(np.uint8)
+            return SnapResult(
+                RGBImage.from_array(out), scale, (round(phase_x), round(phase_y)),
+                confidence, fits, (period_x, period_y),
+            )  # fmt: skip
     cells = _downsample(rgb, scale, px, py)
     out = np.clip(np.rint(cells), 0, 255).astype(np.uint8)
     return SnapResult(RGBImage.from_array(out), scale, (px, py), confidence, fits)
