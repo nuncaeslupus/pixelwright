@@ -23,7 +23,7 @@ def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> list[str]:
     rgba[1:5, 2:6] = (200, 40, 40, 255)
     write_png(tmp_path / "hero.png", RGBImage(rgba))
     w = ["--workspace", str(tmp_path / "ws")]
-    pw(capsys, "init", *w, "--canvas", "8x6")
+    pw(capsys, "init", "--legacy", *w, "--canvas", "8x6")
     pw(capsys, "new", "hero", "--kind", "sprite", *w)
     pw(capsys, "attach", "hero", str(tmp_path / "hero.png"), *w)
     return w

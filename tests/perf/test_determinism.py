@@ -26,7 +26,7 @@ def _pw(capsys: pytest.CaptureFixture[str], *argv: str) -> dict[str, Any]:
 def _pipeline(root: Path, capsys: pytest.CaptureFixture[str]) -> tuple[dict[str, str], list[int]]:
     """Return output hashes by step and each step's duration in ms."""
     w = ["--workspace", str(root / "ws")]
-    _pw(capsys, "init", *w)
+    _pw(capsys, "init", "--legacy", *w)
     _pw(capsys, "palette", "import", "--file", str(root / "scene.gpl"), *w)
     _pw(capsys, "new", "bg", "--kind", "background", "--palette", "palettes/scene.gpl", *w)
     _pw(capsys, "attach", "bg", str(root / "src.png"), *w)

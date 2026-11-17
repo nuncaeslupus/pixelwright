@@ -60,7 +60,7 @@ def cmd_tour(root: Path, a: dict[str, Any]) -> Outcome:
         step = next_step(Workspace.open(ws_root).asset(ASSET))
         return f"`pw next {ASSET}` now says: {step.step} ({step.command})"
 
-    pw("init", path=str(ws_root), canvas=f"{sample.WIDTH}x{sample.HEIGHT}")
+    pw("init", path=str(ws_root), legacy=True, canvas=f"{sample.WIDTH}x{sample.HEIGHT}")
     files = ws_root / "tour-files"
     files.mkdir()
     write_palette(files / "dusk.gpl", sample.palette())

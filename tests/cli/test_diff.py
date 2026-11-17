@@ -65,7 +65,7 @@ def test_diff_reports_check_deltas_and_changed_area(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     w = ["--workspace", str(files / "ws")]
-    pw(capsys, "init", "--canvas", "16x12", *w)
+    pw(capsys, "init", "--legacy", "--canvas", "16x12", *w)
     pw(capsys, "palette", "import", "--file", str(files / "scene.gpl"), *w)
     pw(capsys, "new", "hero", "--kind", "sprite", "--palette", "palettes/scene.gpl", *w)
     pw(capsys, "attach", "hero", str(files / "src.png"), *w)

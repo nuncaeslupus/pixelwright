@@ -166,11 +166,16 @@ def _rel_style(ws: Workspace, path: Path) -> str:
     "create a workspace (pixelwright.toml, style/, assets/...)",
     Param("path", help="workspace folder (same as --workspace)", positional=True),
     Param("canvas", help="default canvas WIDTHxHEIGHT"),
+    Param("legacy", "bool", help="create an old-style (M0-M3) workspace"),
     needs_workspace=False,
 )
 def cmd_init(root: Path, a: dict[str, Any]) -> Outcome:
     if a["path"]:
         root = Path(a["path"])
+    if not a["legacy"]:
+        from pixelwright.cli.flow_commands import init_v2
+
+        return init_v2(root, a)
     config = WorkspaceConfig()
     if a["canvas"]:
         config.canvas = _canvas(a["canvas"])
@@ -411,6 +416,11 @@ CHECKS: dict[str, Callable[[_CheckInput], C.CheckResult]] = {
     Param("scale", "int", help="upscale factor of --file for the grid check", default=1),
 )
 def cmd_check(root: Path, a: dict[str, Any]) -> Outcome:
+    from pixelwright.cli.flow_commands import check_v2, is_v2
+
+    if is_v2(root):
+        out: Outcome = check_v2(root, a)
+        return out
     ws = Workspace.open(root)
     asset = ws.asset(a["asset"])
     version = _version(asset, a["version"])
@@ -1016,6 +1026,10 @@ def _asset_status(asset: Asset) -> dict[str, Any]:
     Param("asset", help="asset id (default: every asset)", positional=True),
 )
 def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
+    from pixelwright.cli.flow_commands import is_v2, status_v2
+
+    if is_v2(root):
+        return status_v2(root, a)
     ws = Workspace.open(root)
     ids = [a["asset"]] if a["asset"] else ws.assets()
     return Outcome(a["asset"], data={"assets": [_asset_status(ws.asset(i)) for i in ids]})

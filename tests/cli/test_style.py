@@ -29,7 +29,7 @@ def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     write_palette(tmp_path / "scene.gpl", Palette([Color(*c) for c in COLORS]))
     root = tmp_path / "ws"
     w = ["--workspace", str(root)]
-    pw(capsys, "init", *w)
+    pw(capsys, "init", "--legacy", *w)
     pw(capsys, "palette", "import", "--file", str(tmp_path / "scene.gpl"), *w)
     for asset in ("knight", "tree"):
         pw(capsys, "new", asset, "--kind", "sprite", "--palette", "palettes/scene.gpl", *w)

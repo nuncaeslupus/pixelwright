@@ -37,7 +37,7 @@ def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     write_png(tmp_path / "focal.png", RGBImage(mask))
     root = tmp_path / "ws"
     w = ["--workspace", str(root)]
-    pw(capsys, "init", *w)
+    pw(capsys, "init", "--legacy", *w)
     pw(capsys, "palette", "import", "--file", str(tmp_path / "p.gpl"), *w)
     pw(capsys, "new", "hero", "--kind", "sprite", "--palette", "palettes/p.gpl", *w)
     pw(capsys, "attach", "hero", str(tmp_path / "src.png"), *w)
