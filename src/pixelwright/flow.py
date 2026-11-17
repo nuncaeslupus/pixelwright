@@ -68,7 +68,8 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     size = (native.width, native.height)
     if size != (canvas["width"], canvas["height"]):
         warnings.append(
-            f"size {size[0]}x{size[1]} differs from the canvas {canvas['width']}x{canvas['height']}"
+            f"snapped size {size[0]}x{size[1]} (scale {snapped.scale}) differs from "
+            f"the canvas {canvas['width']}x{canvas['height']}"
         )
     palette = asset_palette(asset)
     palette_name = asset.settings().palette
