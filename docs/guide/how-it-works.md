@@ -106,3 +106,10 @@ image instead. `pw palette discover --asset scenes/tavern scenes/street --colors
 --name base --swatch` builds one palette shared by several assets (or `--images` files)
 and saves it as `style/palettes/base.gpl` plus a swatch in
 `style/references/palette-base.png`, which then goes with every prompt.
+
+To design the game's base palette instead of extracting it, `pw palette ramps --name base
+--swatch` builds one ramp of shades per key colour, shadows turning towards blue-violet
+and lights towards yellow, plus a shared near-black and near-white. It starts from an
+`adventure` preset (skin, hair, wood, stone, metal, foliage, cloth, gold, fire); add or
+replace keys with `--keys skin-light=f0c39c moss=4f6b2e`, or `--preset none` to start
+from scratch, and `--steps 4` for shorter ramps.

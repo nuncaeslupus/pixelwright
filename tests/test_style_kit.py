@@ -142,3 +142,11 @@ def test_palette_discover_from_images_writes_swatch(
     assert str(swatch) in env["outputs"]
     found = {tuple(c[:3]) for c in np.asarray(Image.open(swatch)).reshape(-1, 4) if c[3]}
     assert (200, 40, 40) in found and len(found) == env["data"]["colors"]
+
+
+def test_palette_ramps_from_keys(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    env = pw(capsys, project, "palette", "ramps", "--preset", "none", "--keys", "wood=8a5a3a",
+             "moss=5a8a3a", "--steps", "3", "--name", "r", "--swatch")  # fmt: skip
+    assert env["data"]["colors"] == 3 * 2 + 2
+    swatch = Image.open(project / "style" / "references" / "palette-r.png")
+    assert swatch.size == (3 * 24, 3 * 24)  # a ramp per row, then the ends
