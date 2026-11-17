@@ -47,7 +47,7 @@ def call(ws: Path, name: str, **arguments: Any) -> dict[str, Any]:
 
 def test_tools_call_returns_envelope_and_render_image(tmp_path: Path) -> None:
     ws = tmp_path / "ws"
-    assert call(ws, "init")["structuredContent"]["ok"]
+    assert call(ws, "init", legacy=True)["structuredContent"]["ok"]
     call(ws, "new", asset="hero", kind="sprite")
     rgba = np.zeros((300, 200, 4), np.uint8)
     rgba[..., 3] = 255

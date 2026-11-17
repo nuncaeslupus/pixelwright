@@ -24,7 +24,7 @@ def _pw(ws: Path, capsys: pytest.CaptureFixture[str], *args: str) -> dict[str, A
 @pytest.fixture
 def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     root = tmp_path / "ws"
-    assert _pw(root, capsys, "init")["exit"] == 0
+    assert _pw(root, capsys, "init", "--legacy")["exit"] == 0
     (root / "replay").mkdir()
     (root / "replay" / "a.png").write_bytes(encode_png(tour.painted()))
     (root / "replay" / "b.png").write_bytes(encode_png(tour.sketch()))

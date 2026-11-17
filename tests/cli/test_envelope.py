@@ -73,7 +73,7 @@ def test_cli_json_envelope_on_every_command(
         seen.add(argv[0])
         return env
 
-    run("init", "--canvas", "16x12")
+    run("init", "--legacy", "--canvas", "16x12")
     imp = run("palette", "import", "--file", str(files / "scene.gpl"))
     assert imp["data"]["colors"] == 4
     run("new", "hero", "--kind", "sprite", "--palette", "palettes/scene.gpl")
@@ -150,7 +150,8 @@ def test_cli_json_envelope_on_every_command(
     view_command.stop(ws.resolve())
     assert run("requests")["data"]["requests"] == []
     assert run("wait", "--timeout", "0")["data"]["requests"] == []
-    assert seen == set(REGISTRY)
+    flow = {"add", "normalize", "issues", "fix", "undo", "redo", "star", "finish"}
+    assert seen | flow == set(REGISTRY)  # flow commands: tests/test_flow_cli.py
 
 
 def test_errors_use_the_envelope(files: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -158,6 +159,6 @@ def test_errors_use_the_envelope(files: Path, capsys: pytest.CaptureFixture[str]
     assert pw(capsys, "snap", "hero", *w, code=3)["error"]["code"] == "no_workspace"
     assert pw(capsys, "new", "hero", "--kind", "dragon", *w, code=2)["error"]["code"] == "usage"
     ws = ["--workspace", str(files / "ws")]
-    pw(capsys, "init", *ws)
+    pw(capsys, "init", "--legacy", *ws)
     assert pw(capsys, "snap", "ghost", *ws, code=3)["error"]["code"] == "not_found"
     assert pw(capsys, "new", "Bad_Id", "--kind", "prop", *ws, code=3)["error"]["code"] == "invalid"

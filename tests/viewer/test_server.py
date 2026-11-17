@@ -31,7 +31,7 @@ def viewer(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Iterator[Viewe
     root = tmp_path / "ws"
     w = ["--workspace", str(root)]
     for argv in (
-        ["init"],
+        ["init", "--legacy"],
         ["palette", "import", "--file", str(tmp_path / "scene.gpl")],
         ["new", "hero", "--kind", "sprite", "--palette", "palettes/scene.gpl"],
         ["attach", "hero", str(tmp_path / "src.png")],

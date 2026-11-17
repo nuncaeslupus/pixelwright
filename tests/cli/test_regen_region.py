@@ -27,7 +27,7 @@ def test_regen_region_changes_nothing_outside_mask(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     ws = tmp_path / "ws"
-    _pw(ws, capsys, "init")
+    _pw(ws, capsys, "init", "--legacy")
     (ws / "replay").mkdir()
     noise = np.random.default_rng(7).integers(0, 256, (360, 640, 3), dtype=np.uint8)
     (ws / "replay" / "noise.png").write_bytes(encode_png(RGBImage.from_array(noise)))

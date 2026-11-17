@@ -40,7 +40,7 @@ def _doc(frames: int) -> AseDocument:
 @pytest.fixture
 def ws(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     root = tmp_path / "ws"
-    pw(capsys, "init", str(root), "--canvas", "8x6")
+    pw(capsys, "init", "--legacy", str(root), "--canvas", "8x6")
     pw(capsys, "new", "hero", "--kind", "sprite", "--workspace", str(root))
     pw(capsys, "attach", "hero", str(_sprite(tmp_path)), "--workspace", str(root))
     return root

@@ -38,7 +38,7 @@ def workspace(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> Path:
     write_png(tmp_path / "src.png", RGBImage(np.dstack([native, np.full((12, 16), 255, np.uint8)])))
     write_palette(tmp_path / "scene.gpl", Palette([Color(*c) for c in COLORS]))
     root = tmp_path / "ws"
-    pw(root, "init")
+    pw(root, "init", "--legacy")
     pw(root, "palette", "import", "--file", str(tmp_path / "scene.gpl"))
     pw(root, "new", "hero", "--kind", "sprite", "--palette", "palettes/scene.gpl")
     pw(root, "attach", "hero", str(tmp_path / "src.png"))
