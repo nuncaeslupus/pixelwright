@@ -28,6 +28,7 @@ from pixelwright.project import Project
 from pixelwright.rules import raise_check_issues
 
 DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colours
+PROTECT = 0.8  # pixels at least this important are never cleaned away
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
 
 
@@ -113,14 +114,16 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
     prep = prepare(asset, source)
     native, warnings = prep.image, list(prep.warnings)
+    imp = importance_map(native)
     palette = asset_palette(asset)
     palette_name = asset.settings().palette
     if palette is None:
         warnings.append(f"palette {palette_name!r} not in style/palettes; colours discovered")
-        palette = discover_palette(native, DISCOVERED_COLORS, importance=importance_map(native))
+        palette = discover_palette(native, DISCOVERED_COLORS, importance=imp)
         palette_name = "discovered"
     indexed, _ = quantize_fixed(native, palette)
-    cleaned, _ = clean(indexed)
+    # a lone pixel that stands out strongly (a star, a glint) is meant, not noise
+    cleaned, _ = clean(indexed, imp < PROTECT)
     version = asset.add_version(_pil(cleaned))
     if asset.meta().state == "processing":
         asset.set_state("review")

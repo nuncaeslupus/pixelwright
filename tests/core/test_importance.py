@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-import numpy as np
+from pathlib import Path
 
+import numpy as np
+import pytest
+from PIL import Image as PILImage
+
+from pixelwright.cli import main
 from pixelwright.core.color import srgb8_to_oklab
 from pixelwright.core.image import RGBImage
 from pixelwright.core.importance import analyze_colors, importance_map
 from pixelwright.core.quantize import discover_palette
+from pixelwright.io.png import write_png
 
 GLOW = (255, 200, 40)
 
@@ -67,3 +73,22 @@ def test_near_black_noise_is_one_palette_colour_and_outlines_survive() -> None:
     cleaned, _ = clean(quantize_fixed(image, palette)[0])
     line = cleaned.indices[30, 5:75]
     assert (line == line[0]).all()
+
+
+def test_normalize_keeps_a_lone_star(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A single bright pixel in a dark sky is meant (a star), not an orphan to clean."""
+    sky = np.zeros((18, 32, 4), np.uint8)
+    sky[..., :3], sky[..., 3] = (20, 22, 50), 255
+    ground = np.random.default_rng(4).integers(0, 2, (9, 32)).astype(bool)
+    sky[9:, :, :3] = np.where(ground[..., None], (40, 30, 60), (70, 50, 40))  # rough ground
+    sky[4, 10, :3] = (255, 250, 220)
+    big = np.repeat(np.repeat(sky, 4, 0), 4, 1)
+    write_png(tmp_path / "sky.png", RGBImage(big))
+    art = ["--workspace", str(tmp_path / "art"), "--json"]
+    assert main(["init", *art]) == 0
+    assert main(["add", "scenes/sky", "--from", str(tmp_path / "sky.png"), *art]) == 0
+    assert main(["normalize", "scenes/sky", *art]) == 0
+    capsys.readouterr()
+    version = tmp_path / "art" / "assets" / "scenes" / "sky" / "versions" / "v001.png"
+    pixels = np.asarray(PILImage.open(version).convert("RGB"))
+    assert pixels[4, 10].sum() > 600
