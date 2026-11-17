@@ -148,6 +148,8 @@ def test_cli_json_envelope_on_every_command(
     viewed = run("view", "--open", "hero/v0004", "--port", "0", "--background", "--no-browser")
     assert viewed["data"]["url"].endswith("/#/hero/v0004")
     view_command.stop(ws.resolve())
+    assert run("requests")["data"]["requests"] == []
+    assert run("wait", "--timeout", "0")["data"]["requests"] == []
     assert seen == set(REGISTRY)
 
 
