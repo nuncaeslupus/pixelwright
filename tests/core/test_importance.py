@@ -92,3 +92,27 @@ def test_normalize_keeps_a_lone_star(tmp_path: Path, capsys: pytest.CaptureFixtu
     version = tmp_path / "art" / "assets" / "scenes" / "sky" / "versions" / "v001.png"
     pixels = np.asarray(PILImage.open(version).convert("RGB"))
     assert pixels[4, 10].sum() > 600
+
+
+def test_a_twinkle_keeps_one_glow_colour() -> None:
+    """A lone star with four arms in slightly different JPEG shades: the arms are kept
+    and take one palette colour; a faint speck next to a plain star is not protected."""
+    from pixelwright.core.palette import Color, Palette
+    from pixelwright.core.quantize import quantize_fixed
+    from pixelwright.flow import _glow
+
+    rgb = np.zeros((20, 20, 3), np.uint8)
+    rgb[:] = (30, 25, 60)
+    rgb[5, 5] = (250, 225, 180)
+    for (y, x), c in zip(((4, 5), (6, 5), (5, 4), (5, 6)), (140, 150, 156, 162), strict=True):
+        rgb[y, x] = (c, c - 25, c - 20)
+    rgb[14, 14] = (250, 225, 180)  # a plain star with a faint JPEG speck beside it
+    rgb[14, 15] = (40, 33, 66)
+    image = RGBImage(np.dstack([rgb, np.full((20, 20), 255, np.uint8)]))
+    pal = Palette([Color(30, 25, 60), Color(250, 225, 180), Color(130, 110, 120),
+                   Color(160, 140, 130), Color(42, 34, 68)])  # fmt: skip
+    indexed, _ = quantize_fixed(image, pal)
+    out, protect = _glow(indexed, image, importance_map(image), pal)
+    arms = {int(out.indices[p]) for p in ((4, 5), (6, 5), (5, 4), (5, 6))}
+    assert len(arms) == 1 and arms != {0}
+    assert protect[5, 5] and protect[4, 5] and not protect[14, 15]

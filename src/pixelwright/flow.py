@@ -34,6 +34,7 @@ DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colour
 PAINTING_COLORS = 24  # a reduced painting has no palette of its own to recover
 SPECK = 4  # in a reduced painting, same-colour groups this small are texture, not shape
 PROTECT = 0.8  # pixels at least this important are never cleaned away
+GLOW = 0.5  # ... nor their neighbours this important: the arms of a twinkle, not JPEG noise
 OVERSIZE = 1.25  # a snapped image this much larger than the canvas has no real pixel grid
 UNDERSIZE = 0.5  # ... or this much smaller, while the image itself is larger than the canvas
 
@@ -141,6 +142,42 @@ def _grow(mask: npt.NDArray[np.bool_]) -> npt.NDArray[np.bool_]:
     return out
 
 
+def _glow(
+    indexed: IndexedImage, native: RGBImage, imp: npt.NDArray[np.float64], palette: Palette
+) -> tuple[IndexedImage, npt.NDArray[np.bool_]]:
+    """Pixels never to clean: the important ones and the glow right around them. The glow
+    of a lone bright pixel (a twinkling star) takes one colour, the palette colour
+    nearest its mean, instead of one per pixel."""
+    core = imp >= PROTECT
+    protect = core | (_grow(core) & (imp >= GLOW))
+    indices = indexed.indices.copy()
+    h, w = core.shape
+    for y, x in zip(*np.nonzero(core), strict=True):
+        diagonals = [
+            (y + dy, x + dx)
+            for dy in (-1, 1)
+            for dx in (-1, 1)
+            if 0 <= y + dy < h and 0 <= x + dx < w
+        ]
+        if (
+            any(protect[p] for p in diagonals)
+            or imp[y, x] < imp[max(0, y - 1) : y + 2, max(0, x - 1) : x + 2].max()
+        ):
+            continue  # part of a shape (a lamp), or an arm itself: not the star's centre
+        arms = [
+            (y + dy, x + dx)
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1))
+            if 0 <= y + dy < h and 0 <= x + dx < w and protect[y + dy, x + dx]
+        ]
+        if len(arms) < 2:
+            continue
+        mean = np.mean([native.rgba[p] for p in arms], axis=0).round().astype(np.uint8)
+        one, _ = quantize_fixed(RGBImage(mean.reshape(1, 1, 4)), palette)
+        for p in arms:
+            indices[p] = one.indices[0, 0]
+    return IndexedImage(indices, indexed.palette, indexed.alpha), protect
+
+
 def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
     """Input → next version: pixel grid (or reduce to the canvas), palette, stray pixels."""
     prep = prepare(asset, source)
@@ -154,9 +191,8 @@ def normalize(asset: Asset, source: Path | None = None) -> NormalizeResult:
         palette = discover_palette(native, colors, importance=imp)
         palette_name = "discovered"
     indexed, _ = quantize_fixed(native, palette)
-    # a lone pixel that stands out strongly (a star, a glint) is meant, not noise, and so
-    # is the glow right around it (the arms of a twinkle)
-    protect = _grow(imp >= PROTECT)
+    # a lone pixel that stands out strongly (a star, a glint) is meant, not noise
+    indexed, protect = _glow(indexed, native, imp, palette)
     cleaned, _ = clean(indexed, ~protect)
     if prep.reduced:  # a painting: fold leftover texture specks into their shapes
         cleaned, _ = remove_small_clusters(cleaned, SPECK, protect=protect)
