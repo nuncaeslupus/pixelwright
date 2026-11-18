@@ -40,6 +40,24 @@ Bugs found and fixed: `pw normalize` guessed a 5 px grid on a 1280x720 image (25
 an exact multiple of the canvas now sets the grid. Next model to try: an undistilled
 Flux (real negative prompt), about 9 GB.
 
+## Rounds 4-10: Chroma and the VGA look
+
+| Round | Change | Result |
+|---|---|---|
+| 4 | Chroma1-HD fp8, 26 steps | the best local model: more atmosphere, follows the description, no fake signature; ~90 s |
+| 5 | VGA preamble (readable clusters, smooth ramps, calm areas) + anti-noise negative | readable pixels; a "very simple" prompt is flat and pale |
+| 6 | contrast and atmosphere words; cfg 4.5 | more drama; some seeds draw a tiny scene on a flat background |
+| 7 | `colors = 256` instead of pw's 24 | the flat blocks were pw's; stone edges and grass shades come back |
+| 7 | material lines (dark joint, lit edge) | every stone reads, near and far from the light |
+| 7-9 | vignette and torch flicker after generation, in the image's colours | work; in the prompt they break the scene |
+| 8-9 | sharpen + 48-64 colours | pixels pop but detail and contrast suffer; the owner prefers 128-256 |
+| 10 | 128 colours per scene | nearly the same as 256 (scenes use ~120) |
+| 10 | one palette fitted to two scenes at once | grass takes the colours; the crypt loses its flame oranges |
+| 10 | per-scene union (58 own + 4 brightest + 2 darkest each) | 124 colours, both scenes look as with their own |
+
+Built from this: the `chroma` preset, 128 colours for painted inputs, `pw palette discover
+--per-image`, and `[[light]]` / `vignette` in scenes. Guide: `docs/guide/painted-scenes.md`.
+
 ## Not done
 
 - No side-by-side judgement against Retro Diffusion yet: the owner judges the contact

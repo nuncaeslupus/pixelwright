@@ -188,3 +188,13 @@ def test_flux_takes_an_optional_lora_between_the_unet_and_the_sampler() -> None:
     assert wf["8"]["inputs"]["model"] == ["lora", 0]
     plain = build()
     assert "lora" not in plain and plain["8"]["inputs"]["model"] == ["1", 0]
+
+
+def test_chroma_wires_the_negative_prompt_and_its_sampler() -> None:
+    req = pv.GenRequest("txt2img", "a crypt", (1280, 720), negative="noise",
+                        params={"preset": "chroma"})  # fmt: skip
+    wf = ComfyUIProvider(transport=Recorded()).build(req, {})
+    assert wf["7"]["inputs"]["text"] == "noise" and wf["8"]["inputs"]["negative"] == ["7", 0]
+    assert wf["3"]["inputs"]["type"] == "chroma" and wf["8"]["inputs"]["scheduler"] == "beta"
+    assert (wf["8"]["inputs"]["steps"], wf["8"]["inputs"]["cfg"]) == (26, 3.8)
+    assert wf["8"]["inputs"]["model"] == ["2", 0]  # through ModelSamplingAuraFlow

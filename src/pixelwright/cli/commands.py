@@ -56,6 +56,8 @@ def cmd_status(root: Path, a: dict[str, Any]) -> Outcome:
     Param("images", "list", help="discover: image files"),
     Param("colors", "int", help="discover: colours (plus up to 8 accents); ramps: hue "
           "families taken from --asset/--images", default=16),
+    Param("per_image", "int", help="discover: each image brings this many colours of its "
+          "own instead (a scene set: no scene loses its lights to a bigger one)"),
     Param("keys", "list", help="ramps: key colours as name=rrggbb (added to the preset)"),
     Param("preset", help="ramps: starting key colours (default: adventure, or none with "
           "--asset/--images)", choices=("adventure", "none")),
@@ -98,7 +100,10 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         images, names = _images(root, a)
         if not images:
             raise PwError("invalid", "palette discover needs --asset or --images")
-        palette = flow.palette_from(images, a["colors"])
+        if a["per_image"]:
+            palette = flow.palette_per_image(images, a["per_image"])
+        else:
+            palette = flow.palette_from(images, a["colors"])
         name = a["name"] or names[0]
     dest = folder / f"{name}.gpl"
     folder.mkdir(parents=True, exist_ok=True)
