@@ -65,3 +65,21 @@ learn what the provider can do for an adventure game at 320x180.
   camera and horizon, contact shadows and depth sizes per character.
 - Scrolling scenes in two steps (640x180): two backgrounds that join, composed with props.
   `rd_plus` reaches 384x180 in one image.
+
+## Layered crypt with `pw scene` (2026-11-18, $0.42)
+
+The empty crypt from round 3 as background, with the tomb asked through `pw scene prompt`
+(frontal camera, eye level above the lid, 40 px next to an 81 px person).
+
+- **Camera match works.** `rd_pro__fantasy` 128x64 drew the open tomb straight from the
+  front, lid leaning on its side, in the room's own colours (`input_palette` = the
+  background's 75 colours). It sits in the room with no retouching.
+- **`remove_bg` erased the closed tomb.** Only the moss survived: the stone was close to
+  the colours it keys out. Third failure of `remove_bg` in five tries. Ask for a flat
+  background and key it with pixelwright, or use a style that returns transparency.
+- **`rd_tile__scene_object` ($0.06) returns transparency** and kept the frontal camera,
+  but with the open tomb as reference it drew a plainer, bluer box: two states of one
+  object should come from the same style and seed.
+- **Scale.** The 60 px knight only fits near the back wall (row 145); in front of the
+  door the scene asks for about 100 px. Character sizes have to be drawn per scene depth.
+- Results: project files `m7/rd-cripta-cerrada-abierta-x2.png` and the three tomb PNGs.
