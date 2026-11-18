@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from pixelwright import scene as sc
 from pixelwright.cli.flow_commands import _guard, _project
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 
-ACTIONS = ("new", "show", "scale", "sizes", "prompt", "compose")
+ACTIONS = ("new", "show", "analyze", "scale", "sizes", "prompt", "compose")
 
 
 def _states(raw: list[str]) -> dict[str, str]:
@@ -24,7 +26,7 @@ def _states(raw: list[str]) -> dict[str, str]:
 
 @command(
     "scene",
-    "scenes in layers: new, show, scale --at Y, sizes, prompt --at Y, compose",
+    "scenes in layers: new, show, analyze, scale --at Y, sizes, prompt --at Y, compose",
     Param("action", positional=True, required=True, choices=ACTIONS),
     Param("name", help="scene name: scenes/<name>.toml", positional=True),
     Param("background", help="new: background asset, e.g. scenes/crypt-bg"),
@@ -40,6 +42,8 @@ def _states(raw: list[str]) -> dict[str, str]:
     Param("gif", "bool", help="compose: also write the animated scene as a GIF"),
     Param("viewport", "int", help="compose: crop the view starting at this column"),
     Param("no_shadows", "bool", help="compose: leave out contact shadows"),
+    Param("guides", "bool", help="compose: also write the scene with horizon, floor and bases"),
+    Param("apply", "bool", help="analyze: write the estimated horizon to the scene file"),
 )
 @_guard
 def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
@@ -59,6 +63,24 @@ def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
         data = scene.to_dict()
         return Outcome(data=data, text=f"{name}: {len(scene.layers)} layer(s), horizon "
                        f"{scene.horizon:g}, {scene.camera}")  # fmt: skip
+    if action == "analyze":
+        bg = sc.background_image(scene, project)
+        vx, vy, agree = sc.vanishing_point(bg)
+        est = sc.Scene(**{**scene.__dict__, "horizon": float(vy)})
+        warnings = est.checks()
+        data = {
+            "vanishing_point": [vx, vy], "agreement": round(agree, 3), "horizon": vy,
+            "was": scene.horizon, "camera_height_m": round(est.camera_height, 2),
+        }  # fmt: skip
+        if a["apply"]:
+            sc.set_horizon(scene, vy)
+        verb = "set" if a["apply"] else "estimated"
+        text = (
+            f"{name}: horizon {verb} at row {vy} (was {scene.horizon:g}); "
+            f"camera {est.camera_height:.1f} m above the floor"
+        )
+        outputs = [str(scene.path)] if a["apply"] else []
+        return Outcome(data=data, warnings=warnings, outputs=outputs, text=text)
     if action in ("scale", "prompt") and a["at"] is None:
         raise PwError("usage", f"{action} needs --at <row>", exit_code=2)
     if action == "scale":
@@ -86,5 +108,9 @@ def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
         states=states,
         shadows=not a["no_shadows"],
     )
+    if a["guides"]:
+        g = project.export_dir / sc.SCENES_DIR / f"{name}-guides.png"
+        Image.fromarray(sc.guides(scene, out), "RGBA").save(g)
+        paths.append(g)
     return Outcome(outputs=[str(p) for p in paths], data=sc.layout(scene, out),
                    warnings=out.warnings, text=f"{name}: {paths[0]}")  # fmt: skip
