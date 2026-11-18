@@ -364,7 +364,10 @@ def _pick_size(scene: Scene, project: Project, layer: Layer) -> tuple[str, RGBA,
     return ref, img, warn
 
 
-def _shadow(canvas: RGBA, cx: int, cy: int, half_w: float, scene: Scene, palette: RGBA) -> None:
+def _shadow(
+    canvas: RGBA, floor: npt.NDArray[np.bool_], cx: int, cy: int, half_w: float, scene: Scene,
+    palette: RGBA,
+) -> None:  # fmt: skip
     """Darken an ellipse of floor under (cx, cy) with colours from `palette` (N x 3)."""
     depth = (cy - scene.horizon) / max(1.0, scene.viewport[1] - scene.horizon)
     half_h = max(1.0, half_w * 0.3 * min(1.0, max(0.3, depth)))
@@ -376,7 +379,7 @@ def _shadow(canvas: RGBA, cx: int, cy: int, half_w: float, scene: Scene, palette
     yy, xx = np.mgrid[y0:y1, x0:x1]
     inside = ((xx - cx) / half_w) ** 2 + ((yy - cy) / half_h) ** 2 <= 1.0
     region = canvas[y0:y1, x0:x1]
-    inside &= region[..., 3] > 0
+    inside &= (region[..., 3] > 0) & floor[y0:y1, x0:x1]  # only floor: never a layer
     if not inside.any():
         return
     pal_lab = srgb8_to_oklab(palette)
@@ -393,7 +396,7 @@ def _shadow(canvas: RGBA, cx: int, cy: int, half_w: float, scene: Scene, palette
     region[inside] = sub
 
 
-def _paste(canvas: RGBA, img: RGBA, left: int, top: int) -> None:
+def _paste(canvas: RGBA, floor: npt.NDArray[np.bool_], img: RGBA, left: int, top: int) -> None:
     h, w = canvas.shape[:2]
     sx0, sy0 = max(0, -left), max(0, -top)
     dx0, dy0 = max(0, left), max(0, top)
@@ -403,6 +406,7 @@ def _paste(canvas: RGBA, img: RGBA, left: int, top: int) -> None:
     src = img[sy0 : sy0 + dy1 - dy0, sx0 : sx0 + dx1 - dx0]
     mask = src[..., 3] > 127  # pixel art keeps hard edges: a pixel is in or out
     canvas[dy0:dy1, dx0:dx1][mask] = src[mask]
+    floor[dy0:dy1, dx0:dx1][mask] = False
 
 
 def compose(
@@ -433,14 +437,15 @@ def compose(
         pieces.append((layer, ref, img, state, n))
     palette = np.unique(canvas[canvas[..., 3] > 0][:, :3], axis=0)  # the floor's own colours
     placed: list[Placed] = []
+    floor = np.ones(canvas.shape[:2], bool)  # pixels no layer has covered yet
     for layer, ref, img, state, n in pieces:
         left_box, _, right_box, bottom = opaque_box(img)
         x, y = layer.at
         left = x - (left_box + right_box) // 2
         top = y - bottom
         if shadows and layer.shadow and layer.z is None:
-            _shadow(canvas, x, y - 1, max(2.0, (right_box - left_box) * 0.6), scene, palette)
-        _paste(canvas, img, left, top)
+            _shadow(canvas, floor, x, y - 1, max(2.0, (right_box - left_box) * 0.6), scene, palette)
+        _paste(canvas, floor, img, left, top)
         placed.append(Placed(layer.name, ref, left, top, img.shape[1], img.shape[0], state,
                              frame % n, n))  # fmt: skip
     return Composed(canvas, placed, warnings, longest)

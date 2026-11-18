@@ -215,3 +215,16 @@ def test_prompt_at_horizon_and_bad_new_leave_nothing(
     ]
     assert main([*argv, "--workspace", str(root), "--json"]) != 0
     assert not (root / "scenes" / "bad.toml").exists()
+
+
+def test_shadow_never_darkens_a_layer(root: Path) -> None:
+    path = root / "scenes" / "crypt.toml"
+    # the small knight stands just behind the tomb's left end: the tomb's wide contact
+    # shadow covers the knight's visible feet, which must keep their colour
+    path.write_text(path.read_text().replace("at = [60, 170]", "at = [140, 138]"))
+    project = load_project(root)
+    out = compose(load_scene(project, "crypt"), project)
+    knight = next(p for p in out.placed if p.name == "knight")
+    assert knight.asset == "chars/knight-s"
+    feet = out.image[135:138, 137:140, :3].reshape(-1, 3)
+    assert all(tuple(c) == BLUE for c in feet)
