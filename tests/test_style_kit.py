@@ -156,3 +156,10 @@ def test_palette_ramps_from_images(project: Path, capsys: pytest.CaptureFixture[
     env = pw(capsys, project, "palette", "ramps", "--images", image, "--colors", "2",
              "--steps", "3", "--name", "f")  # fmt: skip
     assert 3 <= env["data"]["colors"] <= 2 * 3 + 2  # no adventure preset with images
+
+
+def test_sentence_drops_a_trailing_comma() -> None:
+    from pixelwright.style import sentence
+
+    assert sentence("pixel art, adventure background,") == "pixel art, adventure background."
+    assert sentence("Light from the left!") == "Light from the left!"

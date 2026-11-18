@@ -162,3 +162,10 @@ def test_small_sizes_are_refused_with_the_fix() -> None:
     with pytest.raises(ProviderError) as e:
         ComfyUIProvider(transport=Recorded()).build(pv.GenRequest("txt2img", "x", (640, 360)), {})
     assert e.value.code == "invalid_size" and "1024x576" in e.value.message
+
+
+def test_inpaint_is_not_refused_for_a_small_sprite(tmp_path: Path) -> None:
+    img = tmp_path / "s.png"
+    img.write_bytes(b"s")
+    req = pv.GenRequest("inpaint", "x", (256, 256), init_image=img, mask=img)
+    assert ComfyUIProvider(transport=Recorded()).build(req, {"init_image": "s.png"})

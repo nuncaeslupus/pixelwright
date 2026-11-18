@@ -138,7 +138,7 @@ class ComfyUIProvider:
                 exit_code=EXIT_USAGE,
             )
         min_side = int(preset.get("min_side", 0))
-        if max(req.size) < min_side:
+        if req.mode != "inpaint" and max(req.size) < min_side:  # inpaint keeps the image size
             raise ProviderError(
                 "invalid_size",
                 f"comfyui preset {preset['name']} composes badly below {min_side} px on the long "
