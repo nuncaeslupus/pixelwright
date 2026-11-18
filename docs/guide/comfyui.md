@@ -19,7 +19,7 @@ Check from your workspace: `pw doctor` shows `ok comfyui` with your GPU name.
 
 ## 2. Models
 
-pixelwright ships two presets. Put the files in the ComfyUI folders named below. Each
+pixelwright ships three presets. Put the files in the ComfyUI folders named below. Each
 model has its own licence: read the model card before shipping game art made with it, and
 note the licence in `style/style.yaml` (`presets.comfyui.licence`).
 

@@ -78,7 +78,13 @@ def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
     states = _states(a["state"])
     out = sc.compose(scene, project, states=states, frame=a["frame"], shadows=not a["no_shadows"])
     paths = sc.write_outputs(
-        scene, project, out, viewport_x=a["viewport"], gif=a["gif"], states=states
+        scene,
+        project,
+        out,
+        viewport_x=a["viewport"],
+        gif=a["gif"],
+        states=states,
+        shadows=not a["no_shadows"],
     )
     return Outcome(outputs=[str(p) for p in paths], data=sc.layout(scene, out),
                    warnings=out.warnings, text=f"{name}: {paths[0]}")  # fmt: skip

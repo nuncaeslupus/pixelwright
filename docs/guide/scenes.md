@@ -56,7 +56,10 @@ pw scene compose crypt                         # export/scenes/crypt.png + crypt
 pw scene compose crypt --state tomb=open --gif # the opening, as an animated GIF
 ```
 
-- Layers draw far to near by their base row; `z = 1000` puts one in front (a pillar).
+- Layers draw far to near by their base row; `z = 1000` puts one in front (a pillar);
+  a layer with `z` gets no contact shadow.
+- `--state` applies to layers with states; character layers pick their size by depth.
+- With `--viewport`, the JSON keeps world coordinates.
 - Each grounded layer gets a contact shadow made from darker colours the scene already
   has; `shadow = false` or `--no-shadows` leaves it out.
 - A character uses the size nearest to the scene's scale at its row, pixel for pixel, and

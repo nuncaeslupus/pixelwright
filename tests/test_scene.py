@@ -175,3 +175,43 @@ def test_scene_new_and_scale_cli(root: Path, capsys: pytest.CaptureFixture[str])
     env = pw(capsys, root, "scene", "scale", "hall", "--at", "160")
     assert env["data"]["person"] == pytest.approx(42.5)
     assert pw(capsys, root, "scene", "show", "hall")["data"]["camera"] == "frontal"
+
+
+HEAD = "[scene]\nhorizon = 70\n[scene.scale]\ndoor = { y = 170, height = 60 }\n"
+BG = '[[background]]\nasset = "scenes/crypt-bg"\n'
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        HEAD + "[[background]]\nx = 0\n",  # no asset
+        "[scene]\nhorizon = 70\n[scene.scale]\nperson = 5\n" + BG,  # not a table
+        HEAD + BG + '[[layer]]\nname = "t"\nasset = "a"\nat = [1, 1]\nframes = 3\n',
+    ],
+)
+def test_malformed_scene_is_a_clear_error(
+    root: Path, capsys: pytest.CaptureFixture[str], text: str
+) -> None:
+    (root / "scenes" / "crypt.toml").write_text(text)
+    assert main(["scene", "show", "crypt", "--workspace", str(root), "--json"]) != 0
+    assert json.loads(capsys.readouterr().out)["error"]["code"]
+
+
+def test_prompt_at_horizon_and_bad_new_leave_nothing(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["scene", "prompt", "crypt", "--at", "70", "--workspace", str(root), "--json"]) != 0
+    capsys.readouterr()
+    argv = [
+        "scene",
+        "new",
+        "bad",
+        "--background",
+        "scenes/crypt-bg",
+        "--horizon",
+        "100",
+        "--door",
+        "90:50",
+    ]
+    assert main([*argv, "--workspace", str(root), "--json"]) != 0
+    assert not (root / "scenes" / "bad.toml").exists()

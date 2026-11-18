@@ -9,7 +9,8 @@
     "control_strength": 0.7,
     "control_end": 0.8,
     "steps": 30,
-    "cfg": 6.0
+    "cfg": 6.0,
+    "clip_strength": 0.8
   },
   "modes": {
     "img2img": {
@@ -222,6 +223,10 @@
         "batch": [
           "5",
           "batch_size"
+        ],
+        "clip_strength": [
+          "10",
+          "strength_clip"
         ]
       }
     }

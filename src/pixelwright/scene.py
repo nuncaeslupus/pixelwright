@@ -121,10 +121,10 @@ def _pair(raw: object, where: str) -> tuple[int, int]:
 
 def _scale(raw: dict[str, Any], where: str) -> tuple[float, float]:
     if "person" in raw:
-        p = raw["person"]
+        p = _table(raw["person"], f"{where}.person")
         return _num(p.get("y"), f"{where}.person.y"), _num(p.get("height"), f"{where}.person")
     if "door" in raw:
-        d = raw["door"]
+        d = _table(raw["door"], f"{where}.door")
         ratio = _num(raw.get("person_to_door", PERSON_TO_DOOR), f"{where}.person_to_door")
         return _num(d.get("y"), f"{where}.door.y"), _num(d.get("height"), f"{where}.door") * ratio
     raise SceneError(f"{where}: give a person = {{y, height}} or a door = {{y, height}}")
@@ -138,7 +138,8 @@ def _layer(raw: dict[str, Any], where: str) -> Layer:
     asset = raw.get("asset")
     if not asset and not sizes:
         raise SceneError(f"{where} ({name}): give an asset or character sizes")
-    frames = {str(k): int(_num(v, f"{where}.frames")) for k, v in raw.get("frames", {}).items()}
+    raw_frames = _table(raw.get("frames", {}), f"{where}.frames").items()
+    frames = {str(k): int(_num(v, f"{where}.frames")) for k, v in raw_frames}
     if any(n < 1 for n in frames.values()):
         raise SceneError(f"{where} ({name}): frames must be at least 1")
     return Layer(
@@ -146,7 +147,7 @@ def _layer(raw: dict[str, Any], where: str) -> Layer:
         at=_pair(raw.get("at"), f"{where} ({name}).at"),
         asset=str(asset) if asset else None,
         sizes=sizes,
-        states={str(k): str(v) for k, v in raw.get("states", {}).items()},
+        states={str(k): str(v) for k, v in _table(raw.get("states", {}), where).items()},
         frames=frames,
         state=str(raw.get("state", "default")),
         z=_num(raw["z"], f"{where}.z") if "z" in raw else None,
@@ -155,7 +156,7 @@ def _layer(raw: dict[str, Any], where: str) -> Layer:
 
 
 def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, int]) -> Scene:
-    head = raw.get("scene", {})
+    head = _table(raw.get("scene", {}), "scene")
     viewport = _pair(head["viewport"], "scene.viewport") if "viewport" in head else canvas
     if "horizon" not in head:
         raise SceneError(f"{path}: [scene] needs horizon = <row>")
@@ -163,22 +164,34 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
     camera = str(head.get("camera", "frontal"))
     if camera not in CAMERAS:
         raise SceneError(f"{path}: camera must be one of {', '.join(CAMERAS)}")
-    ref_y, ref_h = _scale(head.get("scale", {}), "scene.scale")
+    ref_y, ref_h = _scale(_table(head.get("scale", {}), "scene.scale"), "scene.scale")
     if ref_y <= horizon or ref_h <= 0:
         raise SceneError(f"{path}: the scale reference must stand below the horizon")
-    backgrounds = [
-        (str(b["asset"]), int(_num(b.get("x", 0), "background.x")))
-        for b in raw.get("background", [])
-    ]
+    backgrounds = []
+    for i, item in enumerate(raw.get("background", [])):
+        b = _table(item, f"background[{i}]")
+        if not b.get("asset"):
+            raise SceneError(f"{path}: background[{i}] needs an asset")
+        x = int(_num(b.get("x", 0), f"background[{i}].x"))
+        if x < 0:
+            raise SceneError(f"{path}: background[{i}].x must be 0 or more")
+        backgrounds.append((str(b["asset"]), x))
     if not backgrounds:
         raise SceneError(f"{path}: add a [[background]] with an asset")
     backgrounds.sort(key=lambda b: b[1])
-    layers = [_layer(r, f"layer[{i}]") for i, r in enumerate(raw.get("layer", []))]
+    raw_layers = raw.get("layer", [])
+    layers = [_layer(_table(r, f"layer[{i}]"), f"layer[{i}]") for i, r in enumerate(raw_layers)]
     names = [layer.name for layer in layers]
     if len(set(names)) != len(names):
         raise SceneError(f"{path}: layer names must be unique")
     width = int(_num(head.get("width", viewport[0]), "scene.width"))
     return Scene(name, path, viewport, width, horizon, camera, ref_y, ref_h, backgrounds, layers)
+
+
+def _table(raw: object, where: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise SceneError(f"{where}: expected a table, got {raw!r}")
+    return raw
 
 
 def load_scene(project: Project, name: str) -> Scene:
@@ -190,7 +203,10 @@ def load_scene(project: Project, name: str) -> Scene:
     except tomllib.TOMLDecodeError as exc:
         raise SceneError(f"{path}: {exc}") from exc
     canvas = (project.canvas["width"], project.canvas["height"])
-    return parse_scene(raw, name, path, canvas)
+    try:
+        return parse_scene(raw, name, path, canvas)
+    except (KeyError, AttributeError, TypeError) as exc:
+        raise SceneError(f"{path}: malformed scene ({exc})") from exc
 
 
 TEMPLATE = """# Scene: {name}. Rows count from the top; `at` is where a layer touches the floor.
@@ -230,15 +246,14 @@ def new_scene(
         raise SceneError(f"{path} exists already")
     if camera not in CAMERAS:
         raise SceneError(f"camera must be one of {', '.join(CAMERAS)}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     text = TEMPLATE.format(
         name=name, horizon=horizon, camera=camera, door_y=door_y, door_h=door_h,
         background=background,
     )  # fmt: skip
+    canvas = (project.canvas["width"], project.canvas["height"])
+    parse_scene(tomllib.loads(text), name, path, canvas)  # validate before writing
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
-    parse_scene(
-        tomllib.loads(text), name, path, (project.canvas["width"], project.canvas["height"])
-    )
     return path
 
 
@@ -322,6 +337,8 @@ def background_image(scene: Scene, project: Project) -> RGBA:
             world = np.concatenate([world, tile], axis=1)
             continue
         overlap = world.shape[1] - x
+        if overlap > tile.shape[1]:
+            raise SceneError(f"{ref}: tile at x={x} ends inside the tile before it")
         if overlap < 0:
             world = np.concatenate([world, np.zeros((vh, -overlap, 4), np.uint8)], axis=1)
             overlap = 0
@@ -414,8 +431,7 @@ def compose(
             img = frame_of(img, n, frame)
             longest = max(longest, n)
         pieces.append((layer, ref, img, state, n))
-    seen = [canvas[canvas[..., 3] > 0][:, :3]] + [p[2][p[2][..., 3] > 127][:, :3] for p in pieces]
-    palette = np.unique(np.concatenate(seen), axis=0)
+    palette = np.unique(canvas[canvas[..., 3] > 0][:, :3], axis=0)  # the floor's own colours
     placed: list[Placed] = []
     for layer, ref, img, state, n in pieces:
         left_box, _, right_box, bottom = opaque_box(img)
@@ -440,7 +456,7 @@ def layout(scene: Scene, out: Composed) -> dict[str, Any]:
 
 def write_outputs(
     scene: Scene, project: Project, out: Composed, *, viewport_x: int | None = None,
-    gif: bool = False, states: dict[str, str] | None = None,
+    gif: bool = False, states: dict[str, str] | None = None, shadows: bool = True,
 ) -> list[Path]:  # fmt: skip
     folder = project.export_dir / SCENES_DIR
     folder.mkdir(parents=True, exist_ok=True)
@@ -457,8 +473,10 @@ def write_outputs(
     data = folder / f"{scene.name}.json"
     data.write_text(json.dumps(layout(scene, out), indent=2) + "\n", encoding="utf-8")
     paths = [png, data]
+    if gif and out.frames == 1:
+        out.warnings.append("no animated state is shown: no GIF written (pick one with --state)")
     if gif and out.frames > 1:
-        frames = [view(compose(scene, project, states=states, frame=i).image)
+        frames = [view(compose(scene, project, states=states, frame=i, shadows=shadows).image)
                   for i in range(out.frames)]  # fmt: skip
         anim = folder / f"{scene.name}.gif"
         frames[0].save(anim, save_all=True, append_images=frames[1:], duration=FRAME_MS,
@@ -495,6 +513,10 @@ def size_prompt(height: int, largest: int) -> str:
 
 def scene_prompt(scene: Scene, at_y: float, height: float | None = None) -> str:
     """Words that make a prop or character match the scene's camera, horizon and scale."""
+    if at_y <= scene.horizon:
+        raise SceneError(f"row {at_y:g} is at or above the horizon ({scene.horizon:g})")
+    if height is not None and height <= 0:
+        raise SceneError("height must be more than 0")
     person = scene.person_height(at_y)
     tall = height if height is not None else person
     eye = (at_y - scene.horizon) / tall  # where the eye level crosses the object, from its base
