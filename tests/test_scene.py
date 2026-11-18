@@ -16,7 +16,7 @@ from pixelwright.cli import main
 from pixelwright.core.providers import replay
 from pixelwright.core.providers.base import GenRequest
 from pixelwright.project import init_project, load_project
-from pixelwright.scene import Scene, compose, load_scene, scene_prompt, suggested_sizes
+from pixelwright.scene import Scene, SceneError, compose, load_scene, scene_prompt, suggested_sizes
 
 FLOOR, WALL = (90, 80, 70), (40, 44, 60)
 DARK_FLOOR = (50, 44, 38)
@@ -308,3 +308,10 @@ def test_lights_and_vignette_animate_in_the_scene_colours(
     assert colours <= {FLOOR, WALL, DARK_FLOOR, STONE, RED, BLUE}
     env = pw(capsys, root, "scene", "compose", "crypt", "--gif")
     assert any(p.endswith(".gif") for p in env["outputs"])  # flat test colours: frames merge
+
+
+def test_a_flame_box_is_checked(root: Path) -> None:
+    path = root / "scenes" / "crypt.toml"
+    path.write_text(path.read_text() + "[[flame]]\nbox = [10, 10, 1, 5]\n")
+    with pytest.raises(SceneError, match="flame"):
+        load_scene(load_project(root), "crypt")

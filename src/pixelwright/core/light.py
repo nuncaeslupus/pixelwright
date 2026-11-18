@@ -22,6 +22,7 @@ CHROMA_SHARE = 0.3  # how much a change of saturation along the hue still costs
 NEUTRAL = 0.03  # chroma below which a colour counts as grey
 FLAME_L = 0.85  # pixels this light are the light source: they keep their colour
 LIGHT_FRAMES = 8
+STEP = 0.002  # lightness changes are solved in steps this fine
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,12 @@ class Light:
     y: float
     radius: float = 110.0
     strength: float = 0.15  # OKLab lightness added at the centre at full flicker
+
+    def __post_init__(self) -> None:
+        if self.radius <= 0:
+            raise ValueError(f"light radius must be above 0 (got {self.radius:g})")
+        if not 0 < self.strength <= 1:
+            raise ValueError(f"light strength must be in (0, 1] (got {self.strength:g})")
 
 
 def relight(img: RGBA, delta: npt.NDArray[np.float64]) -> RGBA:
@@ -42,15 +49,27 @@ def relight(img: RGBA, delta: npt.NDArray[np.float64]) -> RGBA:
     todo = opaque & (np.abs(delta) > 0.004) & (lab[..., 0] < FLAME_L)
     if not todo.any():
         return out
-    target = lab[todo].copy()
     # light scales with the surface: a lit wall brightens, the black void beside it does not
-    target[:, 0] += delta[todo] * np.clip(target[:, 0] / 0.55, 0, 1) ** 2
+    shift = delta[todo] * np.clip(lab[todo][:, 0] / 0.55, 0, 1) ** 2
+    # solve once per (colour, lightness step), not per pixel: a wide scene stays light on memory
+    _, colour = np.unique(img[todo][:, :3], axis=0, return_inverse=True)
+    pairs, back = np.unique(
+        np.stack([colour.ravel(), np.rint(shift / STEP).astype(np.int64)], 1), axis=0,
+        return_inverse=True,
+    )  # fmt: skip
+    first = np.zeros(len(pairs), np.int64)
+    first[back.ravel()] = np.arange(len(back.ravel()))
+    target = lab[todo][first].copy()
+    target[:, 0] += pairs[:, 1] * STEP
+    # a lit wall may warm up but never reach the flame's own white-yellow: the fire stays brightest
+    target[:, 0] = np.minimum(target[:, 0], np.maximum(lab[todo][first][:, 0], FLAME_L - 0.08))
     hue = _hue_distance(target[:, 1:], pal_lab[:, 1:])
     light_gap = (target[:, None, 0] - pal_lab[None, :, 0]) ** 2
     best = np.argmin(light_gap + HUE_WEIGHT * hue, axis=1)
     alien = hue[np.arange(len(best)), best] > HUE_LIMIT**2
-    new = pal[best]
-    new[alien] = img[todo][alien][:, :3]
+    choice = pal[best]
+    choice[alien] = img[todo][first][alien][:, :3]
+    new = choice[back.ravel()]
     out[todo, :3] = new
     return out
 
@@ -72,6 +91,8 @@ def _hue_distance(
 
 def vignette(img: RGBA, strength: float) -> RGBA:
     """Darken towards the corners, `strength` OKLab lightness at the corners."""
+    if not 0 <= strength <= 1:
+        raise ValueError(f"vignette must be in [0, 1] (got {strength:g})")
     h, w = img.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w]
     r = np.hypot((xx - (w - 1) / 2) / (w / 2), (yy - (h - 1) / 2) / (h / 2)) / np.sqrt(2)
@@ -96,3 +117,53 @@ def light_frame(img: RGBA, lights: list[Light], frame: int, frames: int = LIGHT_
         d = np.hypot(xx - light.x, (yy - light.y) * 1.3)
         delta += light.strength * level * np.clip(1 - d / light.radius, 0, 1) ** 2
     return relight(img, delta)
+
+
+@dataclass(frozen=True)
+class Flame:
+    """A painted flame to animate in place: the box (x, y, w, h) that holds it."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+
+    def __post_init__(self) -> None:
+        if self.w < 2 or self.h < 2:
+            raise ValueError(f"a flame box needs 2x2 px or more (got {self.w}x{self.h})")
+
+
+FLAME_MIN_L = 0.6  # flame pixels are this light and warm (or near white)
+FLAME_WARM_B = 0.03
+
+
+def flame_frame(img: RGBA, flame: Flame, frame: int, frames: int = LIGHT_FRAMES) -> RGBA:
+    """`img` with the flame in `flame`'s box alive at `frame`: its own colours flow upwards
+    (palette cycling by heat) and the coolest tips come and go, showing what is behind."""
+    out = img.copy()
+    sub = out[flame.y : flame.y + flame.h, flame.x : flame.x + flame.w]
+    lab = srgb8_to_oklab(sub[..., :3])
+    lit = lab[..., 0]
+    mask = (sub[..., 3] > 0) & (
+        ((lit > FLAME_MIN_L) & (lab[..., 2] > FLAME_WARM_B)) | (lit > FLAME_L)
+    )
+    if mask.sum() < 2:
+        return out
+    colours, idx = np.unique(sub[mask][:, :3], axis=0, return_inverse=True)
+    order = np.argsort(srgb8_to_oklab(colours)[:, 0])
+    ramp = colours[order]  # the flame's own colours, dark to light
+    rank = np.empty_like(order)
+    rank[order] = np.arange(len(order))
+    heat = rank[idx.ravel()] / max(1, len(ramp) - 1)
+    ys, xs = np.nonzero(mask)
+    t = 2 * np.pi * frame / frames
+    wave = 0.5 * np.sin(1.1 * ys + 2 * t) * np.cos(0.9 * xs - t) + 0.5 * np.sin(0.7 * ys + 3 * t)
+    hot = np.clip(heat + 0.22 * wave, 0, 1)
+    sub[ys, xs, :3] = ramp[np.rint(hot * (len(ramp) - 1)).astype(int)]
+    top = ys.min() + 0.5 * (ys.max() - ys.min())
+    gone = (hot < 0.15) & (ys < top)  # a cool tip flickers out: show the pixel beside it
+    for y, x in zip(ys[gone], xs[gone], strict=True):
+        row = np.nonzero(~mask[y])[0]
+        if len(row):
+            sub[y, x] = sub[y, row[np.argmin(np.abs(row - x))]]
+    return out
