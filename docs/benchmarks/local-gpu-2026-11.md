@@ -21,6 +21,25 @@ Everything fits in 8 GB without low-VRAM mode; system RAM is the real limit.
   from the Comfy-Org mirror (the original repository is gated).
 - Changed after this run: `sdxl-controlnet` defaults to `control_strength = 0.9`.
 
+## Round 2-3: making Flux better (18 + more runs, 1280x720)
+
+| Change | Effect |
+|---|---|
+| Describe the layout (what is where) instead of naming the scene | biggest gain: the layout holds on all 3 seeds |
+| Several seeds, pick one | all usable, ~20 s each |
+| Style words ("16-bit, VGA, dithering") | little change |
+| Colour names in the prompt | almost none |
+| Forced palette at normalize | worse: banded sky, dull colours |
+| 8 or 12 steps instead of 4 | same or flatter; 12 steps drops the fake signature but adds odd objects |
+| Second pass at higher resolution | invisible after reducing to 320x180 |
+| Pixel-art LoRA (MIT, trained on FLUX.1 [dev]) at 0.8 | more contrast, cleaner outlines, same layout and time (~14 s) |
+| A second "pixel background" LoRA | everything turns pastel; dropped |
+
+Recipe: detailed description + LoRA 0.8 + 4 steps, 4 seeds per scene, about a minute.
+Bugs found and fixed: `pw normalize` guessed a 5 px grid on a 1280x720 image (256x144);
+an exact multiple of the canvas now sets the grid. Next model to try: an undistilled
+Flux (real negative prompt), about 9 GB.
+
 ## Not done
 
 - No side-by-side judgement against Retro Diffusion yet: the owner judges the contact

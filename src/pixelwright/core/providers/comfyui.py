@@ -159,6 +159,8 @@ class ComfyUIProvider:
         for key, target in mode["inputs"].items():
             if key in values:
                 _set(workflow, target, values[key])
+        if values.get("lora") and "lora" not in mode["inputs"]:
+            _add_lora(workflow, str(values["lora"]), float(values.get("lora_strength", 0.8)))
         return workflow
 
     def generate(self, req: GenRequest) -> GenResult:
@@ -218,3 +220,20 @@ class ComfyUIProvider:
 
 
 register("comfyui", ComfyUIProvider)
+
+
+def _add_lora(workflow: dict[str, Any], name: str, strength: float) -> None:
+    """Put a model-only LoRA between the model loader and every node that samples with it."""
+    users = [n["inputs"] for n in workflow.values() if isinstance(n["inputs"].get("model"), list)]
+    if not users:
+        raise ProviderError(
+            "capability_missing", "this workflow has no model input to add a LoRA to"
+        )
+    source = users[0]["model"]
+    workflow["lora"] = {
+        "class_type": "LoraLoaderModelOnly",
+        "inputs": {"lora_name": name, "strength_model": strength, "model": source},
+    }
+    for inputs in users:
+        if inputs["model"] == source:
+            inputs["model"] = ["lora", 0]

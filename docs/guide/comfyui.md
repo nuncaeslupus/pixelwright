@@ -115,8 +115,16 @@ control_end = 0.8        # let the last 20 % of the steps add detail freely
 
 ## Which preset for what
 
-- **A scene from a prompt:** `flux-schnell` (1024x576, 4 steps, about 24 s on a 4060). No
-  LoRA needed and it holds together at smaller sizes. `sdxl` + LoRA works too, about 70 s.
+- **A scene from a prompt:** `flux-schnell` at `--size 1280x720` (exactly 4x a 320x180
+  canvas, so `pw normalize` takes 4 px per pixel), 4 steps, about 14-24 s on a 4060.
+  Describe what is where ("a path from the bottom left, pines on the right, a fence in
+  front") rather than naming the scene: Flux keeps that layout across seeds. Make 4 seeds
+  and pick one. Style words, colour names, a forced palette and more steps did not help.
+  A pixel-art LoRA sharpens it: set `lora` (and `lora_strength`, 0.8 worked) and the
+  preset puts a `LoraLoaderModelOnly` after the unet. Most Flux LoRAs are trained on
+  FLUX.1 [dev]: check the LoRA's licence before shipping art made with it. Flux sometimes
+  paints a small fake signature in a corner; crop or repaint it.
+  `sdxl` + LoRA works too, about 70 s, in a simpler style.
 - **A sketch or composed layout to a scene:** `sdxl-controlnet` at `control_strength`
   0.9. It is the only preset that keeps the layout.
 - **Retouching an image:** `flux-schnell` img2img with `steps = 8`. With a flat sketch it

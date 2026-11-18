@@ -148,7 +148,12 @@ def prepare(asset: Asset, source: Path | None = None) -> Prepared:
         and source_rgb.width > cw
         and source_rgb.height > ch
     )
-    if too_big or too_small:
+    k = source_rgb.width // cw
+    # asked at an exact multiple of the canvas (1280x720 for 320x180): a grid that misses
+    # the canvas is a false one (5 px gives 256x144), so reduce by that multiple instead
+    exact = k > 1 and (source_rgb.width, source_rgb.height) == (cw * k, ch * k)
+    missed = exact and (native.width, native.height) != (cw, ch)
+    if too_big or too_small or missed:
         small = reduce_to_canvas(source_rgb, (cw, ch), simplify=True)
         return Prepared(small, 1, True, [
             f"no pixel grid near the canvas (snapped {native.width}x{native.height}); "
