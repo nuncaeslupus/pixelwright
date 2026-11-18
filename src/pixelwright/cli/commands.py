@@ -100,6 +100,8 @@ def cmd_palette(root: Path, a: dict[str, Any]) -> Outcome:
         images, names = _images(root, a)
         if not images:
             raise PwError("invalid", "palette discover needs --asset or --images")
+        if a["per_image"] is not None and a["per_image"] < 1:
+            raise PwError("invalid", "--per-image wants 1 or more colours per image")
         if a["per_image"]:
             palette = flow.palette_per_image(images, a["per_image"])
         else:

@@ -104,9 +104,15 @@ vignette = 0.12            # darken the corners by this much lightness
 at = [70, 72]
 radius = 120               # px
 strength = 0.15            # lightness added at the centre at full flame
+
+[[flame]]                  # the painted flame itself, animated in place
+box = [67, 62, 10, 18]     # x, y, w, h around the flame only
 ```
 
-`pw scene compose <name> --gif` writes the 8-frame loop. A light changes each pixel to the
+`pw scene compose <name> --gif` writes the 8-frame loop. A flame box animates the painted
+flame in place: its own colours flow upwards by heat (palette cycling) and its coolest
+tips come and go, showing the pixel beside them. Keep the box tight: lit wall inside it
+would flicker as fire. A light changes each pixel to the
 scene colour of the same hue nearest to its new lightness: warm walls stay warm, the dark
 void beside them stays dark, and the flame pixels keep their colours. Asking for a vignette
 in the prompt does not work: Chroma draws a cut-out diorama on black, or a tiny scene.
@@ -115,10 +121,9 @@ Animation, from cheapest to hardest (always in the game palette):
 
 1. **Light that moves**: torches, a fireplace glow, a lit window, lightning (one bright
    frame), water shimmer. Done, as above.
-2. **Small looping sprites**: the flame itself, smoke, water, flags. Each is a small strip
-   of frames on its own layer (`states` with `frames` in the scene). For a flame, a
-   procedural loop is cheapest and always on-style: cut the painted flame and displace it
-   upwards with scrolling noise for 6-8 frames, hottest pixels at the base.
+2. **Small looping effects**: the flame itself (`[[flame]]`, done), and smoke, water or
+   flags as small strips of frames on their own layer (`states` with `frames` in the
+   scene).
 3. **Characters**: a reference character, then keyframes per action (walk: contact, down,
    passing, up) from a pose guide (ControlNet OpenPose locally, or Retro Diffusion's
    animation styles), all at the same size, foot pivot and palette. The long road; see

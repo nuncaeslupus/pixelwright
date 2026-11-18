@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw
 
 from pixelwright.asset import FINAL, Asset, AssetError
 from pixelwright.core.color import srgb8_to_oklab
-from pixelwright.core.light import LIGHT_FRAMES, Light, light_frame, vignette
+from pixelwright.core.light import LIGHT_FRAMES, Flame, Light, flame_frame, light_frame, vignette
 from pixelwright.core.seam import join
 from pixelwright.project import Project
 
@@ -85,6 +85,7 @@ class Scene:
     floor: list[tuple[int, int]] = field(default_factory=list)  # walkable polygon, optional
     lights: list[Light] = field(default_factory=list)  # flickering light sources (torches)
     vignette: float = 0.0  # darken the corners by this much OKLab lightness
+    flames: list[Flame] = field(default_factory=list)  # painted flames to animate in place
 
     @property
     def camera_height(self) -> float:
@@ -138,6 +139,7 @@ class Scene:
             "floor": [list(p) for p in self.floor],
             "lights": [light.__dict__ for light in self.lights],
             "vignette": self.vignette,
+            "flames": [flame.__dict__ for flame in self.flames],
             "backgrounds": [{"asset": a, "x": x} for a, x in self.backgrounds],
             "layers": [layer.name for layer in self.layers],
         }
@@ -239,9 +241,25 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
     for i, item in enumerate(raw.get("light", [])):
         li = _table(item, f"light[{i}]")
         x, y = _pair(li.get("at"), f"light[{i}].at")
-        lights.append(Light(x, y, _num(li.get("radius", 110), f"light[{i}].radius"),
-                            _num(li.get("strength", 0.15), f"light[{i}].strength")))  # fmt: skip
+        try:
+            radius = _num(li.get("radius", 110), f"light[{i}].radius")
+            lights.append(
+                Light(x, y, radius, _num(li.get("strength", 0.15), f"light[{i}].strength"))
+            )
+        except ValueError as exc:
+            raise SceneError(f"{path}: light[{i}]: {exc}") from exc
+    flames = []
+    for i, item in enumerate(raw.get("flame", [])):
+        box = _table(item, f"flame[{i}]").get("box")
+        if not isinstance(box, list) or len(box) != 4:
+            raise SceneError(f"{path}: flame[{i}] needs box = [x, y, w, h]")
+        try:
+            flames.append(Flame(*(int(_num(v, f"flame[{i}].box")) for v in box)))
+        except ValueError as exc:
+            raise SceneError(f"{path}: flame[{i}]: {exc}") from exc
     vignette = _num(head.get("vignette", 0.0), "scene.vignette")
+    if not 0 <= vignette <= 1:
+        raise SceneError(f"{path}: vignette must be between 0 and 1")
     return Scene(
         name,
         path,
@@ -256,6 +274,7 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
         floor,
         lights,
         vignette,
+        flames,
     )
 
 
@@ -524,9 +543,12 @@ def compose(
                              frame % n, n))  # fmt: skip
     if scene.vignette:
         canvas = vignette(canvas, scene.vignette)
+    for flame in scene.flames:
+        canvas = flame_frame(canvas, flame, frame % LIGHT_FRAMES)
     if scene.lights:
-        longest = max(longest, LIGHT_FRAMES)
         canvas = light_frame(canvas, scene.lights, frame % LIGHT_FRAMES)
+    if scene.lights or scene.flames:
+        longest = max(longest, LIGHT_FRAMES)
     return Composed(canvas, placed, warnings, longest)
 
 
