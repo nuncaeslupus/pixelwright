@@ -16,7 +16,7 @@ from pixelwright.cli import main
 from pixelwright.core.providers import replay
 from pixelwright.core.providers.base import GenRequest
 from pixelwright.project import init_project, load_project
-from pixelwright.scene import compose, load_scene, scene_prompt, suggested_sizes
+from pixelwright.scene import Scene, compose, load_scene, scene_prompt, suggested_sizes
 
 FLOOR, WALL = (90, 80, 70), (40, 44, 60)
 DARK_FLOOR = (50, 44, 38)
@@ -228,3 +228,66 @@ def test_shadow_never_darkens_a_layer(root: Path) -> None:
     assert knight.asset == "chars/knight-s"
     feet = out.image[135:138, 137:140, :3].reshape(-1, 3)
     assert all(tuple(c) == BLUE for c in feet)
+
+
+def test_vanishing_point_finds_where_floor_lines_meet() -> None:
+    from PIL import ImageDraw
+
+    from pixelwright.scene import vanishing_point
+
+    im = Image.new("RGBA", (160, 90), (*WALL, 255))
+    draw = ImageDraw.Draw(im)
+    draw.rectangle([0, 40, 160, 90], fill=(*FLOOR, 255))
+    for x in range(-200, 400, 40):  # floor tile joints receding to (70, 32)
+        draw.line([(70, 32), (x, 90)], fill=(*DARK_FLOOR, 255))
+    vx, vy, agree = vanishing_point(np.asarray(im))
+    assert abs(vx - 70) <= 3 and abs(vy - 32) <= 3 and agree > 0.2
+
+
+def test_base_off_the_floor_warns(root: Path) -> None:
+    path = root / "scenes" / "crypt.toml"
+    text = path.read_text().replace(
+        "[scene.scale]", "floor = [[0, 180], [0, 150], [320, 150], [320, 180]]\n[scene.scale]"
+    )
+    path.write_text(text)  # the tomb at row 140 stands above this floor: it floats
+    project = load_project(root)
+    warnings = compose(load_scene(project, "crypt"), project).warnings
+    assert any(w.startswith("tomb: its base (160, 140) is off the floor") for w in warnings)
+    assert not any(w.startswith("knight") for w in warnings)
+
+
+def test_analyze_sets_horizon_and_checks_camera(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from PIL import ImageDraw
+
+    bg = Image.new("RGBA", (320, 180), (*WALL, 255))
+    draw = ImageDraw.Draw(bg)
+    draw.rectangle([0, 100, 320, 180], fill=(*FLOOR, 255))
+    for x in range(-400, 800, 60):
+        draw.line([(160, 95), (x, 180)], fill=(*DARK_FLOOR, 255))
+    bg.save(root / "assets" / "scenes" / "crypt-bg" / FINAL)
+    env = pw(capsys, root, "scene", "analyze", "crypt", "--apply")
+    assert abs(env["data"]["horizon"] - 95) <= 2
+    scene = load_scene(load_project(root), "crypt")
+    assert abs(scene.horizon - 95) <= 2  # written to the file
+    # a door 60 px tall at row 170 with the eye at row 95 puts the camera 2.6 m up: plausible
+    assert not scene.checks()
+    low = Scene(**{**scene.__dict__, "horizon": 165.0})
+    assert low.checks() and "0.2 m" in low.checks()[0]
+
+
+def test_analyze_refuses_a_horizon_below_the_reference(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from PIL import ImageDraw
+
+    bg = Image.new("RGBA", (320, 180), (*WALL, 255))
+    draw = ImageDraw.Draw(bg)
+    for x in range(-400, 800, 60):  # lines meeting at row 175, below the door's base (170)
+        draw.line([(160, 175), (x, 0)], fill=(*DARK_FLOOR, 255))
+    bg.save(root / "assets" / "scenes" / "crypt-bg" / FINAL)
+    argv = ["scene", "analyze", "crypt", "--apply", "--workspace", str(root), "--json"]
+    assert main(argv) != 0
+    capsys.readouterr()
+    assert load_scene(load_project(root), "crypt").horizon == 70  # file untouched

@@ -11,6 +11,7 @@ scene already has, so the palette does not grow.
 from __future__ import annotations
 
 import json
+import math
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,7 +19,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from pixelwright.asset import FINAL, Asset, AssetError
 from pixelwright.core.color import srgb8_to_oklab
@@ -26,6 +27,9 @@ from pixelwright.core.seam import join
 from pixelwright.project import Project
 
 SCENES_DIR = "scenes"
+PERSON_M = 1.75  # a person's height in metres, to state the camera height
+CAMERA_M = (0.6, 4.0)  # camera heights (m) outside this range mean horizon and scale disagree
+FOV_DEG = 50.0  # assumed vertical field of view, to turn rows into angles
 CAMERAS = ("frontal", "three-quarter", "side")
 PERSON_TO_DOOR = 0.85  # a person is about 1.75 m, a door about 2.05 m
 SIZE_TOLERANCE = 0.15  # warn when the nearest character size is further off than this
@@ -58,6 +62,7 @@ class Layer:
     state: str = "default"
     z: float | None = None
     shadow: bool = True
+    grounded: bool = True  # stands on the floor; false for a torch on a wall
 
     @property
     def order(self) -> float:
@@ -76,10 +81,41 @@ class Scene:
     ref_height: float  # a person's height in px with feet at row ref_y
     backgrounds: list[tuple[str, int]]
     layers: list[Layer]
+    floor: list[tuple[int, int]] = field(default_factory=list)  # walkable polygon, optional
+
+    @property
+    def camera_height(self) -> float:
+        """Camera height in metres that the horizon and the scale reference imply."""
+        return PERSON_M * (self.ref_y - self.horizon) / self.ref_height
+
+    def on_floor(self, x: float, y: float) -> bool:
+        """Whether (x, y) lies on the walkable floor (anything below the horizon if unset)."""
+        if not self.floor:
+            return y > self.horizon
+        inside = False
+        pts = self.floor
+        for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1], strict=True):
+            if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                inside = not inside
+        return inside
+
+    def checks(self) -> list[str]:
+        """Disagreements between the horizon and the scale reference."""
+        h = self.camera_height
+        if CAMERA_M[0] <= h <= CAMERA_M[1]:
+            return []
+        return [
+            f"horizon {self.horizon:g} and the scale reference put the camera {h:.1f} m above "
+            "the floor: one of them is off (pw scene analyze estimates the horizon)"
+        ]
 
     def person_height(self, y: float) -> float:
         """Height in px of a person whose feet are at row `y`."""
         return self.ref_height * (y - self.horizon) / (self.ref_y - self.horizon)
+
+    def layers_in_order(self) -> list[Layer]:
+        """Far to near by base row; `z` overrides."""
+        return sorted(self.layers, key=lambda la: la.order)
 
     def layer(self, name: str) -> Layer:
         for layer in self.layers:
@@ -95,6 +131,8 @@ class Scene:
             "horizon": self.horizon,
             "camera": self.camera,
             "person": {"y": self.ref_y, "height": self.ref_height},
+            "camera_height_m": round(self.camera_height, 2),
+            "floor": [list(p) for p in self.floor],
             "backgrounds": [{"asset": a, "x": x} for a, x in self.backgrounds],
             "layers": [layer.name for layer in self.layers],
         }
@@ -152,6 +190,7 @@ def _layer(raw: dict[str, Any], where: str) -> Layer:
         state=str(raw.get("state", "default")),
         z=_num(raw["z"], f"{where}.z") if "z" in raw else None,
         shadow=bool(raw.get("shadow", True)),
+        grounded=bool(raw.get("grounded", True)),
     )
 
 
@@ -185,7 +224,15 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
     if len(set(names)) != len(names):
         raise SceneError(f"{path}: layer names must be unique")
     width = int(_num(head.get("width", viewport[0]), "scene.width"))
-    return Scene(name, path, viewport, width, horizon, camera, ref_y, ref_h, backgrounds, layers)
+    raw_floor = head.get("floor", [])
+    if not isinstance(raw_floor, list):
+        raise SceneError(f"{path}: floor must be a list of [x, y] points")
+    floor = [_pair(pt, "scene.floor") for pt in raw_floor]
+    if floor and len(floor) < 3:
+        raise SceneError(f"{path}: floor needs at least 3 points")
+    return Scene(
+        name, path, viewport, width, horizon, camera, ref_y, ref_h, backgrounds, layers, floor
+    )
 
 
 def _table(raw: object, where: str) -> dict[str, Any]:
@@ -420,7 +467,7 @@ def compose(
     pieces: list[tuple[Layer, str, RGBA, str, int]] = []
     warnings: list[str] = []
     longest = 1
-    for layer in sorted(scene.layers, key=lambda la: la.order):
+    for layer in scene.layers_in_order():
         state = states.get(layer.name, layer.state)
         if layer.sizes:
             ref, img, warn = _pick_size(scene, project, layer)
@@ -438,12 +485,15 @@ def compose(
     palette = np.unique(canvas[canvas[..., 3] > 0][:, :3], axis=0)  # the floor's own colours
     placed: list[Placed] = []
     floor = np.ones(canvas.shape[:2], bool)  # pixels no layer has covered yet
+    warnings += scene.checks()
     for layer, ref, img, state, n in pieces:
         left_box, _, right_box, bottom = opaque_box(img)
         x, y = layer.at
+        if layer.grounded and layer.z is None and not scene.on_floor(x, y):
+            warnings.append(f"{layer.name}: its base ({x}, {y}) is off the floor, it will float")
         left = x - (left_box + right_box) // 2
         top = y - bottom
-        if shadows and layer.shadow and layer.z is None:
+        if shadows and layer.shadow and layer.grounded and layer.z is None:
             _shadow(canvas, floor, x, y - 1, max(2.0, (right_box - left_box) * 0.6), scene, palette)
         _paste(canvas, floor, img, left, top)
         placed.append(Placed(layer.name, ref, left, top, img.shape[1], img.shape[0], state,
@@ -490,6 +540,94 @@ def write_outputs(
     return paths
 
 
+def set_horizon(scene: Scene, row: int) -> None:
+    """Rewrite the `horizon = ...` line of the scene file, keeping everything else."""
+    lines = scene.path.read_text(encoding="utf-8").splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.split("=")[0].strip() == "horizon":
+            comment = line[line.index("#") :] if "#" in line else "\n"
+            lines[i] = f"horizon = {row}" + (f"  {comment}" if "#" in line else comment)
+            break
+    else:
+        raise SceneError(f"{scene.path}: no horizon line to update")
+    scene.path.write_text("".join(lines), encoding="utf-8")
+
+
+# --- perspective --------------------------------------------------------------------------
+
+VP_EDGE_SHARE = 0.15  # strongest edges used to find the vanishing point
+VP_NEAR = 0.12  # edges closer than this share of the width to a candidate do not vote for it
+MIN_VP_AGREEMENT = 0.01  # below this share of edge weight the estimate is too weak to apply
+
+
+def vanishing_point(img: RGBA) -> tuple[int, int, float]:
+    """The point where the image's receding lines meet: (x, y, share of edge weight agreeing).
+
+    Each strong edge pixel defines a line (perpendicular to its gradient); the candidate
+    that most of those lines pass through wins. Horizontal and vertical edges are left out:
+    in a frontal room they never recede. The vanishing point's row is the horizon.
+    """
+    rgb = img[..., :3].astype(float)
+    lum = rgb @ np.array([0.299, 0.587, 0.114])
+    if img.shape[-1] == 4:
+        lum[img[..., 3] == 0] = 0.0
+    h, w = lum.shape
+    for _ in range(2):  # soften pixel stair-steps so edge directions follow the line
+        pad = np.pad(lum, 1, mode="edge")
+        lum = sum(pad[dy : dy + h, dx : dx + w] for dy in range(3) for dx in range(3)) / 9.0
+    gx = np.zeros_like(lum)
+    gy = np.zeros_like(lum)
+    c = lum
+    right = c[:-2, 2:] + 2 * c[1:-1, 2:] + c[2:, 2:]
+    left = c[:-2, :-2] + 2 * c[1:-1, :-2] + c[2:, :-2]
+    below = c[2:, :-2] + 2 * c[2:, 1:-1] + c[2:, 2:]
+    above = c[:-2, :-2] + 2 * c[:-2, 1:-1] + c[:-2, 2:]
+    gx[1:-1, 1:-1] = right - left
+    gy[1:-1, 1:-1] = below - above
+    mag = np.hypot(gx, gy)
+    if not mag.any():
+        raise SceneError("no edges to find a vanishing point in")
+    ys, xs = np.nonzero(mag >= np.quantile(mag[mag > 0], 1 - VP_EDGE_SHARE))
+    nx, ny = gx[ys, xs] / mag[ys, xs], gy[ys, xs] / mag[ys, xs]
+    ang = np.degrees(np.arctan2(nx, -ny)) % 180  # direction of the edge line
+    keep = (np.abs(ang - 90) > 12) & (np.minimum(ang, 180 - ang) > 8)
+    if keep.sum() < 20:
+        raise SceneError("too few receding lines to find a vanishing point")
+    xs, ys, nx, ny = xs[keep], ys[keep], nx[keep], ny[keep]
+    wt = mag[ys, xs]
+    near = VP_NEAR * w
+
+    def score(cx: int, cy: int) -> float:
+        dist = np.abs((cx - xs) * nx + (cy - ys) * ny)
+        return float(wt[(dist < 1.5) & (np.hypot(cx - xs, cy - ys) > near)].sum())
+
+    coarse = max((score(cx, cy), cx, cy) for cy in range(0, h, 3) for cx in range(0, w, 4))
+    _, x0, y0 = coarse
+    best = max(
+        (score(cx, cy), cx, cy)
+        for cy in range(max(0, y0 - 3), min(h, y0 + 4))
+        for cx in range(max(0, x0 - 4), min(w, x0 + 5))
+    )
+    return best[1], best[2], best[0] / float(wt.sum())
+
+
+def guides(scene: Scene, out: Composed) -> RGBA:
+    """The composed scene with the horizon, the floor outline and each layer's base marked."""
+    im = Image.fromarray(out.image, "RGBA").convert("RGB")
+    draw = ImageDraw.Draw(im)
+    draw.line([(0, scene.horizon), (im.width, scene.horizon)], fill=(0, 255, 0))
+    if scene.floor:
+        draw.line([*scene.floor, scene.floor[0]], fill=(255, 220, 0))
+    for layer in scene.layers:
+        if not layer.grounded or layer.z is not None:
+            continue
+        x, y = layer.at
+        colour = (0, 255, 255) if scene.on_floor(x, y) else (255, 0, 0)
+        draw.line([(x - 3, y), (x + 3, y)], fill=colour)
+        draw.line([(x, y - 3), (x, y)], fill=colour)
+    return np.asarray(im.convert("RGBA")).copy()
+
+
 # --- sizes and prompts ------------------------------------------------------------------
 
 
@@ -525,14 +663,20 @@ def scene_prompt(scene: Scene, at_y: float, height: float | None = None) -> str:
     person = scene.person_height(at_y)
     tall = height if height is not None else person
     eye = (at_y - scene.horizon) / tall  # where the eye level crosses the object, from its base
+    focal = scene.viewport[1] / (2 * math.tan(math.radians(FOV_DEG / 2)))
+    down = math.degrees(math.atan((at_y - tall / 2 - scene.horizon) / focal))
     if eye >= 1.05:
-        view = "The camera looks slightly down on it: its top surface shows a little."
+        how = "slightly" if down < 8 else "clearly"
+        view = (
+            f"The camera looks {how} down on it, about {round(down)} degrees from above: "
+            "its top surface shows a little."
+        )
     elif eye <= 0.05:
         view = "The camera is at floor level: its top is not visible, it looms upward."
     else:
         view = (
-            f"The eye level crosses it at {round(eye * 100)}% of its height: "
-            "neither its top nor its underside shows."
+            f"Straight side-on, at eye level: the eye level crosses it at {round(eye * 100)}% "
+            "of its height, so neither its top nor its underside shows."
         )
     parts = [CAMERA_WORDS[scene.camera], view]
     if height is not None:

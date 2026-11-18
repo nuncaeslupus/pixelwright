@@ -18,6 +18,18 @@ This writes `scenes/crypt.toml`. Rows count from the top of the image.
   (`person_to_door` changes it; an arched crypt door is closer to 0.7). Or give
   `person = { y, height }` directly.
 
+**Check the horizon.** Generated backgrounds often disagree with themselves (a door drawn
+close up on a floor seen from knee height). `pw scene analyze crypt` finds where the
+floor's receding lines meet and gives that row as the horizon (`--apply` writes it); it
+also says how high the camera is for your scale reference and warns outside 0.6-4 m.
+Trust the floor over the door: props and characters stand on the floor.
+
+**Mark the floor.** `floor = [[x, y], ...]` under `[scene]` is the walkable polygon.
+Compose warns when a layer's base is off it (it would float; `grounded = false` for a
+torch on a wall), and
+`pw scene compose crypt --guides` writes `crypt-guides.png` with the horizon (green), the
+floor (yellow) and each base (cyan on the floor, red off it).
+
 `pw scene scale crypt --at 170` then says how tall a person is with feet on row 170. The
 rule is the ground plane: height grows linearly with the distance from the horizon.
 
