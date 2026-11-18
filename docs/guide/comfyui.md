@@ -28,9 +28,9 @@ note the licence beside the preset in `pixelwright.toml`.
 | `sdxl` (default) | `sd_xl_base_1.0.safetensors` | `models/checkpoints/` | CreativeML Open RAIL++-M (commercial use allowed with use restrictions) |
 | | a pixel-art LoRA, e.g. `pixel-art-xl.safetensors` | `models/loras/` | the LoRA's own card |
 | `sdxl-controlnet` | the `sdxl` files, plus `controlnet-canny-sdxl-1.0.safetensors` (diffusers) | `models/controlnet/` | openrail++ |
-| `flux-schnell` | `flux1-schnell.safetensors` | `models/unet/` | Apache-2.0 |
+| `flux-schnell` | `flux1-schnell.safetensors` (or the fp8 `flux1-schnell-fp8-e4m3fn.safetensors`, set as `unet`) | `models/unet/` | Apache-2.0 |
 | | `t5xxl_fp8_e4m3fn.safetensors`, `clip_l.safetensors` | `models/clip/` | Apache-2.0 / MIT |
-| | `ae.safetensors` | `models/vae/` | Apache-2.0 |
+| | `ae.safetensors` (the Comfy-Org mirror; the original repository is gated) | `models/vae/` | Apache-2.0 |
 
 FLUX.1 [dev] weights are under a non-commercial licence; the `flux-schnell` preset avoids them.
 
@@ -102,11 +102,23 @@ pw generate scenes/crypt --provider comfyui --mode img2img --size 1024x576 \
 ```toml
 [presets.comfyui.params]
 preset = "sdxl-controlnet"
-control_strength = 0.7   # how firmly the lines hold (0.5 looser, 0.9 traced)
+control_strength = 0.9   # how firmly the lines hold (0.7 lets the LoRA drift, 0.5 loses the layout)
 control_end = 0.8        # let the last 20 % of the steps add detail freely
 ```
 
 - Ask for 1024x576 (SDXL's native area, 16:9); `pw normalize` brings it to 320x180.
   Below about 768 px SDXL composition falls apart (task #119).
 - VRAM: SDXL + ControlNet fits in 8 GB at 1024x576 with ComfyUI's defaults.
-- Quality on real scenes is still to be judged on the GPU (task #201).
+- Colour does not pass through Canny: put the light and the mood in the prompt. For a
+  room, say so ("interior ..., no sky"), or the LoRA may turn it into outdoor ruins.
+- Results on a 4060: `docs/benchmarks/local-gpu-2026-11.md`.
+
+## Which preset for what
+
+- **A scene from a prompt:** `flux-schnell` (1024x576, 4 steps, about 24 s on a 4060). No
+  LoRA needed and it holds together at smaller sizes. `sdxl` + LoRA works too, about 70 s.
+- **A sketch or composed layout to a scene:** `sdxl-controlnet` at `control_strength`
+  0.9. It is the only preset that keeps the layout.
+- **Retouching an image:** `flux-schnell` img2img with `steps = 8`. With a flat sketch it
+  either copies the sketch or ignores it (4 steps: denoise 0.85 equals txt2img), so it
+  is not a layout tool.
