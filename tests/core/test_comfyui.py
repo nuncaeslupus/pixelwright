@@ -125,3 +125,21 @@ def test_presets_are_valid_workflow_json() -> None:
 def test_registry_builds_comfyui_with_config() -> None:
     prov = pv.get("comfyui", base_url="http://gpu-box:8188/")
     assert isinstance(prov, ComfyUIProvider) and prov.base_url == "http://gpu-box:8188"
+
+
+def test_controlnet_workflow_carries_sketch(tmp_path: Path) -> None:
+    sketch = tmp_path / "layout.png"
+    sketch.write_bytes(b"layout")
+    rec = Recorded()
+    req = pv.GenRequest(
+        "img2img", "a crypt", (1024, 576), init_image=sketch, seed=3,
+        params={"preset": "sdxl-controlnet", "control_strength": 0.5},
+    )  # fmt: skip
+    pv.run(_prov(rec), req)
+    wf = json.loads(next(c for c in rec.calls if c.url.endswith("/prompt")).body or b"")["prompt"]
+    assert wf["11"]["inputs"]["image"] == "init.png"  # the uploaded sketch ...
+    assert wf["13"]["inputs"]["image"] == ["11", 0]  # ... goes through edges ...
+    apply = wf["15"]["inputs"]
+    assert apply["image"] == ["13", 0] and apply["strength"] == 0.5  # ... into ControlNet
+    assert wf["3"]["inputs"]["positive"] == ["15", 0] and wf["3"]["inputs"]["denoise"] == 1.0
+    assert (wf["5"]["inputs"]["width"], wf["5"]["inputs"]["height"]) == (1024, 576)

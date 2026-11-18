@@ -27,6 +27,7 @@ note the licence in `style/style.yaml` (`presets.comfyui.licence`).
 |---|---|---|---|
 | `sdxl` (default) | `sd_xl_base_1.0.safetensors` | `models/checkpoints/` | CreativeML Open RAIL++-M (commercial use allowed with use restrictions) |
 | | a pixel-art LoRA, e.g. `pixel-art-xl.safetensors` | `models/loras/` | the LoRA's own card |
+| `sdxl-controlnet` | the `sdxl` files, plus `controlnet-canny-sdxl-1.0.safetensors` (diffusers) | `models/controlnet/` | openrail++ |
 | `flux-schnell` | `flux1-schnell.safetensors` | `models/unet/` | Apache-2.0 |
 | | `t5xxl_fp8_e4m3fn.safetensors`, `clip_l.safetensors` | `models/clip/` | Apache-2.0 / MIT |
 | | `ae.safetensors` | `models/vae/` | Apache-2.0 |
@@ -77,3 +78,28 @@ Each result is normalised and checked like any other input. The same request twi
 | `ComfyUI is not answering` | start `python main.py`, or fix `base_url` |
 | `prompt ... failed` with a missing file | the model name in the preset is not in the ComfyUI folders; set `ckpt` / `lora` / `unet` |
 | out of memory | lower `--size`, use `--n 1`, or the fp8 T5 file for Flux |
+
+## Sketch or layout to scene (ControlNet)
+
+The `sdxl-controlnet` preset keeps the lines of an image and paints it anew: a rough
+sketch, or a scene composed with `pw scene compose` (the camera and the scale are then
+right before the model starts). The init image goes through ComfyUI's built-in `Canny`
+node into ControlNet; nothing of its colour is kept.
+
+```bash
+pw add scenes/crypt --from export/scenes/crypt.png
+pw generate scenes/crypt --provider comfyui --mode img2img --size 1024x576 \
+  --prompt "a stone crypt with a sarcophagus, torchlight"
+```
+
+```toml
+[presets.comfyui.params]
+preset = "sdxl-controlnet"
+control_strength = 0.7   # how firmly the lines hold (0.5 looser, 0.9 traced)
+control_end = 0.8        # let the last 20 % of the steps add detail freely
+```
+
+- Ask for 1024x576 (SDXL's native area, 16:9); `pw normalize` brings it to 320x180.
+  Below about 768 px SDXL composition falls apart (task #119).
+- VRAM: SDXL + ControlNet fits in 8 GB at 1024x576 with ComfyUI's defaults.
+- Quality on real scenes is still to be judged on the GPU (task #201).
