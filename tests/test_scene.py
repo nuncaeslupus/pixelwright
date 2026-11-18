@@ -275,3 +275,19 @@ def test_analyze_sets_horizon_and_checks_camera(
     assert not scene.checks()
     low = Scene(**{**scene.__dict__, "horizon": 165.0})
     assert low.checks() and "0.2 m" in low.checks()[0]
+
+
+def test_analyze_refuses_a_horizon_below_the_reference(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from PIL import ImageDraw
+
+    bg = Image.new("RGBA", (320, 180), (*WALL, 255))
+    draw = ImageDraw.Draw(bg)
+    for x in range(-400, 800, 60):  # lines meeting at row 175, below the door's base (170)
+        draw.line([(160, 175), (x, 0)], fill=(*DARK_FLOOR, 255))
+    bg.save(root / "assets" / "scenes" / "crypt-bg" / FINAL)
+    argv = ["scene", "analyze", "crypt", "--apply", "--workspace", str(root), "--json"]
+    assert main(argv) != 0
+    capsys.readouterr()
+    assert load_scene(load_project(root), "crypt").horizon == 70  # file untouched

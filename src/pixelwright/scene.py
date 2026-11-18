@@ -62,6 +62,7 @@ class Layer:
     state: str = "default"
     z: float | None = None
     shadow: bool = True
+    grounded: bool = True  # stands on the floor; false for a torch on a wall
 
     @property
     def order(self) -> float:
@@ -189,6 +190,7 @@ def _layer(raw: dict[str, Any], where: str) -> Layer:
         state=str(raw.get("state", "default")),
         z=_num(raw["z"], f"{where}.z") if "z" in raw else None,
         shadow=bool(raw.get("shadow", True)),
+        grounded=bool(raw.get("grounded", True)),
     )
 
 
@@ -487,11 +489,11 @@ def compose(
     for layer, ref, img, state, n in pieces:
         left_box, _, right_box, bottom = opaque_box(img)
         x, y = layer.at
-        if layer.z is None and not scene.on_floor(x, y):
+        if layer.grounded and layer.z is None and not scene.on_floor(x, y):
             warnings.append(f"{layer.name}: its base ({x}, {y}) is off the floor, it will float")
         left = x - (left_box + right_box) // 2
         top = y - bottom
-        if shadows and layer.shadow and layer.z is None:
+        if shadows and layer.shadow and layer.grounded and layer.z is None:
             _shadow(canvas, floor, x, y - 1, max(2.0, (right_box - left_box) * 0.6), scene, palette)
         _paste(canvas, floor, img, left, top)
         placed.append(Placed(layer.name, ref, left, top, img.shape[1], img.shape[0], state,
@@ -555,6 +557,7 @@ def set_horizon(scene: Scene, row: int) -> None:
 
 VP_EDGE_SHARE = 0.15  # strongest edges used to find the vanishing point
 VP_NEAR = 0.12  # edges closer than this share of the width to a candidate do not vote for it
+MIN_VP_AGREEMENT = 0.01  # below this share of edge weight the estimate is too weak to apply
 
 
 def vanishing_point(img: RGBA) -> tuple[int, int, float]:
@@ -616,6 +619,8 @@ def guides(scene: Scene, out: Composed) -> RGBA:
     if scene.floor:
         draw.line([*scene.floor, scene.floor[0]], fill=(255, 220, 0))
     for layer in scene.layers:
+        if not layer.grounded or layer.z is not None:
+            continue
         x, y = layer.at
         colour = (0, 255, 255) if scene.on_floor(x, y) else (255, 0, 0)
         draw.line([(x - 3, y), (x + 3, y)], fill=colour)

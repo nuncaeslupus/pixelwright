@@ -73,6 +73,13 @@ def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
             "was": scene.horizon, "camera_height_m": round(est.camera_height, 2),
         }  # fmt: skip
         if a["apply"]:
+            if vy >= scene.ref_y or warnings or agree < sc.MIN_VP_AGREEMENT:
+                raise PwError(
+                    "invalid",
+                    f"not applied: horizon {vy} disagrees with the scale reference or is a weak "
+                    "estimate; set horizon and the reference by hand (--guides helps)",
+                    details=data,
+                )
             sc.set_horizon(scene, vy)
         verb = "set" if a["apply"] else "estimated"
         text = (

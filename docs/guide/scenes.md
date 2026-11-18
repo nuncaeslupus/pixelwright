@@ -25,7 +25,8 @@ also says how high the camera is for your scale reference and warns outside 0.6-
 Trust the floor over the door: props and characters stand on the floor.
 
 **Mark the floor.** `floor = [[x, y], ...]` under `[scene]` is the walkable polygon.
-Compose warns when a layer's base is off it (it would float), and
+Compose warns when a layer's base is off it (it would float; `grounded = false` for a
+torch on a wall), and
 `pw scene compose crypt --guides` writes `crypt-guides.png` with the horizon (green), the
 floor (yellow) and each base (cyan on the floor, red off it).
 
