@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -169,3 +170,21 @@ def test_inpaint_is_not_refused_for_a_small_sprite(tmp_path: Path) -> None:
     img.write_bytes(b"s")
     req = pv.GenRequest("inpaint", "x", (256, 256), init_image=img, mask=img)
     assert ComfyUIProvider(transport=Recorded()).build(req, {"init_image": "s.png"})
+
+
+def test_flux_takes_an_optional_lora_between_the_unet_and_the_sampler() -> None:
+    def build(**params: object) -> dict[str, Any]:
+        req = pv.GenRequest(
+            "txt2img", "x", (1280, 720), params={"preset": "flux-schnell", **params}
+        )
+        return ComfyUIProvider(transport=Recorded()).build(req, {})
+
+    wf = build(lora="pixel.safetensors", lora_strength=0.8)
+    assert wf["lora"]["inputs"] == {
+        "lora_name": "pixel.safetensors",
+        "strength_model": 0.8,
+        "model": ["1", 0],
+    }
+    assert wf["8"]["inputs"]["model"] == ["lora", 0]
+    plain = build()
+    assert "lora" not in plain and plain["8"]["inputs"]["model"] == ["1", 0]

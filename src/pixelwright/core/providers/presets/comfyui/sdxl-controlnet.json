@@ -6,7 +6,7 @@
     "lora": "pixel-art-xl.safetensors",
     "lora_strength": 0.7,
     "controlnet": "controlnet-canny-sdxl-1.0.safetensors",
-    "control_strength": 0.7,
+    "control_strength": 0.9,
     "control_end": 0.8,
     "steps": 30,
     "cfg": 6.0,

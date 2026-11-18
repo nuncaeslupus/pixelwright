@@ -58,6 +58,18 @@ def test_normalize_320x180_under_budget(
         assert {tuple(int(v) for v in c) for c in np.unique(rgb, axis=0)} <= set(COLORS)
 
 
+def test_an_exact_multiple_of_the_canvas_keeps_the_canvas_size(
+    project: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # 1280x720 painted in 5 px blocks: a guessed grid of 5 would give 256x144
+    rng = np.random.default_rng(2)
+    native = np.array(COLORS, np.uint8)[rng.integers(0, len(COLORS), (144, 256))]
+    path = tmp_path / "crypt.png"
+    Image.fromarray(np.repeat(np.repeat(native, 5, 0), 5, 1), "RGB").save(path)
+    pw(capsys, project, "add", "scenes/crypt", "--from", str(path))
+    assert pw(capsys, project, "normalize", "scenes/crypt")["data"]["size"] == [320, 180]
+
+
 def test_flow_end_to_end(
     project: Path, source: Path, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
