@@ -23,6 +23,15 @@ Limits: at most 3 fix attempts per issue; stop when the person rejects twice for
 reason and reply instead. Never accept, reject or finish on the person's behalf: `pw fix accept`,
 `pw finish` and rejections are theirs.
 
+## Painting scenes with a model
+
+When you write a prompt for a background, describe what goes where (camera; back, centre,
+foreground; where the light comes from) rather than naming the scene, add a line per
+material that must read (stone: dark joint and lit edge per block; grass: clumps in many
+greens lit from one side), and keep the style words in the project preamble. Never ask the
+model for a vignette or for light effects: `pw scene` adds them. Generate 3 seeds and let
+the person pick. Recipe and reasons: docs/guide/painted-scenes.md in the pixelwright repo.
+
 ## Commands
 
 `pw init` · `pw add <category>/<name> --from <image>` · `pw colors <asset>` · `pw style show <category>` · `pw normalize <asset>` · `pw check <asset>` ·

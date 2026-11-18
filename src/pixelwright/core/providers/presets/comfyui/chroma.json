@@ -1,0 +1,183 @@
+{
+  "name": "chroma",
+  "description": "Chroma1-HD (Apache-2.0), 26 steps, real negative prompt: the quality route for painted scenes (~95 s at 1280x720 on an 8 GB GPU)",
+  "defaults": {
+    "unet": "Chroma1-HD-fp8mixed-final.safetensors",
+    "clip_t5": "t5xxl_fp8_e4m3fn.safetensors",
+    "vae": "ae.safetensors",
+    "steps": 26,
+    "cfg": 3.8
+  },
+  "modes": {
+    "txt2img": {
+      "workflow": {
+        "1": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "",
+            "weight_dtype": "default"
+          }
+        },
+        "2": {
+          "class_type": "ModelSamplingAuraFlow",
+          "inputs": {
+            "shift": 1.0,
+            "model": [
+              "1",
+              0
+            ]
+          }
+        },
+        "3": {
+          "class_type": "CLIPLoader",
+          "inputs": {
+            "clip_name": "",
+            "type": "chroma"
+          }
+        },
+        "4": {
+          "class_type": "T5TokenizerOptions",
+          "inputs": {
+            "clip": [
+              "3",
+              0
+            ],
+            "min_padding": 0,
+            "min_length": 0
+          }
+        },
+        "6": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "4",
+              0
+            ]
+          }
+        },
+        "7": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "4",
+              0
+            ]
+          }
+        },
+        "5": {
+          "class_type": "EmptySD3LatentImage",
+          "inputs": {
+            "width": 1280,
+            "height": 720,
+            "batch_size": 1
+          }
+        },
+        "8": {
+          "class_type": "KSampler",
+          "inputs": {
+            "seed": 0,
+            "steps": 26,
+            "cfg": 3.8,
+            "sampler_name": "euler",
+            "scheduler": "beta",
+            "denoise": 1.0,
+            "model": [
+              "2",
+              0
+            ],
+            "positive": [
+              "6",
+              0
+            ],
+            "negative": [
+              "7",
+              0
+            ],
+            "latent_image": [
+              "5",
+              0
+            ]
+          }
+        },
+        "9": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": ""
+          }
+        },
+        "10": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": [
+              "8",
+              0
+            ],
+            "vae": [
+              "9",
+              0
+            ]
+          }
+        },
+        "11": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "filename_prefix": "pixelwright",
+            "images": [
+              "10",
+              0
+            ]
+          }
+        }
+      },
+      "inputs": {
+        "prompt": [
+          "6",
+          "text"
+        ],
+        "negative": [
+          "7",
+          "text"
+        ],
+        "seed": [
+          "8",
+          "seed"
+        ],
+        "steps": [
+          "8",
+          "steps"
+        ],
+        "cfg": [
+          "8",
+          "cfg"
+        ],
+        "unet": [
+          "1",
+          "unet_name"
+        ],
+        "clip_t5": [
+          "3",
+          "clip_name"
+        ],
+        "vae": [
+          "9",
+          "vae_name"
+        ],
+        "width": [
+          "5",
+          "width"
+        ],
+        "height": [
+          "5",
+          "height"
+        ],
+        "batch": [
+          "5",
+          "batch_size"
+        ]
+      }
+    }
+  },
+  "min_side": 768
+}

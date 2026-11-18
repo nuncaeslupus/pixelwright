@@ -34,7 +34,7 @@ from pixelwright.project import Project
 from pixelwright.rules import raise_check_issues
 
 DISCOVERED_COLORS = 16  # plus up to MAX_ACCENTS kept for small important colours
-PAINTING_COLORS = 24  # a reduced painting has no palette of its own to recover
+PAINTING_COLORS = 128  # a reduced painting: VGA-like richness; 24 flattened stones and grass
 SPECK = 4  # in a reduced painting, same-colour groups this small are texture, not shape
 RICH = 24  # with more palette colours than this, a grid-snapped input's detail is meant
 FAITHFUL_DE = 0.02  # ... so clean undoes a change that moves a pixel this much further
@@ -473,6 +473,36 @@ def palette_from(images: list[RGBImage], n: int) -> Palette:
     scale: a scene set's or a cast's colours; each image counts the same."""
     joined, imp, scale = _side_by_side(images)
     return discover_palette(joined, n, importance=imp, scale=scale)
+
+
+LIGHTS_SHARE, LIGHTS_N = 0.003, 4  # each scene's brightest pixels get colours of their own
+DARKS_SHARE, DARKS_N = 0.01, 2  # ... and its darkest, for true blacks
+SAME = 0.012  # OKLab distance below which two colours of the set are one
+
+
+def palette_per_image(images: list[RGBImage], per_image: int) -> Palette:
+    """One palette for a set of scenes where each image brings its own `per_image` colours,
+    plus colours for its brightest 0.3 % (flame cores, glints) and darkest 1 % (blacks);
+    near-equal colours merge. A palette fitted to all images at once gives the largest areas
+    (grass) most colours and leaves a small scene's lights without theirs."""
+    picked: list[Color] = []
+    for image in images:
+        picked += discover_palette(image, per_image, importance=importance_map(image)).colors
+        rgb = image.rgba[..., :3][image.rgba[..., 3] >= 128]
+        lum = srgb8_to_oklab(rgb)[:, 0]
+        for share, n, top in ((LIGHTS_SHARE, LIGHTS_N, True), (DARKS_SHARE, DARKS_N, False)):
+            cut = np.quantile(lum, 1 - share if top else share)
+            few = rgb[lum >= cut] if top else rgb[lum <= cut]
+            strip = RGBImage.from_array(few.reshape(1, -1, 3))
+            picked += discover_palette(strip, n).colors[:n]
+    lab = srgb8_to_oklab(np.array([[c.r, c.g, c.b] for c in picked], np.uint8))
+    out: list[Color] = []
+    kept: list[npt.NDArray[np.float64]] = []
+    for c, v in zip(picked, lab, strict=True):
+        if all(np.linalg.norm(v - k) >= SAME for k in kept):
+            out.append(Color(c.r, c.g, c.b))
+            kept.append(v)
+    return Palette(out)
 
 
 def ramp_keys_from(images: list[RGBImage], n: int) -> dict[str, str]:

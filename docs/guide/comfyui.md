@@ -19,7 +19,7 @@ Check from your workspace: `pw doctor` shows `ok comfyui` with your GPU name.
 
 ## 2. Models
 
-pixelwright ships three presets. Put the files in the ComfyUI folders named below. Each
+pixelwright ships four presets. Put the files in the ComfyUI folders named below. Each
 model has its own licence: read the model card before shipping game art made with it, and
 note the licence beside the preset in `pixelwright.toml`.
 
@@ -27,6 +27,8 @@ note the licence beside the preset in `pixelwright.toml`.
 |---|---|---|---|
 | `sdxl` (default) | `sd_xl_base_1.0.safetensors` | `models/checkpoints/` | CreativeML Open RAIL++-M (commercial use allowed with use restrictions) |
 | | a pixel-art LoRA, e.g. `pixel-art-xl.safetensors` | `models/loras/` | the LoRA's own card |
+| `chroma` | `Chroma1-HD-fp8mixed-final.safetensors` | `models/unet/` | Apache-2.0 |
+| | `t5xxl_fp8_e4m3fn.safetensors`, `ae.safetensors` (as for flux) | `models/clip/`, `models/vae/` | Apache-2.0 |
 | `sdxl-controlnet` | the `sdxl` files, plus `controlnet-canny-sdxl-1.0.safetensors` (diffusers) | `models/controlnet/` | openrail++ |
 | `flux-schnell` | `flux1-schnell.safetensors` (or the fp8 `flux1-schnell-fp8-e4m3fn.safetensors`, set as `unet`) | `models/unet/` | Apache-2.0 |
 | | `t5xxl_fp8_e4m3fn.safetensors`, `clip_l.safetensors` | `models/clip/` | Apache-2.0 / MIT |
@@ -114,6 +116,8 @@ control_end = 0.8        # let the last 20 % of the steps add detail freely
 - Results on a 4060: `docs/benchmarks/local-gpu-2026-11.md`.
 
 ## Which preset for what
+
+- **A finished painted scene:** `chroma`, the quality route. Recipe and prompts: [painted scenes](painted-scenes.md).
 
 - **A scene from a prompt:** `flux-schnell` at `--size 1280x720` (exactly 4x a 320x180
   canvas, so `pw normalize` takes 4 px per pixel), 4 steps, about 14-24 s on a 4060.

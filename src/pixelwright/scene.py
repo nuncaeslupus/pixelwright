@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw
 
 from pixelwright.asset import FINAL, Asset, AssetError
 from pixelwright.core.color import srgb8_to_oklab
+from pixelwright.core.light import LIGHT_FRAMES, Light, light_frame, vignette
 from pixelwright.core.seam import join
 from pixelwright.project import Project
 
@@ -82,6 +83,8 @@ class Scene:
     backgrounds: list[tuple[str, int]]
     layers: list[Layer]
     floor: list[tuple[int, int]] = field(default_factory=list)  # walkable polygon, optional
+    lights: list[Light] = field(default_factory=list)  # flickering light sources (torches)
+    vignette: float = 0.0  # darken the corners by this much OKLab lightness
 
     @property
     def camera_height(self) -> float:
@@ -133,6 +136,8 @@ class Scene:
             "person": {"y": self.ref_y, "height": self.ref_height},
             "camera_height_m": round(self.camera_height, 2),
             "floor": [list(p) for p in self.floor],
+            "lights": [light.__dict__ for light in self.lights],
+            "vignette": self.vignette,
             "backgrounds": [{"asset": a, "x": x} for a, x in self.backgrounds],
             "layers": [layer.name for layer in self.layers],
         }
@@ -230,8 +235,27 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
     floor = [_pair(pt, "scene.floor") for pt in raw_floor]
     if floor and len(floor) < 3:
         raise SceneError(f"{path}: floor needs at least 3 points")
+    lights = []
+    for i, item in enumerate(raw.get("light", [])):
+        li = _table(item, f"light[{i}]")
+        x, y = _pair(li.get("at"), f"light[{i}].at")
+        lights.append(Light(x, y, _num(li.get("radius", 110), f"light[{i}].radius"),
+                            _num(li.get("strength", 0.15), f"light[{i}].strength")))  # fmt: skip
+    vignette = _num(head.get("vignette", 0.0), "scene.vignette")
     return Scene(
-        name, path, viewport, width, horizon, camera, ref_y, ref_h, backgrounds, layers, floor
+        name,
+        path,
+        viewport,
+        width,
+        horizon,
+        camera,
+        ref_y,
+        ref_h,
+        backgrounds,
+        layers,
+        floor,
+        lights,
+        vignette,
     )
 
 
@@ -498,6 +522,11 @@ def compose(
         _paste(canvas, floor, img, left, top)
         placed.append(Placed(layer.name, ref, left, top, img.shape[1], img.shape[0], state,
                              frame % n, n))  # fmt: skip
+    if scene.vignette:
+        canvas = vignette(canvas, scene.vignette)
+    if scene.lights:
+        longest = max(longest, LIGHT_FRAMES)
+        canvas = light_frame(canvas, scene.lights, frame % LIGHT_FRAMES)
     return Composed(canvas, placed, warnings, longest)
 
 

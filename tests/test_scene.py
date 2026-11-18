@@ -291,3 +291,20 @@ def test_analyze_refuses_a_horizon_below_the_reference(
     assert main(argv) != 0
     capsys.readouterr()
     assert load_scene(load_project(root), "crypt").horizon == 70  # file untouched
+
+
+def test_lights_and_vignette_animate_in_the_scene_colours(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    path = root / "scenes" / "crypt.toml"
+    text = path.read_text().replace('camera = "frontal"\n', 'camera = "frontal"\nvignette = 0.1\n')
+    path.write_text(text + "[[light]]\nat = [100, 40]\nradius = 60\n")
+    project = load_project(root)
+    scene = load_scene(project, "crypt")
+    assert scene.vignette == 0.1 and scene.lights[0].x == 100
+    out = compose(scene, project)
+    assert out.frames == 8
+    colours = {tuple(c) for c in out.image[..., :3].reshape(-1, 3)}
+    assert colours <= {FLOOR, WALL, DARK_FLOOR, STONE, RED, BLUE}
+    env = pw(capsys, root, "scene", "compose", "crypt", "--gif")
+    assert any(p.endswith(".gif") for p in env["outputs"])  # flat test colours: frames merge
