@@ -19,6 +19,7 @@ from pixelwright.core.providers import ProviderError
 from pixelwright.issues import KINDS, IssueError, IssueLog
 from pixelwright.migrate import migrate
 from pixelwright.project import PROJECT_FILE, Project, ProjectError, init_project, load_project
+from pixelwright.scene import load_scene, scene_prompt
 from pixelwright.style import style_kit
 
 ASSET = Param("asset", help="asset path under assets/, e.g. scenes/harbour", positional=True)
@@ -369,6 +370,11 @@ def generate_v2(root: Path, a: dict[str, Any]) -> Outcome:
     """`pw generate` on a v2 project: images become inputs, then normalised versions."""
     asset = _asset(root, a["asset"])
     prompt = Path(a["prompt_file"]).read_text(encoding="utf-8") if a["prompt_file"] else a["prompt"]
+    if a.get("scene"):
+        if a.get("at") is None:
+            raise PwError("usage", "--scene needs --at <row>", exit_code=2)
+        scene = load_scene(asset.project, a["scene"])
+        prompt = f"{prompt.strip()} {scene_prompt(scene, a['at'], a.get('height'))}".strip()
     if a.get("issue"):
         res = generate.repaint(
             asset, a["issue"], prompt, provider=a["provider"], seed=a["seed"],

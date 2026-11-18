@@ -16,6 +16,7 @@ from pixelwright.cli import bridge_commands as _bridge  # noqa: F401  (wait, req
 from pixelwright.cli import commands as _commands  # noqa: F401  (registers the commands)
 from pixelwright.cli import flow_commands as _flow  # noqa: F401  (flow commands)
 from pixelwright.cli import gen_commands as _gen_commands  # noqa: F401  (generation commands)
+from pixelwright.cli import scene_commands as _scene  # noqa: F401  (scene)
 from pixelwright.cli.registry import (
     EXIT_USAGE,
     EXIT_VALIDATION,

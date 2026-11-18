@@ -69,6 +69,9 @@ def cmd_cost(root: Path, a: dict[str, Any]) -> Outcome:
     Param("dry_run", "bool", help="show the request hash and estimated cost; send nothing"),
     Param("budget_override", "bool", help="allow this call to pass the monthly budget"),
     Param("issue", help="repaint this issue's areas and propose the result as a fix"),
+    Param("scene", help="match this scene's camera, horizon and scale (with --at)"),
+    Param("at", "float", help="with --scene: row where the object stands"),
+    Param("height", "float", help="with --scene: the prop's height in px (default: a person)"),
 )
 def cmd_generate(root: Path, a: dict[str, Any]) -> Outcome:
     out: Outcome = generate_v2(root, a)

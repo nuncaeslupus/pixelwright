@@ -6,6 +6,7 @@
 **Revision**: 2
 **Status**: approved (2026-11-17, revision 2) — without annotations
 **Revision log**:
+- M7 rows (T74–T82, spec `status/m7/spec.md`) added 2026-11-18 at the owner's request
 - r1 — first draft
 - r2 — aligned with the approved screens (spec r3, D-14 to D-17): advice becomes issues and fixes,
   groups become categories, approve becomes finish, undo/redo; T53, T55–T58, T61, T62 updated
@@ -110,6 +111,15 @@ request) → `pw wait` wakes the AI → … → `pw finish` (final + export).
 | T71 | Paintings to readable pixels | core | L | T70 | `stray_cluster_share <= 0.02` | `test_painting_regions_are_flat` in `tests/core/test_abstract.py` — after normalise, at most 2% of pixels sit in same-colour clusters of 1-4 pixels |
 | T72 | Clean diagonals | core | M | T70 | `irregular_line_steps == 0` | `test_diagonals_regularised` in `tests/core/test_lines.py` — jagged 1-px lines become regular 1:1 / 2:1 / 1:2 steps |
 | T73 | Game style kit | core | L | T71 | `tests_failed == 0` | `test_generate_sends_style_kit` in `tests/test_style_kit.py` — the request carries the palette hex codes, pixel size, rules and reference images |
+| T74 | Scene file and scale model | core | M |  | `tests_failed == 0` | `test_person_height_follows_horizon` in `tests/test_scene.py` — a door 60 px tall at row 170, horizon 70, gives a 51 px person there and 25.5 px at row 120 |
+| T75 | Compose layers with contact shadows | core | L | T74 | `tests_failed == 0` | `test_shadow_uses_scene_colours` in `tests/test_scene.py` — no colour outside the background and layers |
+| T76 | Character sizes by depth | core | M | T75 | `tests_failed == 0` | `test_actor_size_picked_by_depth_without_resampling` in `tests/test_scene.py` — a far character uses the small asset pixel for pixel |
+| T77 | Props with the scene camera | core | S | T74 | `tests_failed == 0` | `test_generate_scene_adds_camera_and_size` in `tests/test_scene.py` — the prompt names camera, horizon and target height |
+| T78 | Scrolling scenes joined by seam | core | M | T75 | `tests_failed == 0` | `test_seam_cut_follows_low_error` in `tests/core/test_seam.py` — the seam passes where tiles agree, no new colour |
+| T79 | Object states and animation | core | M | T75 | `tests_failed == 0` | `test_state_switch_and_frames` in `tests/test_scene.py` — a state switch changes only that layer; GIF frames = longest strip |
+| T80 | ComfyUI ControlNet from a sketch | core | M |  | `tests_failed == 0` | `test_controlnet_workflow_carries_sketch` in `tests/core/test_comfyui.py` — the ControlNet node is fed by the uploaded sketch |
+| T81 | Real crypt scene on Retro Diffusion | docs | S | T76, T77, T79 | owner judges the composed scene (about $0.5, owner OK first) | none (manual) |
+| T82 | Local route quality on the GPU | docs | M | T80, #119 | owner judges local against Retro Diffusion | none (manual) |
 
 ### Task details
 
