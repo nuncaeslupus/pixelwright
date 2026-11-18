@@ -129,6 +129,8 @@ class Flame:
     h: int
 
     def __post_init__(self) -> None:
+        if self.x < 0 or self.y < 0:
+            raise ValueError(f"a flame box starts inside the image (got {self.x}, {self.y})")
         if self.w < 2 or self.h < 2:
             raise ValueError(f"a flame box needs 2x2 px or more (got {self.w}x{self.h})")
 

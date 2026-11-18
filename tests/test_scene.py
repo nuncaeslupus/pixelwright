@@ -315,3 +315,20 @@ def test_a_flame_box_is_checked(root: Path) -> None:
     path.write_text(path.read_text() + "[[flame]]\nbox = [10, 10, 1, 5]\n")
     with pytest.raises(SceneError, match="flame"):
         load_scene(load_project(root), "crypt")
+
+
+def test_a_flame_in_the_scene_file_animates(root: Path) -> None:
+    project = load_project(root)
+    bg = np.zeros((180, 320, 4), np.uint8)
+    bg[..., :3], bg[..., 3] = WALL, 255
+    fire = [(200, 110, 30), (235, 160, 50), (250, 210, 90), (255, 245, 200)]
+    for row in range(12):
+        bg[30 + row, 100:106, :3] = fire[min(3, row // 3)]
+    _asset(root, "scenes/fire-bg", bg)
+    path = root / "scenes" / "crypt.toml"
+    text = path.read_text().replace("scenes/crypt-bg", "scenes/fire-bg")
+    path.write_text(text + "[[flame]]\nbox = [98, 28, 10, 16]\n")
+    scene = load_scene(project, "crypt")
+    assert len(scene.flames) == 1
+    frames = {compose(scene, project, frame=i).image[28:44, 98:108].tobytes() for i in range(8)}
+    assert compose(scene, project).frames == 8 and len(frames) > 1

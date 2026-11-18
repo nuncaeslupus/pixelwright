@@ -243,7 +243,9 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
         x, y = _pair(li.get("at"), f"light[{i}].at")
         try:
             radius = _num(li.get("radius", 110), f"light[{i}].radius")
-            lights.append(Light(x, y, radius, _num(li.get("strength", 0.15), f"light[{i}]")))
+            lights.append(
+                Light(x, y, radius, _num(li.get("strength", 0.15), f"light[{i}].strength"))
+            )
         except ValueError as exc:
             raise SceneError(f"{path}: light[{i}]: {exc}") from exc
     flames = []
@@ -272,6 +274,7 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
         floor,
         lights,
         vignette,
+        flames,
     )
 
 
