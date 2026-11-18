@@ -137,6 +137,14 @@ class ComfyUIProvider:
                 f"comfyui preset {preset['name']} has no {req.mode} workflow",
                 exit_code=EXIT_USAGE,
             )
+        min_side = int(preset.get("min_side", 0))
+        if max(req.size) < min_side:
+            raise ProviderError(
+                "invalid_size",
+                f"comfyui preset {preset['name']} composes badly below {min_side} px on the long "
+                f"side (asked {req.size[0]}x{req.size[1]}): use --size 1024x576 for 16:9",
+                exit_code=EXIT_USAGE,
+            )
         workflow: dict[str, Any] = copy.deepcopy(mode["workflow"])
         values: dict[str, Any] = {**preset.get("defaults", {}), **req.params}
         values.update(

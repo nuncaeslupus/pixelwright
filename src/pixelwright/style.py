@@ -64,7 +64,7 @@ class StyleKit:
 
 def sentence(text: str) -> str:
     """The text as a sentence: stripped, ending in . ! or ?"""
-    text = text.strip()
+    text = text.strip().rstrip(",;:").rstrip()
     return text if not text or text[-1] in ".!?" else f"{text}."
 
 

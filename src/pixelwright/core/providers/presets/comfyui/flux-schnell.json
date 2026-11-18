@@ -1,342 +1,364 @@
 {
- "name": "flux-schnell",
- "description": "FLUX.1 [schnell] (Apache-2.0 weights), 4 steps; no LoRA by default",
- "defaults": {
-  "unet": "flux1-schnell.safetensors",
-  "clip_t5": "t5xxl_fp8_e4m3fn.safetensors",
-  "clip_l": "clip_l.safetensors",
-  "vae": "ae.safetensors",
-  "steps": 4,
-  "cfg": 1.0,
-  "denoise": 0.7
- },
- "modes": {
-  "txt2img": {
-   "workflow": {
-    "1": {
-     "class_type": "UNETLoader",
-     "inputs": {
-      "unet_name": "",
-      "weight_dtype": "default"
-     }
-    },
-    "2": {
-     "class_type": "DualCLIPLoader",
-     "inputs": {
-      "clip_name1": "",
-      "clip_name2": "",
-      "type": "flux"
-     }
-    },
-    "3": {
-     "class_type": "VAELoader",
-     "inputs": {
-      "vae_name": ""
-     }
-    },
-    "6": {
-     "class_type": "CLIPTextEncode",
-     "inputs": {
-      "text": "",
-      "clip": [
-       "2",
-       0
-      ]
-     }
-    },
-    "7": {
-     "class_type": "CLIPTextEncode",
-     "inputs": {
-      "text": "",
-      "clip": [
-       "2",
-       0
-      ]
-     }
-    },
-    "8": {
-     "class_type": "KSampler",
-     "inputs": {
-      "seed": 0,
-      "steps": 4,
-      "cfg": 1.0,
-      "sampler_name": "euler",
-      "scheduler": "simple",
-      "denoise": 1.0,
-      "model": [
-       "1",
-       0
-      ],
-      "positive": [
-       "6",
-       0
-      ],
-      "negative": [
-       "7",
-       0
-      ],
-      "latent_image": [
-       "5",
-       0
-      ]
-     }
-    },
-    "9": {
-     "class_type": "VAEDecode",
-     "inputs": {
-      "samples": [
-       "8",
-       0
-      ],
-      "vae": [
-       "3",
-       0
-      ]
-     }
-    },
-    "10": {
-     "class_type": "SaveImage",
-     "inputs": {
-      "filename_prefix": "pixelwright",
-      "images": [
-       "9",
-       0
-      ]
-     }
-    },
-    "5": {
-     "class_type": "EmptySD3LatentImage",
-     "inputs": {
-      "width": 1024,
-      "height": 576,
-      "batch_size": 1
-     }
-    }
-   },
-   "inputs": {
-    "prompt": [
-     "6",
-     "text"
-    ],
-    "negative": [
-     "7",
-     "text"
-    ],
-    "seed": [
-     "8",
-     "seed"
-    ],
-    "steps": [
-     "8",
-     "steps"
-    ],
-    "cfg": [
-     "8",
-     "cfg"
-    ],
-    "unet": [
-     "1",
-     "unet_name"
-    ],
-    "clip_t5": [
-     "2",
-     "clip_name1"
-    ],
-    "clip_l": [
-     "2",
-     "clip_name2"
-    ],
-    "vae": [
-     "3",
-     "vae_name"
-    ],
-    "width": [
-     "5",
-     "width"
-    ],
-    "height": [
-     "5",
-     "height"
-    ],
-    "batch": [
-     "5",
-     "batch_size"
-    ]
-   }
+  "name": "flux-schnell",
+  "description": "FLUX.1 [schnell] (Apache-2.0 weights), 4 steps; no LoRA by default",
+  "defaults": {
+    "unet": "flux1-schnell.safetensors",
+    "clip_t5": "t5xxl_fp8_e4m3fn.safetensors",
+    "clip_l": "clip_l.safetensors",
+    "vae": "ae.safetensors",
+    "steps": 4,
+    "cfg": 1.0,
+    "denoise": 0.7
   },
-  "img2img": {
-   "workflow": {
-    "1": {
-     "class_type": "UNETLoader",
-     "inputs": {
-      "unet_name": "",
-      "weight_dtype": "default"
-     }
+  "modes": {
+    "txt2img": {
+      "workflow": {
+        "1": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "",
+            "weight_dtype": "default"
+          }
+        },
+        "2": {
+          "class_type": "DualCLIPLoader",
+          "inputs": {
+            "clip_name1": "",
+            "clip_name2": "",
+            "type": "flux"
+          }
+        },
+        "3": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": ""
+          }
+        },
+        "6": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "2",
+              0
+            ]
+          }
+        },
+        "7": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "2",
+              0
+            ]
+          }
+        },
+        "8": {
+          "class_type": "KSampler",
+          "inputs": {
+            "seed": 0,
+            "steps": 4,
+            "cfg": 1.0,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1.0,
+            "model": [
+              "1",
+              0
+            ],
+            "positive": [
+              "6",
+              0
+            ],
+            "negative": [
+              "7",
+              0
+            ],
+            "latent_image": [
+              "5",
+              0
+            ]
+          }
+        },
+        "9": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": [
+              "8",
+              0
+            ],
+            "vae": [
+              "3",
+              0
+            ]
+          }
+        },
+        "10": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "filename_prefix": "pixelwright",
+            "images": [
+              "9",
+              0
+            ]
+          }
+        },
+        "5": {
+          "class_type": "EmptySD3LatentImage",
+          "inputs": {
+            "width": 1024,
+            "height": 576,
+            "batch_size": 1
+          }
+        }
+      },
+      "inputs": {
+        "prompt": [
+          "6",
+          "text"
+        ],
+        "negative": [
+          "7",
+          "text"
+        ],
+        "seed": [
+          "8",
+          "seed"
+        ],
+        "steps": [
+          "8",
+          "steps"
+        ],
+        "cfg": [
+          "8",
+          "cfg"
+        ],
+        "unet": [
+          "1",
+          "unet_name"
+        ],
+        "clip_t5": [
+          "2",
+          "clip_name1"
+        ],
+        "clip_l": [
+          "2",
+          "clip_name2"
+        ],
+        "vae": [
+          "3",
+          "vae_name"
+        ],
+        "width": [
+          "5",
+          "width"
+        ],
+        "height": [
+          "5",
+          "height"
+        ],
+        "batch": [
+          "5",
+          "batch_size"
+        ]
+      }
     },
-    "2": {
-     "class_type": "DualCLIPLoader",
-     "inputs": {
-      "clip_name1": "",
-      "clip_name2": "",
-      "type": "flux"
-     }
-    },
-    "3": {
-     "class_type": "VAELoader",
-     "inputs": {
-      "vae_name": ""
-     }
-    },
-    "6": {
-     "class_type": "CLIPTextEncode",
-     "inputs": {
-      "text": "",
-      "clip": [
-       "2",
-       0
-      ]
-     }
-    },
-    "7": {
-     "class_type": "CLIPTextEncode",
-     "inputs": {
-      "text": "",
-      "clip": [
-       "2",
-       0
-      ]
-     }
-    },
-    "8": {
-     "class_type": "KSampler",
-     "inputs": {
-      "seed": 0,
-      "steps": 4,
-      "cfg": 1.0,
-      "sampler_name": "euler",
-      "scheduler": "simple",
-      "denoise": 0.7,
-      "model": [
-       "1",
-       0
-      ],
-      "positive": [
-       "6",
-       0
-      ],
-      "negative": [
-       "7",
-       0
-      ],
-      "latent_image": [
-       "5",
-       0
-      ]
-     }
-    },
-    "9": {
-     "class_type": "VAEDecode",
-     "inputs": {
-      "samples": [
-       "8",
-       0
-      ],
-      "vae": [
-       "3",
-       0
-      ]
-     }
-    },
-    "10": {
-     "class_type": "SaveImage",
-     "inputs": {
-      "filename_prefix": "pixelwright",
-      "images": [
-       "9",
-       0
-      ]
-     }
-    },
-    "11": {
-     "class_type": "LoadImage",
-     "inputs": {
-      "image": ""
-     }
-    },
-    "12": {
-     "class_type": "VAEEncode",
-     "inputs": {
-      "pixels": [
-       "11",
-       0
-      ],
-      "vae": [
-       "3",
-       0
-      ]
-     }
-    },
-    "5": {
-     "class_type": "RepeatLatentBatch",
-     "inputs": {
-      "samples": [
-       "12",
-       0
-      ],
-      "amount": 1
-     }
+    "img2img": {
+      "workflow": {
+        "1": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "",
+            "weight_dtype": "default"
+          }
+        },
+        "2": {
+          "class_type": "DualCLIPLoader",
+          "inputs": {
+            "clip_name1": "",
+            "clip_name2": "",
+            "type": "flux"
+          }
+        },
+        "3": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": ""
+          }
+        },
+        "6": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "2",
+              0
+            ]
+          }
+        },
+        "7": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "",
+            "clip": [
+              "2",
+              0
+            ]
+          }
+        },
+        "8": {
+          "class_type": "KSampler",
+          "inputs": {
+            "seed": 0,
+            "steps": 4,
+            "cfg": 1.0,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 0.7,
+            "model": [
+              "1",
+              0
+            ],
+            "positive": [
+              "6",
+              0
+            ],
+            "negative": [
+              "7",
+              0
+            ],
+            "latent_image": [
+              "5",
+              0
+            ]
+          }
+        },
+        "9": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": [
+              "8",
+              0
+            ],
+            "vae": [
+              "3",
+              0
+            ]
+          }
+        },
+        "10": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "filename_prefix": "pixelwright",
+            "images": [
+              "9",
+              0
+            ]
+          }
+        },
+        "11": {
+          "class_type": "LoadImage",
+          "inputs": {
+            "image": ""
+          }
+        },
+        "12": {
+          "class_type": "VAEEncode",
+          "inputs": {
+            "pixels": [
+              "20",
+              0
+            ],
+            "vae": [
+              "3",
+              0
+            ]
+          }
+        },
+        "5": {
+          "class_type": "RepeatLatentBatch",
+          "inputs": {
+            "samples": [
+              "12",
+              0
+            ],
+            "amount": 1
+          }
+        },
+        "20": {
+          "class_type": "ImageScale",
+          "inputs": {
+            "image": [
+              "11",
+              0
+            ],
+            "upscale_method": "nearest-exact",
+            "width": 1024,
+            "height": 576,
+            "crop": "disabled"
+          }
+        }
+      },
+      "inputs": {
+        "prompt": [
+          "6",
+          "text"
+        ],
+        "negative": [
+          "7",
+          "text"
+        ],
+        "seed": [
+          "8",
+          "seed"
+        ],
+        "steps": [
+          "8",
+          "steps"
+        ],
+        "cfg": [
+          "8",
+          "cfg"
+        ],
+        "unet": [
+          "1",
+          "unet_name"
+        ],
+        "clip_t5": [
+          "2",
+          "clip_name1"
+        ],
+        "clip_l": [
+          "2",
+          "clip_name2"
+        ],
+        "vae": [
+          "3",
+          "vae_name"
+        ],
+        "init_image": [
+          "11",
+          "image"
+        ],
+        "batch": [
+          "5",
+          "amount"
+        ],
+        "denoise": [
+          "8",
+          "denoise"
+        ],
+        "width": [
+          "20",
+          "width"
+        ],
+        "height": [
+          "20",
+          "height"
+        ]
+      }
     }
-   },
-   "inputs": {
-    "prompt": [
-     "6",
-     "text"
-    ],
-    "negative": [
-     "7",
-     "text"
-    ],
-    "seed": [
-     "8",
-     "seed"
-    ],
-    "steps": [
-     "8",
-     "steps"
-    ],
-    "cfg": [
-     "8",
-     "cfg"
-    ],
-    "unet": [
-     "1",
-     "unet_name"
-    ],
-    "clip_t5": [
-     "2",
-     "clip_name1"
-    ],
-    "clip_l": [
-     "2",
-     "clip_name2"
-    ],
-    "vae": [
-     "3",
-     "vae_name"
-    ],
-    "init_image": [
-     "11",
-     "image"
-    ],
-    "batch": [
-     "5",
-     "amount"
-    ],
-    "denoise": [
-     "8",
-     "denoise"
-    ]
-   }
-  }
- }
+  },
+  "min_side": 768
 }
