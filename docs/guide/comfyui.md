@@ -21,7 +21,7 @@ Check from your workspace: `pw doctor` shows `ok comfyui` with your GPU name.
 
 pixelwright ships three presets. Put the files in the ComfyUI folders named below. Each
 model has its own licence: read the model card before shipping game art made with it, and
-note the licence in `style/style.yaml` (`presets.comfyui.licence`).
+note the licence beside the preset in `pixelwright.toml`.
 
 | Preset | Files | Folder | Licence to check |
 |---|---|---|---|
@@ -34,22 +34,29 @@ note the licence in `style/style.yaml` (`presets.comfyui.licence`).
 
 FLUX.1 [dev] weights are under a non-commercial licence; the `flux-schnell` preset avoids them.
 
-File names other than these? Set them per preset in `style/style.yaml`:
+File names other than these? Set them in `pixelwright.toml` (`[presets.comfyui]`; a
+`style/style.yaml` is not read):
 
-```yaml
-presets:
-  comfyui:
-    preamble: "pixel art, 1990s point-and-click adventure background,"
-    negative: "blurry, photo, 3d render, text"
-    scale: 4                 # paint at 4x the canvas; snap brings it back
-    params:
-      preset: sdxl           # or flux-schnell
-      ckpt: my_sdxl.safetensors
-      lora: my_pixel_lora.safetensors
-      lora_strength: 0.9
-      denoise: 0.6           # img2img: how far from the sketch (0 keeps it, 1 ignores it)
-      steps: 30
+```toml
+[presets.comfyui]
+preamble = "pixel art, 1990s point-and-click adventure background"
+negative = "blurry, photo, 3d render, text"
+scale = 4                     # paint at 4x the canvas; snap brings it back
+
+[presets.comfyui.params]
+preset = "sdxl"               # or sdxl-controlnet, flux-schnell
+ckpt = "my_sdxl.safetensors"
+lora = "my_pixel_lora.safetensors"
+lora_strength = 0.7           # 0.6-1.0 usable on a 4060; 0.7 the cleanest
+denoise = 0.75                # img2img: how far from the sketch (0 keeps it, 1 ignores it)
+steps = 30
 ```
+
+**Sizes.** SDXL and Flux compose at about 1024 px: ask `--size 1024x576` for 16:9
+(below 768 px on the long side the presets refuse; at 640x360 SDXL breaks the scene into
+tiles). img2img scales the init image to that size first, so a 320x180 sketch works.
+Measured on an RTX 4060 Laptop (8 GB): txt2img 1024x576 about 70 s and 7.1 GB VRAM;
+img2img about 26 s and 6.5 GB.
 
 ## 3. Project settings
 
