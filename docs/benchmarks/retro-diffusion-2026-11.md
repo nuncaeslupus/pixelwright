@@ -83,3 +83,17 @@ The empty crypt from round 3 as background, with the tomb asked through `pw scen
 - **Scale.** The 60 px knight only fits near the back wall (row 145); in front of the
   door the scene asks for about 100 px. Character sizes have to be drawn per scene depth.
 - Results: project files `m7/rd-cripta-cerrada-abierta-x2.png` and the three tomb PNGs.
+
+### Eye-level tomb after `pw scene analyze` (2026-11-18, $0.18)
+
+The owner saw the props from above and the knight floating. `pw scene analyze` put the
+crypt's horizon at row 139 (the first guess was 100), so the camera is low and props
+should show only their front face. `rd_pro__fantasy` 96x40 with that prompt ("straight
+side-on, at eye level ... neither its top nor its underside shows", flat magenta
+background, keyed by colour) drew the sarcophagus frontal at eye level, matching the
+floor. It came out 39 px tall where 22 px was asked: check the size of each prop.
+On the marked floor, with `--guides`, nothing floats.
+
+- A request killed by a client timeout still runs and is charged; `GET /v2/inferences/tasks`
+  lists recent tasks with their images, so the result can be recovered.
+- `GET /v1/inferences/credits` returns the balance.
