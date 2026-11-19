@@ -86,6 +86,7 @@ class Scene:
     lights: list[Light] = field(default_factory=list)  # flickering light sources (torches)
     vignette: float = 0.0  # darken the corners by this much OKLab lightness
     flames: list[Flame] = field(default_factory=list)  # painted flames to animate in place
+    engine: dict[str, Any] = field(default_factory=dict)  # [engine]: `pw scene layers` settings
 
     @property
     def camera_height(self) -> float:
@@ -243,18 +244,24 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
         x, y = _pair(li.get("at"), f"light[{i}].at")
         try:
             radius = _num(li.get("radius", 110), f"light[{i}].radius")
-            lights.append(
-                Light(x, y, radius, _num(li.get("strength", 0.15), f"light[{i}].strength"))
-            )
+            strength = _num(li.get("strength", 0.15), f"light[{i}].strength")
+            period = int(_num(li["period"], f"light[{i}].period")) if "period" in li else None
+            lights.append(Light(x, y, radius, strength, period))
         except ValueError as exc:
             raise SceneError(f"{path}: light[{i}]: {exc}") from exc
     flames = []
     for i, item in enumerate(raw.get("flame", [])):
-        box = _table(item, f"flame[{i}]").get("box")
+        fl = _table(item, f"flame[{i}]")
+        box = fl.get("box")
         if not isinstance(box, list) or len(box) != 4:
             raise SceneError(f"{path}: flame[{i}] needs box = [x, y, w, h]")
+        extra = {k: int(_num(fl[k], f"flame[{i}].{k}")) for k in ("height", "light") if k in fl}
+        if extra.get("light") is not None and not 0 <= extra["light"] < len(lights):
+            raise SceneError(
+                f"{path}: flame[{i}].light must name one of the {len(lights)} light(s)"
+            )
         try:
-            flames.append(Flame(*(int(_num(v, f"flame[{i}].box")) for v in box)))
+            flames.append(Flame(*(int(_num(v, f"flame[{i}].box")) for v in box), **extra))
         except ValueError as exc:
             raise SceneError(f"{path}: flame[{i}]: {exc}") from exc
     vignette = _num(head.get("vignette", 0.0), "scene.vignette")
@@ -275,6 +282,7 @@ def parse_scene(raw: dict[str, Any], name: str, path: Path, canvas: tuple[int, i
         lights,
         vignette,
         flames,
+        _table(raw.get("engine", {}), "engine"),
     )
 
 

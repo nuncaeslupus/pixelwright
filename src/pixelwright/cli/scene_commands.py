@@ -8,10 +8,11 @@ from typing import Any
 from PIL import Image
 
 from pixelwright import scene as sc
+from pixelwright import scene_layers as sl
 from pixelwright.cli.flow_commands import _guard, _project
 from pixelwright.cli.registry import Outcome, Param, PwError, command
 
-ACTIONS = ("new", "show", "analyze", "scale", "sizes", "prompt", "compose")
+ACTIONS = ("new", "show", "analyze", "scale", "sizes", "prompt", "compose", "layers")
 
 
 def _states(raw: list[str]) -> dict[str, str]:
@@ -26,7 +27,7 @@ def _states(raw: list[str]) -> dict[str, str]:
 
 @command(
     "scene",
-    "scenes in layers: new, show, analyze, scale --at Y, sizes, prompt --at Y, compose",
+    "scenes in layers: new, show, analyze, scale --at Y, sizes, prompt --at Y, compose, layers",
     Param("action", positional=True, required=True, choices=ACTIONS),
     Param("name", help="scene name: scenes/<name>.toml", positional=True),
     Param("background", help="new: background asset, e.g. scenes/crypt-bg"),
@@ -44,6 +45,7 @@ def _states(raw: list[str]) -> dict[str, str]:
     Param("no_shadows", "bool", help="compose: leave out contact shadows"),
     Param("guides", "bool", help="compose: also write the scene with horizon, floor and bases"),
     Param("apply", "bool", help="analyze: write the estimated horizon to the scene file"),
+    Param("zoom", "int", help="layers: scale the preview GIF by this whole factor", default=1),
 )
 @_guard
 def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
@@ -104,6 +106,16 @@ def cmd_scene(root: Path, a: dict[str, Any]) -> Outcome:
     if action == "prompt":
         text = sc.scene_prompt(scene, a["at"], a["height"])
         return Outcome(data={"prompt": text}, text=text)
+    if action == "layers":
+        if a["zoom"] < 1:
+            raise PwError("usage", "--zoom must be 1 or more", exit_code=2)
+        paths, manifest, warnings = sl.write_layers(scene, project, zoom=a["zoom"])
+        c = manifest["checks"]
+        text = (f"{name}: {len(manifest['layers'])} layer(s), {len(manifest['lights'])} light(s), "
+                f"{c['preview_frames']} frames, {c['off_palette']} off-palette colour(s), "
+                f"brightness swing {c['brightness_swing']:.0%}: {paths[-1].parent}")  # fmt: skip
+        return Outcome(outputs=[str(p) for p in paths], data=manifest, warnings=warnings,
+                       text=text)  # fmt: skip
     states = _states(a["state"])
     out = sc.compose(scene, project, states=states, frame=a["frame"], shadows=not a["no_shadows"])
     paths = sc.write_outputs(
