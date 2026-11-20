@@ -20,8 +20,9 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
 6. Every scene uses the same camera height: eyes at 1.6 m, frontal view unless the scene
    needs another (`pw scene` also knows three-quarter and side). The horizon runs
    through the eyes of every standing character.
-7. A person's height in pixels is about 1.09 × (feet row − horizon row). A scene only
-   stores its horizon (`pw scene scale`).
+7. A person's height in pixels is about 1.09 × (feet row − horizon row) with the camera at
+   1.6 m. A scene stores its horizon and one scale reference (`[scene.scale]`: a person
+   or a door); `pw scene scale` does the rest.
 8. Characters come in two or three hand-drawn sizes; a close scene shows the large one
    because the camera is near, not because the rule changes. Scale a size by at most
    about 15 %; pixel art does not survive larger factors.
