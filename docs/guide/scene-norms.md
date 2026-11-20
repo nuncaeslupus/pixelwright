@@ -17,7 +17,8 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
 
 ## Camera and scale
 
-6. Every scene uses the same camera: eyes at 1.6 m, frontal view. The horizon runs
+6. Every scene uses the same camera height: eyes at 1.6 m, frontal view unless the scene
+   needs another (`pw scene` also knows three-quarter and side). The horizon runs
    through the eyes of every standing character.
 7. A person's height in pixels is about 1.09 × (feet row − horizon row). A scene only
    stores its horizon (`pw scene scale`).
@@ -80,8 +81,8 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
     edges detected in a photo.
 30. Empty outlines get filled with the wrong material: draw texture hints (bark, cobbles)
     in the sketch.
-31. One palette per scene (about 200 colours) plus a band shared across the game; every
-    frame snaps to it.
+31. Painted scenes keep 128 colours, and the approved scenes feed one game palette
+    ([painted scenes](painted-scenes.md)); every frame snaps to it.
 32. An animation loop lasts a common multiple of all its cycles, so nothing jumps at the
     loop point.
 
