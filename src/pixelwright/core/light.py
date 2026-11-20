@@ -31,12 +31,15 @@ class Light:
     y: float
     radius: float = 110.0
     strength: float = 0.15  # OKLab lightness added at the centre at full flicker
+    period: int | None = None  # frames of its flicker loop in `pw scene layers`
 
     def __post_init__(self) -> None:
         if self.radius <= 0:
             raise ValueError(f"light radius must be above 0 (got {self.radius:g})")
         if not 0 < self.strength <= 1:
             raise ValueError(f"light strength must be in (0, 1] (got {self.strength:g})")
+        if self.period is not None and self.period < 2:
+            raise ValueError(f"light period must be 2 frames or more (got {self.period})")
 
 
 def relight(img: RGBA, delta: npt.NDArray[np.float64]) -> RGBA:
@@ -127,8 +130,12 @@ class Flame:
     y: int
     w: int
     h: int
+    height: int | None = None  # `pw scene layers`: the drawn flame's height (default: box)
+    light: int | None = None  # `pw scene layers`: the light it drives (default: nearest)
 
     def __post_init__(self) -> None:
+        if self.height is not None and self.height < 3:
+            raise ValueError(f"a flame needs 3 px of height or more (got {self.height})")
         if self.x < 0 or self.y < 0:
             raise ValueError(f"a flame box starts inside the image (got {self.x}, {self.y})")
         if self.w < 2 or self.h < 2:

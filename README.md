@@ -9,5 +9,6 @@ LLM-directed pixel art pipeline. Work in progress.
 Start with `pw open` (it opens a sample project the first time), then read [how it works](docs/guide/how-it-works.md).
 
 Scenes built in layers (background, props, characters at the right scale): [scenes](docs/guide/scenes.md).
+The same scene split for a game engine (layers, light masks, manifest) and the art direction behind it: [scene layers](docs/guide/scene-layers.md).
 The 1990s VGA adventure look on a local GPU, prompts and palettes: [painted scenes](docs/guide/painted-scenes.md).
 What a good scene needs (camera, scale, composition, light): [scene norms](docs/guide/scene-norms.md).
