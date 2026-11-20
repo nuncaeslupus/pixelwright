@@ -93,3 +93,9 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
     contrast and saturation, outlines, smallest pixel cluster, dithering, light direction
     and tones per material. Extract them from an approved scene, apply them to a new one
     with another palette, and check the result against them.
+34. Measure style on the image reduced to its real palette, not on the generator's raw
+    output: raw output carries noise (in the crypt, 41 % of pixels were isolated; reduced
+    to 16 colours, 11 %).
+35. Example profile, the crypt: fits in 16 colours, very dark (median lightness 0.10),
+    two temperatures (cold blue-violet shadows, warm orange only where the torch
+    reaches), ramps of 3-4 steps per hue, no black outline, almost no dithering.
