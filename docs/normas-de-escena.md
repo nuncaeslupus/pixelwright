@@ -4,7 +4,7 @@ Aprendidas con escenas de prueba (la cripta y la plaça de Sant Felip Neri), hec
 
 ## Cámara y escala
 1. Todas las escenas usan la misma cámara: ojos a 1,6 m y vista frontal. La línea del horizonte pasa por los ojos de todos los personajes de pie.
-2. La altura de una persona en píxeles es ≈ 1,09 × (y de los pies − y del horizonte). Cada escena solo guarda su horizonte.
+2. La altura de una persona en píxeles es ≈ 1,09 × (y de los pies − y del horizonte), porque 1,75 m / 1,6 m ≈ 1,09. Cada escena guarda en `[scene.scale]` una referencia (`person` o `door`, con su `y` y su `height` en píxeles) elegida para que cumpla esa relación, es decir, para que la cámara quede a 1,6 m.
 3. El tamaño "normal" del personaje es el de la cripta (la escena más cercana). Los planos lejanos usan 2 o 3 versiones dibujadas a mano; no se escala a factores no enteros.
 4. No forzar la perspectiva para que quepa algo: si un objeto no cabe en el encuadre, se quita.
 5. Abrir el encuadre lo justo para que se lean los límites del espacio (en la plaza, la pared izquierda en ángulo), aceptando personajes algo más pequeños.
