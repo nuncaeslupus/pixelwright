@@ -1,19 +1,22 @@
-"""Project commands: `init`, `check`, `status` and `palette` (the flow commands live in
-`flow_commands`, generation in `gen_commands`)."""
+"""Project commands: `init`, `check`, `status`, `palette`, `measure` and `recolor` (the
+flow commands live in `flow_commands`, generation in `gen_commands`)."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from pixelwright import flow
 from pixelwright.cli.flow_commands import ASSET, _asset, _project, check_v2, init_v2, status_v2
 from pixelwright.cli.registry import Outcome, Param, PwError, command
+from pixelwright.core import look
 from pixelwright.core.image import RGBImage
-from pixelwright.core.ramps import PRESETS, ramp_palette
+from pixelwright.core.ramps import PRESETS, ramp, ramp_palette
 from pixelwright.core.snap import snap
 from pixelwright.io.palette_io import read_palette, write_palette
-from pixelwright.io.png import read_png
+from pixelwright.io.png import read_png, write_png
 
 
 @command(
@@ -141,3 +144,60 @@ def _rgb_file(path: Path) -> RGBImage:
 
 def _version(asset: Any) -> RGBImage:
     return _rgb_file(asset.version_path(asset.latest()))
+
+
+@command(
+    "measure",
+    "the look of an image: colours, lightness, chroma, isolated pixels, gradient step",
+    Param("image", help="PNG file", required=True, positional=True),
+    needs_workspace=False,
+)
+def cmd_measure(root: Path, a: dict[str, Any]) -> Outcome:
+    path = Path(a["image"])
+    try:
+        data = look.measure(_rgb_file(path).rgba)
+    except ValueError as exc:
+        raise PwError("invalid", str(exc)) from exc
+    light = data["lightness"]
+    text = (
+        f"{path.name}: {data['colors']} colours, lightness {light['median']} "
+        f"({light['p10']}-{light['p90']}), chroma {data['chroma_median']}, "
+        f"isolated {data['isolated']:.1%}, step {data['step_median']}"
+    )
+    return Outcome(data=data, text=text)
+
+
+@command(
+    "recolor",
+    "repaint one material (the pixels a mask selects) with a ramp, keeping its light",
+    Param("image", help="PNG file", required=True, positional=True),
+    Param("mask", help="mask or material map PNG, same size as the image", required=True),
+    Param("match", help="material colour in the mask as rrggbb (default: every non-black pixel)"),
+    Param("key", help="ramp key colour as rrggbb", required=True),
+    Param("steps", "int", help="shades in the ramp (more: smoother gradients)", default=7),
+    Param("light", "float", help="-1..1: move the material towards light (+) or dark (-)",
+          default=0.0),
+    Param("out", help="output PNG (default: <image>-recolor.png)"),
+    needs_workspace=False,
+)  # fmt: skip
+def cmd_recolor(root: Path, a: dict[str, Any]) -> Outcome:
+    path = Path(a["image"])
+    image, mask_image = _rgb_file(path).rgba, _rgb_file(Path(a["mask"])).rgba
+    try:
+        match = _hex(a["match"]) if a["match"] else None
+        shades = ramp(a["key"], a["steps"])
+        out = look.recolor(image, look.mask_from(mask_image, match), shades, a["light"])
+    except ValueError as exc:
+        raise PwError("invalid", str(exc)) from exc
+    dest = Path(a["out"]) if a["out"] else path.with_name(f"{path.stem}-recolor.png")
+    write_png(dest, RGBImage(out))
+    changed = int(np.any(out != image, axis=-1).sum())
+    return Outcome(outputs=[str(dest)], data={"changed": changed},
+                   text=f"{dest}: {changed} pixels repainted")  # fmt: skip
+
+
+def _hex(value: str) -> tuple[int, int, int]:
+    v = value.lstrip("#")
+    if len(v) != 6:
+        raise ValueError(f"expected rrggbb, got {value!r}")
+    return int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16)
