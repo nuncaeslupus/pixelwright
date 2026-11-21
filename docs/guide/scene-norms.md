@@ -78,8 +78,8 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
 28. Painting at high resolution and shrinking gives blur, not pixels. Use a pixel-art
     LoRA at 1024 px and reduce to 320×180, or build at native size.
 29. Image-to-image from a photo copies it at low denoise and invents at high denoise.
-    Structure comes from a clean hand-drawn line sketch through ControlNet, never from
-    edges detected in a photo.
+    Structure comes from a clean hand-drawn line sketch through ControlNet, or better
+    from a depth render of a 3D model (norms 37-39), never from edges detected in a photo.
 30. Empty outlines get filled with the wrong material: draw texture hints (bark, cobbles)
     in the sketch.
 31. Painted scenes keep 128 colours, and the approved scenes feed one game palette
@@ -99,3 +99,33 @@ pixelwright. They grow with every review round. The how-to is in [scenes](scenes
 35. Example profile, the crypt: fits in 16 colours, very dark (median lightness 0.10),
     two temperatures (cold blue-violet shadows, warm orange only where the torch
     reaches), ramps of 3-4 steps per hue, no black outline, almost no dithering.
+36. `pw measure` gives these numbers for any PNG: colours, lightness, chroma, isolated
+    pixels and the median step between neighbouring colours (smaller reads smoother).
+
+## Real places from a 3D model
+
+The route that worked for the city square's fountain and church front, after photo
+image-to-image and detailed text-to-image both failed.
+
+37. Never use a photo as the generator's input: at any denoise it comes out as a
+    pixelated photo or an invented building. Photos are for measuring.
+38. Build each key piece as a simple 3D model (or a height map for a flat front) with
+    real measurements, and render its depth with the scene's own camera, at its real
+    place. A piece rendered with a camera of its own looks tilted when pasted in.
+39. Generate on that depth map with a depth ControlNet: shape, viewpoint and size come
+    out exact; the prompt decides only material and detail.
+40. Colour comes from the model, not the prompt: render a material map with the depth
+    map and give each material its own ramp. A colour word in the prompt spreads to
+    everything near it ("green door" gave a green statue and ivy). `pw recolor` swaps a
+    material's ramp afterwards and keeps its light.
+41. No seed is perfect: combine seeds per material through the same map.
+42. Render at a whole multiple of the scene pixel (the generator's cells, e.g. 8 × 8)
+    and reduce one colour per cell. Any other factor mixes neighbours and blurs.
+43. Light the result from the model (cast shadows, occlusion in corners) so separately
+    generated pieces share one sun.
+44. Anything one pixel wide that moves (water threads, drops, flames) is drawn by a
+    script from the geometry. Each fall gets its own column of pixels: if two overlap,
+    change the geometry, not the water. A thread sways between two columns at most,
+    and every moving cycle fits the loop's frame count.
+45. To show less floor, move the camera closer, eyes still at 1.6 m; do not shift the
+    frame.

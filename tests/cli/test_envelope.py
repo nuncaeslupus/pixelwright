@@ -91,6 +91,7 @@ def test_cli_json_envelope_on_every_command(
     assert run("wait", "--timeout", "0")["data"]["requests"] == []
     flow = {"normalize", "issues", "fix", "undo", "redo", "star", "finish"}
     flow |= {"open", "migrate", "bench", "scene"}  # bench: tests/bench, scene: test_scene
+    flow |= {"measure", "recolor"}  # tests/core/test_look
     assert seen | flow == set(REGISTRY)  # flow commands: test_flow_cli, test_migrate
 
 
